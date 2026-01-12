@@ -11,10 +11,13 @@ Developed with a focus on stability, simple design, and maximum flexibility.
 
 ## ✨ Features
 
-* 🖱️ **Full Visual Editor:** No YAML required (but possible).
-* 📏 **Flexible 60-Grid:** Buttons can take up 1/3, 1/4, 1/5, etc. of the width – perfect for any row layout.
-* ↕️ **Custom Height:** Make important buttons larger and less important ones smaller.
-* 🔋 **Smart Status Chips:** Automatically shows open windows and low batteries (Binary & %).
+* 🖱️ **Full Visual Editor:** No YAML required. The optimized editor ensures smooth configuration without focus loss.
+* 📱 **Responsive Flex Layout:** Buttons intelligently wrap on smaller screens (Mobile/Tablet) while maintaining your preferred relative widths. No more cut-off content!
+* 🌡️ **Smart Climate Integration:** Optionally select a main climate device (e.g., Tado, Netatmo) to automatically display temperature and humidity in the header.
+* 📏 **Flexible Sizing:** Buttons can take up 1/3, 1/4, 1/5, etc. of the width. Important buttons can be taller, others smaller.
+* 🔋 **Advanced Status Chips:** Automatically alerts you about room status:
+  * **Windows:** Shows open windows immediately.
+  * **Batteries:** Differentiates between "Critical" (≤ 5%), "Low" (≤ 15%), or "Empty" (Binary Sensors).
 * ⚡ **Performance:** Vanilla JS, no external dependencies, loads extremely fast.
 * 🖱️ **Sortable:** Easily move buttons using arrow keys in the editor.
 
@@ -24,7 +27,7 @@ Developed with a focus on stability, simple design, and maximum flexibility.
 1. Open HACS -> Frontend.
 2. Click the menu (three dots) in the top right corner -> **Custom repositories**.
 3. Paste the URL of this repository.
-4. Select category **Lovelace** or **Dashboard** in newer HA-Versions .
+4. Select category **Lovelace** (or **Dashboard**).
 5. Click "Add" and then "Install".
 
 ### Manual Installation
@@ -39,9 +42,9 @@ Developed with a focus on stability, simple design, and maximum flexibility.
 Simply add the card via "Add Card" in your dashboard and select **"OneLine Room Card"**.
 The visual editor guides you through all settings:
 
-* **General:** Name, Icon, Image, and Colors.
-* **Sensors:** Select your temperature, humidity, window, and battery sensors.
-* **Buttons:** Add devices and define their width and height individually.
+* **General:** Name, Icon, Image, Colors, and an optional **Main Climate Device** (auto-fills header info).
+* **Sensors:** Select your temperature, humidity, window, and battery sensors. *Note: If selected here, these sensors override the Main Climate attributes.*
+* **Buttons:** Add devices (Lights, Shutters, Climate, etc.) and define their width and height individually.
 
 ---
 

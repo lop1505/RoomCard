@@ -1,8 +1,22 @@
-console.info(
-  "%c ROOM-CARD %c 1.0.1-BETA.1",
-  "color: white; background: #2c3e50; font-weight: 700;",
-  "color: white; background: #27ae60; font-weight: 700;"
-);
+// 1️⃣ UNIQUE LOGGING GUARD
+const VERSION = "1.0.2";
+const LOG_FLAG = `customCards_RoomCard_Logged_${VERSION}`;
+
+if (!window[LOG_FLAG]) {
+  console.info(
+    `%c ROOM-CARD %c ${VERSION} `,
+    "color: white; background: #2c3e50; font-weight: 700;",
+    "color: white; background: #2980b9; font-weight: 700;"
+  );
+  window[LOG_FLAG] = true;
+}
+
+// 2️⃣ KONSTANTEN & TEXTE
+const TEXTS = {
+  empty: "Leer",
+  low: "Niedrig",
+  critical: "Kritisch"
+};
 
 // =============================================================================
 // HELFER FUNKTIONEN
@@ -40,20 +54,22 @@ class RoomCard extends HTMLElement {
     this.updateContent();
   }
 
-  // Wichtig für HA Layout-Engine
   getCardSize() {
-    return 3;
+    // 3 Einheiten Basis + ca. 2.5 Buttons pro Zeile
+    const numButtons = (this.config.controls || []).length;
+    return 3 + Math.ceil(numButtons / 2.5);
   }
 
   static getStubConfig(hass) {
     const entities = Object.keys(hass.states);
     const light = entities.find((e) => e.startsWith("light.")) || "";
+    const climate = entities.find((e) => e.startsWith("climate.")) || "";
     return {
       name: "Wohnzimmer",
       icon: "mdi:sofa",
+      entity: climate,
       color: "orange",
       controls: [
-        { entity: light, name: "Info", type: "light", icon: "mdi:information", width: 60, height: 100 },
         { entity: light, name: "Licht", type: "light", icon: "mdi:lightbulb", width: 20, height: 60 },
       ],
     };
@@ -68,7 +84,7 @@ class RoomCard extends HTMLElement {
             border-radius: 16px; 
             background: none; 
             border: none; 
-            cursor: pointer; 
+            cursor: default; 
             transition: all 0.2s; 
         }
         
@@ -79,7 +95,15 @@ class RoomCard extends HTMLElement {
             border-radius: 16px; 
         }
 
-        .img-box { position: relative; width: 100%; height: 120px; overflow: hidden; border-radius: 16px 16px 0 0; background: #444; }
+        .img-box { 
+            position: relative; 
+            width: 100%; 
+            height: 120px; 
+            overflow: hidden; 
+            border-radius: 16px 16px 0 0; 
+            background: #444;
+            cursor: pointer;
+        }
         .img { width: 100%; height: 100%; object-fit: cover; display: block; }
         .overlay { position: absolute; top: 0; left: 0; width: 100%; padding: 12px; background: linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%); display: flex; align-items: center; gap: 12px; }
         .text { display: flex; flex-direction: column; color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
@@ -90,13 +114,10 @@ class RoomCard extends HTMLElement {
         .chip { display: flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 8px; font-size: 11px; font-weight: bold; background: #FFF8E1; color: #FFA000; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
         .chip.alert { background: #FFEBEE; color: #D32F2F; }
 
-        /* --- FLEX LAYOUT LOGIK --- */
         .controls {
-          /* Definition der Lücke als Variable für die Berechnung in JS */
           --room-card-gap: 6px; 
-          
           display: flex;
-          flex-wrap: wrap; /* Erlaubt den Umbruch */
+          flex-wrap: wrap;
           gap: var(--room-card-gap);
           padding: 10px;
         }
@@ -113,10 +134,9 @@ class RoomCard extends HTMLElement {
           border: 1px solid transparent;
           transition: background 0.2s, border-color 0.2s;
           
-          /* FLEX PROPERTIES */
-          flex-grow: 1;      /* Füllt Lücken auf */
-          flex-shrink: 1;    /* Darf schrumpfen... */
-          min-width: 105px;  /* ...aber NIEMALS kleiner als das hier! (Game Changer) */
+          flex-grow: 1;
+          flex-shrink: 1;
+          min-width: 105px;
           
           overflow: hidden;
           box-sizing: border-box;
@@ -163,20 +183,56 @@ class RoomCard extends HTMLElement {
     const icon = this.shadowRoot.getElementById("icon");
     icon.icon = c.icon || "mdi:home";
     icon.style.color = c.color || "white";
-    const temp = c.temp_sensor && h.states[c.temp_sensor] ? h.states[c.temp_sensor].state : "-";
-    const hum = c.humid_sensor && h.states[c.humid_sensor] ? h.states[c.humid_sensor].state : "-";
-    this.shadowRoot.getElementById("info").innerText = `${temp}°C | ${hum}%`;
+
+    // --- KLIMA LOGIK ---
+    let tempVal = null;
+    let humVal = null;
+
+    if (c.temp_sensor && h.states[c.temp_sensor]) {
+        tempVal = h.states[c.temp_sensor].state;
+    } 
+    else if (c.entity && h.states[c.entity]) {
+        const climateState = h.states[c.entity];
+        if (climateState.attributes.current_temperature !== undefined) {
+            tempVal = climateState.attributes.current_temperature;
+        }
+    }
+
+    if (c.humid_sensor && h.states[c.humid_sensor]) {
+        humVal = h.states[c.humid_sensor].state;
+    }
+    else if (c.entity && h.states[c.entity]) {
+        const climateState = h.states[c.entity];
+        if (climateState.attributes.current_humidity !== undefined) {
+            humVal = climateState.attributes.current_humidity;
+        }
+    }
+
+    const tDisplay = tempVal !== null && tempVal !== "-" ? `${tempVal}°C` : "–";
+    const hDisplay = humVal !== null && humVal !== "-" ? `${humVal}%` : "–";
+    this.shadowRoot.getElementById("info").innerText = `${tDisplay} | ${hDisplay}`;
 
     // --- CHIPS ---
     const chips = this.shadowRoot.getElementById("chips");
     chips.innerHTML = "";
-    let alert = false;
+    
+    let alertLabel = null;
     toList(c.battery_sensors).forEach((s) => {
       const st = h.states[s]; if (!st) return;
-      if (st.state === "on") alert = true;
-      const pct = parseFloat(st.state); if (!isNaN(pct) && pct <= 15) alert = true;
+      
+      if (st.state === "on") alertLabel = TEXTS.empty;
+      
+      const pct = parseFloat(st.state); 
+      if (!isNaN(pct)) {
+        if (pct <= 5) alertLabel = TEXTS.critical;
+        else if (pct <= 15 && !alertLabel) alertLabel = TEXTS.low;
+      }
     });
-    if (alert) chips.innerHTML += `<div class="chip alert"><ha-icon icon="mdi:battery-alert" style="--mdc-icon-size:14px"></ha-icon> Leer</div>`;
+
+    if (alertLabel) {
+      chips.innerHTML += `<div class="chip alert"><ha-icon icon="mdi:battery-alert" style="--mdc-icon-size:14px"></ha-icon> ${alertLabel}</div>`;
+    }
+
     toList(c.window_sensors).forEach((s) => {
       const st = h.states[s];
       if (st?.state === "on") chips.innerHTML += `<div class="chip"><ha-icon icon="mdi:window-open-variant" style="--mdc-icon-size:14px"></ha-icon> ${st.attributes.friendly_name || "Fenster"}</div>`;
@@ -211,12 +267,9 @@ class RoomCard extends HTMLElement {
       const btn = document.createElement("div");
       btn.className = "btn";
 
-      // 1. Breite in Prozent berechnen (60 Einheiten = 100%)
       const rawWidth = clampNum(ctrl.width, 1, 60, 15);
       const percentage = (rawWidth / 60) * 100;
 
-      // 2. Flex-Basis setzen: Prozent abzüglich des Gaps (via CSS Variable)
-      // Das sorgt für mathematisch korrekte Abstände ohne Umbruch-Fehler
       btn.style.flexBasis = `calc(${percentage}% - var(--room-card-gap, 6px))`;
       
       const finalH = clampNum(ctrl.height, 40, 250, 60);
@@ -353,12 +406,18 @@ class RoomCardEditor extends HTMLElement {
 
         ha-textfield, ha-selector, ha-entity-picker, ha-icon-picker, ha-select { width: 100%; display: block; }
         mwc-button { width: 100%; margin-top: 8px; }
+        
+        .info-text { font-size: 12px; color: var(--secondary-text-color); margin-top: -8px; margin-bottom: 8px; }
       </style>
 
       <div class="section">
         <h3>Allgemein</h3>
         <div class="stack">
           <ha-textfield label="Name" config="name" class="base"></ha-textfield>
+          
+          <ha-entity-picker label="Haupt-Klima-Gerät (Optional)" config="entity" class="base"></ha-entity-picker>
+          <div class="info-text">Füllt Temp/Feuchtigkeit automatisch, wenn unten leer.</div>
+
           <div class="row">
             <ha-icon-picker label="Icon" config="icon" class="base"></ha-icon-picker>
             <ha-textfield label="Farbe" config="color" class="base"></ha-textfield>
@@ -369,10 +428,10 @@ class RoomCardEditor extends HTMLElement {
       </div>
 
       <div class="section">
-        <h3>Sensoren</h3>
+        <h3>Sensoren (Manuell)</h3>
         <div class="stack">
-          <ha-entity-picker label="Temperatur" config="temp_sensor" class="base" allow-custom-entity></ha-entity-picker>
-          <ha-entity-picker label="Luftfeuchtigkeit" config="humid_sensor" class="base" allow-custom-entity></ha-entity-picker>
+          <ha-entity-picker label="Temperatur (überschreibt Klima)" config="temp_sensor" class="base" allow-custom-entity></ha-entity-picker>
+          <ha-entity-picker label="Luftfeuchtigkeit (überschreibt Klima)" config="humid_sensor" class="base" allow-custom-entity></ha-entity-picker>
           <ha-selector config="window_sensors" class="base" label="Fenster (Liste)"></ha-selector>
           <ha-selector config="battery_sensors" class="base" label="Batterien (Liste)"></ha-selector>
         </div>
@@ -392,8 +451,10 @@ class RoomCardEditor extends HTMLElement {
       
       if (key === "window_sensors") el.selector = { entity: { domain: "binary_sensor", multiple: true } };
       if (key === "battery_sensors") el.selector = { entity: { multiple: true } };
+      if (key === "entity") el.includeDomains = ["climate"]; 
 
-      const ev = el.tagName === "HA-TEXTFIELD" ? "change" : "value-changed";
+      const ev = el.tagName === "HA-TEXTFIELD" ? "input" : "value-changed";
+      
       el.addEventListener(ev, (e) => {
         e.stopPropagation();
         this._changed(e);
@@ -404,7 +465,15 @@ class RoomCardEditor extends HTMLElement {
     this.shadowRoot.getElementById("add").addEventListener("click", (e) => {
       e.stopPropagation();
       const c = [...(this._config.controls || [])];
-      c.push({ entity: "", name: "", type: "light", width: 15, height: 60 });
+      
+      let newEntity = "";
+      let newType = "light";
+      if (this._config.entity) {
+          newEntity = this._config.entity;
+          newType = "climate";
+      }
+
+      c.push({ entity: newEntity, name: "", type: newType, width: 15, height: 60 });
       this._fireDebounced({ ...this._config, controls: c });
       this.renderButtons();
     });
@@ -524,7 +593,7 @@ class RoomCardEditor extends HTMLElement {
 
       const nm = box.querySelector(".nm");
       nm.value = ctrl.name || "";
-      nm.addEventListener("change", (e) => {
+      nm.addEventListener("input", (e) => {
         e.stopPropagation();
         this._updateControl(i, { name: e.target.value });
       });
