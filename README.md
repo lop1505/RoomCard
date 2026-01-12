@@ -7,6 +7,7 @@ A clean, performant, and fully visually configurable room card for Home Assistan
 Developed with a focus on stability, simple design, and maximum flexibility.
 
 ![Preview](preview.png)
+![Preview](preview_dark.png)
 
 ## ✨ Features
 
@@ -23,7 +24,7 @@ Developed with a focus on stability, simple design, and maximum flexibility.
 1. Open HACS -> Frontend.
 2. Click the menu (three dots) in the top right corner -> **Custom repositories**.
 3. Paste the URL of this repository.
-4. Select category **Lovelace** or in newer HA-Versions **Dashboard** .
+4. Select category **Lovelace** or **Dashboard** in newer HA-Versions .
 5. Click "Add" and then "Install".
 
 ### Manual Installation
