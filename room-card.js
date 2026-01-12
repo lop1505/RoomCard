@@ -1,17 +1,16 @@
 console.info(
-  "%c ROOM-CARD %c 1.0.0 ",
+  "%c ROOM-CARD %c 1.0.1-BETA.1",
   "color: white; background: #2c3e50; font-weight: 700;",
-  "color: white; background: #3498db; font-weight: 700;"
+  "color: white; background: #27ae60; font-weight: 700;"
 );
 
-// Helfer
+// =============================================================================
+// HELFER FUNKTIONEN
+// =============================================================================
 const toList = (v) => {
   if (!v) return [];
   if (Array.isArray(v)) return v;
-  return v
-    .split(",")
-    .map((s) => s.trim())
-    .filter((x) => x);
+  return v.split(",").map((s) => s.trim()).filter((x) => x);
 };
 
 const clampNum = (v, min, max, fallback) => {
@@ -41,6 +40,11 @@ class RoomCard extends HTMLElement {
     this.updateContent();
   }
 
+  // Wichtig für HA Layout-Engine
+  getCardSize() {
+    return 3;
+  }
+
   static getStubConfig(hass) {
     const entities = Object.keys(hass.states);
     const light = entities.find((e) => e.startsWith("light.")) || "";
@@ -58,44 +62,71 @@ class RoomCard extends HTMLElement {
   render() {
     this.shadowRoot.innerHTML = `
       <style>
-        ha-card { position: relative; overflow: hidden; border-radius: 16px; background: none; border: none; cursor: pointer; transition: all 0.2s; }
-        .container { display: flex; flex-direction: column; background: var(--ha-card-background, rgba(255, 255, 255, 0.1)); border-radius: 16px; }
+        ha-card { 
+            position: relative; 
+            overflow: hidden; 
+            border-radius: 16px; 
+            background: none; 
+            border: none; 
+            cursor: pointer; 
+            transition: all 0.2s; 
+        }
+        
+        .container { 
+            display: flex; 
+            flex-direction: column; 
+            background: var(--ha-card-background, rgba(255, 255, 255, 0.1)); 
+            border-radius: 16px; 
+        }
+
         .img-box { position: relative; width: 100%; height: 120px; overflow: hidden; border-radius: 16px 16px 0 0; background: #444; }
         .img { width: 100%; height: 100%; object-fit: cover; display: block; }
         .overlay { position: absolute; top: 0; left: 0; width: 100%; padding: 12px; background: linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%); display: flex; align-items: center; gap: 12px; }
         .text { display: flex; flex-direction: column; color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
         .primary { font-weight: bold; font-size: 14px; }
         .secondary { font-size: 12px; opacity: 0.9; }
+        
         .chips { position: absolute; bottom: 8px; left: 8px; display: flex; gap: 6px; flex-wrap: wrap; z-index: 2; }
-        .chip { display: flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 8px; font-size: 11px; font-weight: bold; background: #FFF8E1; color: #FFA000; }
+        .chip { display: flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 8px; font-size: 11px; font-weight: bold; background: #FFF8E1; color: #FFA000; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
         .chip.alert { background: #FFEBEE; color: #D32F2F; }
 
-        /* SUPER-GRID: 60 Spalten */
+        /* --- FLEX LAYOUT LOGIK --- */
         .controls {
-          display: grid;
-          grid-template-columns: repeat(60, 1fr);
-          gap: 8px;
-          padding: 12px;
+          /* Definition der Lücke als Variable für die Berechnung in JS */
+          --room-card-gap: 6px; 
+          
+          display: flex;
+          flex-wrap: wrap; /* Erlaubt den Umbruch */
+          gap: var(--room-card-gap);
+          padding: 10px;
         }
 
         .btn {
           display: flex;
           align-items: center;
-          justify-content: center;
-          gap: 8px;
-          padding: 0 12px;
+          justify-content: flex-start;
+          gap: 10px;
+          padding: 0 10px;
           border-radius: 12px;
           cursor: pointer;
-          background: rgba(128, 128, 128, 0.05);
-          transition: background 0.2s;
-          min-width: 0;
+          background: var(--card-background-color, rgba(128, 128, 128, 0.05));
+          border: 1px solid transparent;
+          transition: background 0.2s, border-color 0.2s;
+          
+          /* FLEX PROPERTIES */
+          flex-grow: 1;      /* Füllt Lücken auf */
+          flex-shrink: 1;    /* Darf schrumpfen... */
+          min-width: 105px;  /* ...aber NIEMALS kleiner als das hier! (Game Changer) */
+          
+          overflow: hidden;
+          box-sizing: border-box;
         }
-        .btn:hover { background: rgba(128, 128, 128, 0.1); }
+        .btn:hover { background: rgba(128, 128, 128, 0.1); border-color: rgba(128, 128, 128, 0.2); }
 
-        .icon-box { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0; }
-        .btn-txt { display: flex; flex-direction: column; text-align: left; overflow: hidden; }
-        .btn-name { font-size: 12px; font-weight: bold; color: var(--primary-text-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .btn-state { font-size: 10px; color: var(--secondary-text-color); }
+        .icon-box { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0; }
+        .btn-txt { display: flex; flex-direction: column; text-align: left; overflow: hidden; min-width: 0; flex: 1; }
+        .btn-name { font-size: 13px; font-weight: 600; color: var(--primary-text-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .btn-state { font-size: 11px; color: var(--secondary-text-color); margin-top: 1px; }
       </style>
 
       <ha-card>
@@ -123,49 +154,35 @@ class RoomCard extends HTMLElement {
 
   updateContent() {
     if (!this.config || !this._hass || !this.content) return;
-
     const h = this._hass;
     const c = this.config;
 
-    // Header
+    // --- HEADER ---
     this.shadowRoot.getElementById("bg").src = c.image || "/static/images/card_media/cover.png";
     this.shadowRoot.getElementById("name").innerText = c.name || "Raum";
-
     const icon = this.shadowRoot.getElementById("icon");
     icon.icon = c.icon || "mdi:home";
     icon.style.color = c.color || "white";
-
     const temp = c.temp_sensor && h.states[c.temp_sensor] ? h.states[c.temp_sensor].state : "-";
     const hum = c.humid_sensor && h.states[c.humid_sensor] ? h.states[c.humid_sensor].state : "-";
     this.shadowRoot.getElementById("info").innerText = `${temp}°C | ${hum}%`;
 
-    // Chips (Hybrid: Binary + Numeric)
+    // --- CHIPS ---
     const chips = this.shadowRoot.getElementById("chips");
     chips.innerHTML = "";
-
     let alert = false;
     toList(c.battery_sensors).forEach((s) => {
-      const st = h.states[s];
-      if (!st) return;
-      if (st.state === "on") alert = true; // Binary
-      const pct = parseFloat(st.state);
-      if (!isNaN(pct) && pct <= 15) alert = true; // Numeric
+      const st = h.states[s]; if (!st) return;
+      if (st.state === "on") alert = true;
+      const pct = parseFloat(st.state); if (!isNaN(pct) && pct <= 15) alert = true;
     });
-
-    if (alert) {
-      chips.innerHTML += `<div class="chip alert"><ha-icon icon="mdi:battery-alert" style="--mdc-icon-size:14px"></ha-icon> Leer</div>`;
-    }
-
+    if (alert) chips.innerHTML += `<div class="chip alert"><ha-icon icon="mdi:battery-alert" style="--mdc-icon-size:14px"></ha-icon> Leer</div>`;
     toList(c.window_sensors).forEach((s) => {
       const st = h.states[s];
-      if (st?.state === "on") {
-        chips.innerHTML += `<div class="chip"><ha-icon icon="mdi:window-open-variant" style="--mdc-icon-size:14px"></ha-icon> ${
-          st.attributes.friendly_name || "Fenster"
-        }</div>`;
-      }
+      if (st?.state === "on") chips.innerHTML += `<div class="chip"><ha-icon icon="mdi:window-open-variant" style="--mdc-icon-size:14px"></ha-icon> ${st.attributes.friendly_name || "Fenster"}</div>`;
     });
 
-    // Controls
+    // --- CONTROLS ---
     this.controls.innerHTML = "";
     (c.controls || []).forEach((ctrl) => {
       if (!ctrl.entity) return;
@@ -179,21 +196,11 @@ class RoomCard extends HTMLElement {
         else if (ctrl.entity.startsWith("climate.")) type = "climate";
       }
 
-      let col = "grey",
-        bg = "rgba(128,128,128,0.1)";
+      let col = "grey", bg = "rgba(128,128,128,0.1)";
       if (st && (["on", "open"].includes(state) || (type === "shutter" && state !== "closed"))) {
-        if (type === "light") {
-          col = "orange";
-          bg = "rgba(255,165,0,0.2)";
-        }
-        if (type === "shutter") {
-          col = "#2196F3";
-          bg = "rgba(33,150,243,0.2)";
-        }
-        if (type === "climate") {
-          col = "#FF5722";
-          bg = "rgba(255,87,34,0.2)";
-        }
+        if (type === "light") { col = "orange"; bg = "rgba(255,165,0,0.2)"; }
+        if (type === "shutter") { col = "#2196F3"; bg = "rgba(33,150,243,0.2)"; }
+        if (type === "climate") { col = "#FF5722"; bg = "rgba(255,87,34,0.2)"; }
       }
 
       let stateTxt = state;
@@ -204,10 +211,15 @@ class RoomCard extends HTMLElement {
       const btn = document.createElement("div");
       btn.className = "btn";
 
-      const finalW = clampNum(ctrl.width, 1, 60, 15);
-      const finalH = clampNum(ctrl.height, 40, 250, 60);
+      // 1. Breite in Prozent berechnen (60 Einheiten = 100%)
+      const rawWidth = clampNum(ctrl.width, 1, 60, 15);
+      const percentage = (rawWidth / 60) * 100;
 
-      btn.style.gridColumn = `span ${finalW}`;
+      // 2. Flex-Basis setzen: Prozent abzüglich des Gaps (via CSS Variable)
+      // Das sorgt für mathematisch korrekte Abstände ohne Umbruch-Fehler
+      btn.style.flexBasis = `calc(${percentage}% - var(--room-card-gap, 6px))`;
+      
+      const finalH = clampNum(ctrl.height, 40, 250, 60);
       btn.style.height = `${finalH}px`;
 
       btn.innerHTML = `
@@ -223,13 +235,7 @@ class RoomCard extends HTMLElement {
       btn.onclick = (e) => {
         e.stopPropagation();
         if (type === "climate") {
-          this.dispatchEvent(
-            new CustomEvent("hass-more-info", {
-              detail: { entityId: ctrl.entity },
-              bubbles: true,
-              composed: true,
-            })
-          );
+          this.dispatchEvent(new CustomEvent("hass-more-info", { detail: { entityId: ctrl.entity }, bubbles: true, composed: true }));
         } else {
           h.callService("homeassistant", "toggle", { entity_id: ctrl.entity });
         }
@@ -385,7 +391,6 @@ class RoomCardEditor extends HTMLElement {
       const key = el.getAttribute("config");
       
       if (key === "window_sensors") el.selector = { entity: { domain: "binary_sensor", multiple: true } };
-      // FIX: Batterie offen lassen (Maximum Compatibility)
       if (key === "battery_sensors") el.selector = { entity: { multiple: true } };
 
       const ev = el.tagName === "HA-TEXTFIELD" ? "change" : "value-changed";
@@ -415,7 +420,6 @@ class RoomCardEditor extends HTMLElement {
     
     [c[index], c[newIndex]] = [c[newIndex], c[index]];
     
-    // Instant Fire
     this._config = { ...this._config, controls: c };
     this._fire(this._config); 
     this.renderButtons();
@@ -426,7 +430,6 @@ class RoomCardEditor extends HTMLElement {
     if (!div) return;
     div.innerHTML = "";
 
-    // FIX: String-Safety & Current-Value Check & Fallback
     const bindSelect = (el, callback) => {
       let current = String(el.value ?? "");
       const update = (newVal) => {
@@ -437,7 +440,7 @@ class RoomCardEditor extends HTMLElement {
       };
       el.addEventListener("value-changed", (e) => { 
           e.stopPropagation(); 
-          update(e.detail?.value ?? el.value); // FIX: Safe Fallback
+          update(e.detail?.value ?? el.value);
       });
       el.addEventListener("closed", (e) => { 
           e.stopPropagation(); 
@@ -492,7 +495,6 @@ class RoomCardEditor extends HTMLElement {
         </ha-select>
       `;
 
-      // Actions
       const upBtn = box.querySelector(".move-up");
       if(upBtn) upBtn.addEventListener("click", (e) => { e.stopPropagation(); this._moveControl(i, -1); });
 
@@ -507,7 +509,6 @@ class RoomCardEditor extends HTMLElement {
         this.renderButtons();
       });
 
-      // Inputs
       const ep = box.querySelector(".ep");
       ep.hass = this._hass;
       ep.value = ctrl.entity;
