@@ -23,7 +23,7 @@ Developed with a focus on stability, simple design, and maximum flexibility.
 1. Open HACS -> Frontend.
 2. Click the menu (three dots) in the top right corner -> **Custom repositories**.
 3. Paste the URL of this repository.
-4. Select category **Lovelace**.
+4. Select category **Lovelace** or in newer HA-Versions **Dashboard** .
 5. Click "Add" and then "Install".
 
 ### Manual Installation
