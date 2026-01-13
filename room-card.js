@@ -1,5 +1,5 @@
 // UNIQUE LOGGING GUARD
-const VERSION = "1.0.3";
+const VERSION = "1.0.4";
 const LOG_FLAG = `customCards_RoomCard_Logged_${VERSION}`;
 
 if (!window[LOG_FLAG]) {
@@ -229,7 +229,7 @@ class RoomCard extends HTMLElement {
     icon.style.color = c.color || "white";
 
     let tempVal = null; let humVal = null;
-    if (c.temp_sensor && h.states[c.temp_sensor]) { tempVal = h.states[c.temp_sensor].state; } 
+    if (c.temp_sensor && h.states[c.temp_sensor]) { tempVal = h.states[c.temp_sensor].state; }
     else if (c.entity && h.states[c.entity]) {
         const climateState = h.states[c.entity];
         if (climateState.attributes.current_temperature !== undefined) tempVal = climateState.attributes.current_temperature;
@@ -249,7 +249,7 @@ class RoomCard extends HTMLElement {
     toList(c.battery_sensors).forEach((s) => {
       const st = h.states[s]; if (!st) return;
       if (st.state === "on") alertLabel = getTranslation(h, "empty");
-      const pct = parseFloat(st.state); 
+      const pct = parseFloat(st.state);
       if (!isNaN(pct)) {
         if (pct <= 5) alertLabel = getTranslation(h, "critical");
         else if (pct <= 15 && !alertLabel) alertLabel = getTranslation(h, "low");
@@ -316,23 +316,27 @@ class RoomCardEditor extends HTMLElement {
     this._timer = null;
   }
 
+  // *** IMPROVED SETCONFIG ***
   setConfig(config) {
-    this._config = config;
-    if (!this._config.controls) this._config = { ...this._config, controls: [] };
+    this._config = config || {};
+    // Schützt vor Abstürzen, wenn controls kein Array ist
+    if (!Array.isArray(this._config.controls)) {
+      this._config = { ...this._config, controls: [] };
+    }
     this.render();
     if (this._hass) this.updateHass();
   }
 
   // OPTIMIZED SET HASS: Only render if language changed
-  set hass(hass) { 
+  set hass(hass) {
       const oldLang = this._hass?.language;
       const newLang = hass?.language;
-      this._hass = hass; 
-      
+      this._hass = hass;
+
       if (oldLang !== newLang) {
-          this.render(); 
+          this.render();
       }
-      this.updateHass(); 
+      this.updateHass();
   }
 
   updateHass() {
@@ -400,7 +404,7 @@ class RoomCardEditor extends HTMLElement {
       const key = el.getAttribute("config");
       if (key === "window_sensors") el.selector = { entity: { domain: "binary_sensor", multiple: true } };
       if (key === "battery_sensors") el.selector = { entity: { multiple: true } };
-      if (key === "entity") el.includeDomains = ["climate"]; 
+      if (key === "entity") el.includeDomains = ["climate"];
       const ev = el.tagName === "HA-TEXTFIELD" ? "input" : "value-changed";
       el.addEventListener(ev, (e) => { e.stopPropagation(); this._changed(e); });
     });
@@ -419,7 +423,7 @@ class RoomCardEditor extends HTMLElement {
   renderButtons() {
     const div = this.shadowRoot.getElementById("buttons"); if (!div) return;
     const h = this._hass;
-    
+
     div.replaceChildren();
 
     const controls = this._config.controls || [];
@@ -448,30 +452,30 @@ class RoomCardEditor extends HTMLElement {
       box.querySelector(".move-up")?.addEventListener("click", () => this._move(i, -1));
       box.querySelector(".move-down")?.addEventListener("click", () => this._move(i, 1));
       box.querySelector(".delete-btn").addEventListener("click", () => { const c = [...this._config.controls]; c.splice(i, 1); this._fireDebounced({ ...this._config, controls: c }); this.renderButtons(); });
-      
-      const ep = box.querySelector(".ep"); 
-      ep.hass = h; 
+
+      const ep = box.querySelector(".ep");
+      ep.hass = h;
       ep.value = ctrl.entity;
       ep.addEventListener("value-changed", (e) => this._upd(i, { entity: e.detail.value }));
 
-      const nm = box.querySelector(".nm"); 
+      const nm = box.querySelector(".nm");
       nm.value = ctrl.name || "";
       nm.addEventListener("input", (e) => this._upd(i, { name: e.target.value }));
 
-      const ic = box.querySelector(".ic"); 
+      const ic = box.querySelector(".ic");
       ic.value = ctrl.icon || "";
       ic.addEventListener("value-changed", (e) => this._upd(i, { icon: e.detail.value }));
 
-      const ty = box.querySelector(".ty"); 
+      const ty = box.querySelector(".ty");
       ty.value = ctrl.type || "light";
-      ty.addEventListener("value-changed", (e) => this._upd(i, { type: e.detail.value })); 
+      ty.addEventListener("value-changed", (e) => this._upd(i, { type: e.detail.value }));
 
-      const wd = box.querySelector(".wd"); 
+      const wd = box.querySelector(".wd");
       wd.value = String(ctrl.width || 15);
-      wd.addEventListener("value-changed", (e) => this._upd(i, { width: parseInt(e.detail.value) })); 
+      wd.addEventListener("value-changed", (e) => this._upd(i, { width: parseInt(e.detail.value) }));
 
-      const ht = box.querySelector(".ht"); 
-      ht.hass = h; 
+      const ht = box.querySelector(".ht");
+      ht.hass = h;
       ht.selector = { number: { min: 40, max: 250, mode: "box", unit_of_measurement: "px" } };
       ht.value = ctrl.height || 60;
       ht.addEventListener("value-changed", (e) => this._upd(i, { height: Number(e.detail.value) || 60 }));
@@ -482,19 +486,32 @@ class RoomCardEditor extends HTMLElement {
 
   _move(i, s) { const c = [...this._config.controls]; [c[i], c[i+s]] = [c[i+s], c[i]]; this._fireDebounced({ ...this._config, controls: c }); this.renderButtons(); }
   _upd(i, ch) { const c = [...this._config.controls]; c[i] = { ...c[i], ...ch }; this._fireDebounced({ ...this._config, controls: c }); }
+
+  // *** FIXED METHOD ***
   updateValues() {
+    if (!this._config) return;
     this.shadowRoot.querySelectorAll(".base").forEach((el) => {
       const key = el.getAttribute("config");
-      let val = key === "nav_path" ? this._config.tap_action?.navigation_path || "" : this._config[key] || "";
+      let val = "";
+      if (key === "nav_path") val = this._config.tap_action?.navigation_path || "";
+      else val = this._config[key] || "";
       if (el.value !== val) el.value = val;
     });
   }
+
+  // *** IMPROVED _CHANGED (GUARD) ***
   _changed(e) {
+    if (!this._config) return; // Guard clause against undefined config
+
     const key = e.target.getAttribute("config");
     const val = e.detail?.value !== undefined ? e.detail.value : e.target.value;
     const c = { ...this._config };
-    if (key === "nav_path") c.tap_action = val ? { action: "navigate", navigation_path: val } : undefined;
-    else c[key] = val;
+    if (key === "nav_path") {
+      if (val && val.trim() !== "") c.tap_action = { action: "navigate", navigation_path: val };
+      else delete c.tap_action;
+    } else {
+      c[key] = val;
+    }
     this._fireDebounced(c);
   }
 }
