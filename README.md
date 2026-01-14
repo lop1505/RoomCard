@@ -24,6 +24,10 @@ Developed with a focus on stability, simple design, and maximum flexibility.
 ## 📥 Installation
 
 ### Via HACS (Recommended)
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=lop1505&repository=RoomCard&category=plugin)
+
+or
+
 1. Open HACS -> Frontend.
 2. Click the menu (three dots) in the top right corner -> **Custom repositories**.
 3. Paste the URL of this repository.

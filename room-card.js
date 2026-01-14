@@ -1,5 +1,5 @@
 // UNIQUE LOGGING GUARD
-const VERSION = "1.0.4"; // Version bumped for CSS & Editor Fixes
+const VERSION = "1.0.5"; // Fix: Initial Climate Button now gets correct Icon (Auto-Detect)
 const LOG_FLAG = `customCards_RoomCard_Logged_${VERSION}`;
 
 if (!window[LOG_FLAG]) {
@@ -13,20 +13,14 @@ if (!window[LOG_FLAG]) {
 
 // TRANSLATIONS
 const TRANSLATIONS = {
-  en: { empty: "Empty", low: "Low", critical: "Critical", window: "Window", general: "General", sensors_manual: "Sensors (Manual)", buttons: "Buttons", button: "Button", add_button: "Add Button", main_climate: "Main Climate Device (Optional)", climate_info: "Fills Temp/Humidity automatically if empty below.", temp_label: "Temperature (overrides climate)", humid_label: "Humidity (overrides climate)", window_label: "Windows (List)", battery_label: "Batteries (List)", name: "Name", icon: "Icon", color: "Color", img_url: "Image URL", path: "Path (Tap Action)", entity: "Entity", type: "Type", height: "Height", width: "Width", light: "Light", shutter: "Shutter", climate: "Climate", full: "1/1", two_thirds: "2/3", half: "1/2", third: "1/3", quarter: "1/4", fifth: "1/5", sixth: "1/6" },
-  de: { empty: "Leer", low: "Niedrig", critical: "Kritisch", window: "Fenster", general: "Allgemein", sensors_manual: "Sensoren (Manuell)", buttons: "Buttons", button: "Button", add_button: "Button hinzufügen", main_climate: "Haupt-Klima-Gerät (Optional)", climate_info: "Füllt Temp/Feuchtigkeit automatisch, wenn unten leer.", temp_label: "Temperatur (überschreibt Klima)", humid_label: "Luftfeuchtigkeit (überschreibt Klima)", window_label: "Fenster (Liste)", battery_label: "Batterien (Liste)", name: "Name", icon: "Icon", color: "Farbe", img_url: "Bild URL", path: "Pfad (Tap Action)", entity: "Entität", type: "Typ", height: "Höhe", width: "Breite", light: "Licht", shutter: "Rollo", climate: "Heizung", full: "1/1", two_thirds: "2/3", half: "1/2", third: "1/3", quarter: "1/4", fifth: "1/5", sixth: "1/6" },
-  fr: { empty: "Vide", low: "Faible", critical: "Critique", window: "Fenêtre", general: "Général", sensors_manual: "Capteurs (Manuel)", buttons: "Boutons", button: "Bouton", add_button: "Ajouter un bouton", main_climate: "Appareil climatique principal (Optionnel)", climate_info: "Remplit automatiquement Temp/Humidité si vide ci-dessous.", temp_label: "Température (remplace climat)", humid_label: "Humidité (remplace climat)", window_label: "Fenêtres (Liste)", battery_label: "Batteries (Liste)", name: "Nom", icon: "Icône", color: "Couleur", img_url: "URL de l'image", path: "Chemin (Tap Action)", entity: "Entité", type: "Type", height: "Hauteur", width: "Largeur", light: "Lumière", shutter: "Volet", climate: "Climat", full: "1/1", two_thirds: "2/3", half: "1/2", third: "1/3", quarter: "1/4", fifth: "1/5", sixth: "1/6" }
+  en: { empty: "Empty", low: "Low", critical: "Critical", window: "Window", general: "General", sensors_manual: "Sensors (Manual)", buttons: "Buttons", button: "Button", add_button: "Add Button", main_climate: "Main Climate Device (Optional)", climate_info: "Fills Temp/Humidity automatically if empty below.", temp_label: "Temperature (overrides climate)", humid_label: "Humidity (overrides climate)", window_label: "Windows (List)", battery_label: "Batteries (List)", name: "Name", icon: "Icon", color: "Icon Color", force_color: "Force Manual Color (Always visible)", img_url: "Image URL", path: "Path (Tap Action)", entity: "Entity", height: "Height", width: "Width", align: "Align", visible: "Visible", left: "Left", center: "Center", right: "Right" },
+  de: { empty: "Leer", low: "Niedrig", critical: "Kritisch", window: "Fenster", general: "Allgemein", sensors_manual: "Sensoren (Manuell)", buttons: "Buttons", button: "Button", add_button: "Button hinzufügen", main_climate: "Haupt-Klima-Gerät (Optional)", climate_info: "Füllt Temp/Feuchtigkeit automatisch, wenn unten leer.", temp_label: "Temperatur (überschreibt Klima)", humid_label: "Luftfeuchtigkeit (überschreibt Klima)", window_label: "Fenster (Liste)", battery_label: "Batterien (Liste)", name: "Name", icon: "Icon", color: "Iconfarbe", force_color: "Manuelle Farbe erzwingen (Immer sichtbar)", img_url: "Bild URL", path: "Pfad (Tap Action)", entity: "Entität", height: "Höhe", width: "Breite", align: "Ausrichtung", visible: "Sichtbar", left: "Links", center: "Mitte", right: "Rechts" },
+  fr: { empty: "Vide", low: "Faible", critical: "Critique", window: "Fenêtre", general: "Général", sensors_manual: "Capteurs (Manuel)", buttons: "Boutons", button: "Bouton", add_button: "Ajouter un bouton", main_climate: "Appareil climatique principal (Optionnel)", climate_info: "Remplit automatiquement Temp/Humidité si vide ci-dessous.", temp_label: "Température (remplace climat)", humid_label: "Humidité (remplace climat)", window_label: "Fenêtres (Liste)", battery_label: "Batteries (Liste)", name: "Nom", icon: "Icône", color: "Couleur", force_color: "Forcer la couleur", img_url: "URL de l'image", path: "Chemin (Tap Action)", entity: "Entité", height: "Hauteur", width: "Largeur", align: "Alignement", visible: "Visible", left: "Gauche", center: "Centre", right: "Droite" }
 };
 
 const getTranslation = (hass, key) => {
   const lang = hass?.language?.split("-")[0] || "en";
   return TRANSLATIONS[lang]?.[key] ?? TRANSLATIONS["en"]?.[key] ?? key;
-};
-
-const toList = (v) => {
-  if (!v) return [];
-  if (Array.isArray(v)) return v;
-  return v.split(",").map((s) => s.trim()).filter((x) => x);
 };
 
 const clampNum = (v, min, max, fallback) => {
@@ -44,12 +38,7 @@ class RoomCard extends HTMLElement {
   getCardSize() { const c = this.config?.controls; return 3 + Math.ceil((Array.isArray(c) ? c.length : 0) / 2.5); }
   
   static getStubConfig(hass) {
-    const e = Object.keys(hass.states);
-    return {
-      name: "Living Room", icon: "mdi:sofa", color: "orange",
-      entity: e.find((x) => x.startsWith("climate.")) || "",
-      controls: [{ entity: e.find((x) => x.startsWith("light.")) || "", name: "Light", type: "light", icon: "mdi:lightbulb", width: 20, height: 60 }]
-    };
+    return { name: "", entity: "", controls: [] };
   }
 
   render() {
@@ -68,13 +57,13 @@ class RoomCard extends HTMLElement {
         .chip { display: flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 8px; font-size: 11px; font-weight: bold; background: #FFF8E1; color: #FFA000; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
         .chip.alert { background: #FFEBEE; color: #D32F2F; }
         .controls { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px; }
-        /* CSS FIX HERE: min-width removed/set to 0 so fractional widths work */
-        .btn { display: flex; align-items: center; gap: 10px; padding: 0 10px; border-radius: 12px; cursor: pointer; background: var(--card-background-color, rgba(128,128,128,0.05)); border: 1px solid transparent; flex-grow: 1; flex-shrink: 1; min-width: 0; overflow: hidden; box-sizing: border-box; }
+        .btn { position: relative; display: flex; align-items: center; gap: 10px; padding: 0 10px; border-radius: 12px; cursor: pointer; background: var(--card-background-color, rgba(128,128,128,0.05)); border: 1px solid transparent; flex-grow: 1; flex-shrink: 1; min-width: 0; overflow: hidden; box-sizing: border-box; }
         .btn:hover { background: rgba(128,128,128,0.1); border-color: rgba(128,128,128,0.2); }
         .icon-box { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0; }
-        .btn-txt { display: flex; flex-direction: column; text-align: left; overflow: hidden; min-width: 0; flex: 1; }
+        .btn-txt { display: flex; flex-direction: column; text-align: left; overflow: hidden; min-width: 0; flex: initial; max-width: 100%; } 
         .btn-name { font-size: 13px; font-weight: 600; color: var(--primary-text-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .btn-state { font-size: 11px; color: var(--secondary-text-color); margin-top: 1px; }
+        .warn { position: absolute; top: 4px; right: 4px; color: #d32f2f; --mdc-icon-size: 16px; background: rgba(255,255,255,0.8); border-radius: 50%; padding: 1px; }
       </style>
       <ha-card><div class="container"><div class="img-box"><img id="bg" class="img"><div class="overlay"><ha-icon id="icon"></ha-icon><div class="text"><span id="name" class="primary"></span><span id="info" class="secondary"></span></div></div><div id="chips" class="chips"></div></div><div id="ctrls" class="controls"></div></div></ha-card>`;
     this.content = this.shadowRoot.querySelector(".container");
@@ -100,34 +89,82 @@ class RoomCard extends HTMLElement {
 
     const ch = this.shadowRoot.getElementById("chips"); ch.innerHTML = "";
     let al = null;
-    toList(c.battery_sensors).forEach(s => {
+    (Array.isArray(c.battery_sensors) ? c.battery_sensors : []).forEach(s => {
       const st = h.states[s]; if(!st) return;
       if(st.state === "on") al = getTranslation(h, "empty");
       else if(!isNaN(parseFloat(st.state))) { if(st.state<=5) al=getTranslation(h, "critical"); else if(st.state<=15 && !al) al=getTranslation(h, "low"); }
     });
     if(al) ch.innerHTML += `<div class="chip alert"><ha-icon icon="mdi:battery-alert" style="--mdc-icon-size:14px"></ha-icon> ${al}</div>`;
-    toList(c.window_sensors).forEach(s => {
+    (Array.isArray(c.window_sensors) ? c.window_sensors : []).forEach(s => {
       const st = h.states[s];
       if(st?.state === "on") ch.innerHTML += `<div class="chip"><ha-icon icon="mdi:window-open-variant" style="--mdc-icon-size:14px"></ha-icon> ${st.attributes.friendly_name||getTranslation(h,"window")}</div>`;
     });
 
     this.controls.replaceChildren();
     (c.controls||[]).forEach(ctrl => {
-      if(!ctrl.entity) return;
+      if(!ctrl.entity || ctrl.hide) return; 
       const st = h.states[ctrl.entity]; const s = st?st.state:"N/A";
-      let typ = ctrl.type || (ctrl.entity.startsWith("cover.") ? "shutter" : (ctrl.entity.startsWith("climate.") ? "climate" : "light"));
+      
+      const domain = ctrl.entity.split(".")[0];
+      let typ = "default";
+      if(domain==="cover") typ="shutter";
+      else if(domain==="climate") typ="climate";
+      else if(domain==="switch") typ="socket";
+      else if(domain==="light") typ="light";
+
       let col="grey", bg="rgba(128,128,128,0.1)";
-      if(st && (["on","open"].includes(s) || (typ==="shutter" && s!=="closed"))) {
-        if(typ==="light"){col="orange";bg="rgba(255,165,0,0.2)";}
-        if(typ==="shutter"){col="#2196F3";bg="rgba(33,150,243,0.2)";}
-        if(typ==="climate"){col="#FF5722";bg="rgba(255,87,34,0.2)";}
+      const isUnavail = s === "unavailable" || s === "unknown";
+      
+      // --- LOGIC START ---
+      if (ctrl.force_color && ctrl.color) {
+        col = ctrl.color; 
+        const isHex = /^#[0-9A-F]{6}$/i.test(ctrl.color);
+        bg = isHex ? ctrl.color+"33" : `color-mix(in srgb, ${ctrl.color} 20%, transparent)`;
+      } else {
+        const activeStates = ["on", "open", "playing", "heat", "cool", "auto", "drying", "fan_only", "cleaning", "manual", "boost", "unlocked", "home"];
+        const isActive = activeStates.includes(s) || (typ==="shutter" && s!=="closed") || (typ==="climate" && s!=="off" && !isUnavail);
+        
+        if (st && isActive) {
+          if (st.attributes.rgb_color) {
+             const rgb = st.attributes.rgb_color.join(",");
+             col = `rgb(${rgb})`;
+             bg = `rgba(${rgb}, 0.2)`;
+          }
+          else if (typ === "climate" && st.attributes.hvac_action) {
+             const act = st.attributes.hvac_action;
+             if(act === "heating") { col="#FF5722"; bg="rgba(255,87,34,0.2)"; }
+             else if(act === "cooling") { col="#2196F3"; bg="rgba(33,150,243,0.2)"; }
+             else if(act === "drying") { col="#FFC107"; bg="rgba(255,193,7,0.2)"; }
+             else { col="#4CAF50"; bg="rgba(76,175,80,0.2)"; } 
+          }
+          else {
+             const themeVar = `var(--state-${domain}-active-color, var(--state-active-color, #ff9800))`;
+             col = themeVar;
+             bg = `color-mix(in srgb, ${themeVar} 20%, transparent)`;
+          }
+        }
       }
+      // --- LOGIC END ---
+
       const btn = document.createElement("div"); btn.className = "btn";
-      // This logic combined with min-width:0 allows true grids
       btn.style.flexBasis = `calc(${(clampNum(ctrl.width,1,60,15)/60)*100}% - 6px)`;
       btn.style.height = `${clampNum(ctrl.height,40,250,60)}px`;
-      btn.innerHTML = `<div class="icon-box" style="background:${bg}"><ha-icon icon="${ctrl.icon||"mdi:circle"}" style="color:${col};--mdc-icon-size:20px"></ha-icon></div><div class="btn-txt"><span class="btn-name">${ctrl.name||"Dev"}</span><span class="btn-state">${typ==="climate"&&st?.attributes?.current_temperature?st.attributes.current_temperature+"°C":s}</span></div>`;
-      btn.onclick = (e) => { e.stopPropagation(); typ==="climate" ? this.dispatchEvent(new CustomEvent("hass-more-info",{detail:{entityId:ctrl.entity},bubbles:true,composed:true})) : h.callService("homeassistant","toggle",{entity_id:ctrl.entity}); };
+      
+      let justify = "center";
+      if(ctrl.align === "left") justify = "flex-start";
+      if(ctrl.align === "right") justify = "flex-end";
+      btn.style.justifyContent = justify;
+
+      const nameTxt = ctrl.name !== undefined ? ctrl.name : "Dev";
+      let badge = "";
+      if(isUnavail) badge = `<ha-icon class="warn" icon="mdi:alert-circle"></ha-icon>`;
+
+      btn.innerHTML = `<div class="icon-box" style="background:${bg}"><ha-icon icon="${ctrl.icon||"mdi:circle"}" style="color:${col};--mdc-icon-size:20px"></ha-icon></div><div class="btn-txt"><span class="btn-name">${nameTxt}</span><span class="btn-state">${typ==="climate"&&st?.attributes?.current_temperature?st.attributes.current_temperature+"°C":s}</span></div>${badge}`;
+      
+      btn.onclick = (e) => { 
+        e.stopPropagation(); 
+        this.dispatchEvent(new CustomEvent("hass-more-info",{detail:{entityId:ctrl.entity},bubbles:true,composed:true})); 
+      };
       this.controls.appendChild(btn);
     });
   }
@@ -138,7 +175,7 @@ class RoomCard extends HTMLElement {
 customElements.define("room-card", RoomCard);
 
 // =============================================================================
-// EDITOR (FIXED)
+// EDITOR (AUTO-ICON FIX)
 // =============================================================================
 class RoomCardEditor extends HTMLElement {
   constructor() { super(); this.attachShadow({ mode: "open" }); }
@@ -148,7 +185,7 @@ class RoomCardEditor extends HTMLElement {
     const upd = this._hass?.language !== hass?.language; 
     this._hass = hass; 
     if(upd) this.render();
-    this.shadowRoot.querySelectorAll("ha-selector,ha-entity-picker,ha-icon-picker,ha-textfield").forEach(e=>{if(e.hass!==hass)e.hass=hass;});
+    this.shadowRoot.querySelectorAll("ha-selector,ha-entity-picker,ha-icon-picker,ha-textfield,ha-switch").forEach(e=>{if(e.hass!==hass)e.hass=hass;});
   }
 
   _fire(config) { this._config=config; clearTimeout(this._tm); this._tm=setTimeout(()=>{this.dispatchEvent(new CustomEvent("config-changed",{detail:{config},bubbles:true,composed:true}));},300); }
@@ -163,12 +200,18 @@ class RoomCardEditor extends HTMLElement {
         .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 8px; }
         .box { border: 1px solid var(--divider-color); padding: 12px; border-radius: 8px; background: var(--secondary-background-color); margin-bottom: 12px; }
         .head { display: flex; justify-content: space-between; margin-bottom: 8px; font-weight: bold; }
-        ha-textfield, ha-selector, ha-entity-picker { width: 100%; display: block; margin-bottom: 8px; }
+        ha-textfield, ha-selector, ha-entity-picker, ha-icon-picker { width: 100%; display: block; margin-bottom: 8px; }
+        .cl-row { display: flex; gap: 8px; align-items: center; }
+        .cp { width: 50px; height: 40px; border: 1px solid var(--divider-color); background: none; padding: 2px; border-radius: 4px; cursor: pointer; flex-shrink: 0; }
+        .hidden { display: none !important; }
       </style>
       <div class="sec"><h3>${getTranslation(h,"general")}</h3>
         <ha-textfield label="${getTranslation(h,"name")}" cfg="name" class="i"></ha-textfield>
         <ha-entity-picker label="${getTranslation(h,"main_climate")}" cfg="entity" class="i" include-domains='["climate"]'></ha-entity-picker>
-        <div class="row"><ha-icon-picker label="${getTranslation(h,"icon")}" cfg="icon" class="i"></ha-icon-picker><ha-textfield label="${getTranslation(h,"color")}" cfg="color" class="i"></ha-textfield></div>
+        <div class="row">
+          <ha-icon-picker label="${getTranslation(h,"icon")}" cfg="icon" class="i"></ha-icon-picker>
+          <div class="cl-row"><ha-textfield label="${getTranslation(h,"color")}" cfg="color" class="i"></ha-textfield><input type="color" class="cp i-cp" cfg="color"></div>
+        </div>
         <ha-textfield label="${getTranslation(h,"img_url")}" cfg="image" class="i"></ha-textfield>
         <ha-textfield label="${getTranslation(h,"path")}" cfg="nav_path" class="i"></ha-textfield>
       </div>
@@ -182,22 +225,49 @@ class RoomCardEditor extends HTMLElement {
 
     this.shadowRoot.querySelectorAll(".i").forEach(e => {
       const k = e.getAttribute("cfg");
-      if(k==="window_sensors") e.selector={entity:{domain:"binary_sensor",multiple:true}};
-      if(k==="battery_sensors") e.selector={entity:{multiple:true}};
-      e.addEventListener(e.tagName==="HA-TEXTFIELD"?"input":"value-changed", (ev) => {
+      if(k==="window_sensors") e.selector={entity:{domain:"binary_sensor", device_class:["window","door","garage_door"], multiple:true}};
+      if(k==="battery_sensors") e.selector={entity:{device_class:"battery", multiple:true}};
+      
+      const evType = e.tagName==="HA-TEXTFIELD" ? "change" : "value-changed";
+      e.addEventListener(evType, (ev) => {
         ev.stopPropagation(); 
         const v = ev.detail?.value !== undefined ? ev.detail.value : ev.target.value;
         const c = {...this._config};
         if(k==="nav_path") (v?.trim()) ? c.tap_action={action:"navigate",navigation_path:v} : delete c.tap_action;
         else c[k]=v;
         this._fire(c);
+        if(k==="color") this.updCp(); 
       });
     });
+
+    this.shadowRoot.querySelectorAll(".i-cp").forEach(e => {
+      e.addEventListener("change", (ev) => {
+        ev.stopPropagation();
+        this._fire({...this._config, color: ev.target.value});
+        this.updVal(); 
+      });
+    });
+    
     this.shadowRoot.getElementById("add").addEventListener("click", () => {
-       const c = [...(this._config.controls||[])]; c.push({name:"",type:"light",width:15,height:60});
+       const c = [...(this._config.controls||[])];
+       let w = 15; if(c.length > 0) w = c[c.length-1].width || 15;
+       let e = "", ic = "mdi:lightbulb", n = "";
+       
+       // FIX: AUTO-ICON FOR INITIAL CLIMATE BUTTON
+       if(c.length === 0 && this._config.entity) {
+         e = this._config.entity; 
+         ic = "mdi:thermostat"; // Default for climate
+         if(this._hass && this._hass.states[e]) {
+             n = this._hass.states[e].attributes.friendly_name || "";
+             if(this._hass.states[e].attributes.icon) ic = this._hass.states[e].attributes.icon;
+         }
+       }
+       
+       c.push({entity:e, name:n, icon:ic, width:w, height:60});
        this._fire({...this._config, controls:c}); this.renBtn();
     });
-    this.updVal(); this.renBtn();
+
+    this.updVal(); this.updCp(); this.renBtn();
   }
 
   renBtn() {
@@ -206,15 +276,23 @@ class RoomCardEditor extends HTMLElement {
     const h = this._hass; div.replaceChildren();
     this._config.controls.forEach((ctrl, i) => {
       const box = document.createElement("div"); box.className="box";
+      const hideColor = !ctrl.force_color ? "hidden" : "";
+      
       box.innerHTML = `
         <div class="head">#${i+1}<div><ha-icon class="mv u" icon="mdi:arrow-up"></ha-icon><ha-icon class="mv d" icon="mdi:arrow-down"></ha-icon><ha-icon class="del" icon="mdi:delete" style="color:#d32f2f"></ha-icon></div></div>
         <ha-entity-picker class="ep" label="${getTranslation(h,"entity")}"></ha-entity-picker>
         <div class="row"><ha-textfield class="nm" label="${getTranslation(h,"name")}"></ha-textfield><ha-icon-picker class="ic" label="${getTranslation(h,"icon")}"></ha-icon-picker></div>
         <div class="row">
-          <ha-selector class="ty" label="${getTranslation(h,"type")}"></ha-selector>
           <ha-selector class="ht" label="${getTranslation(h,"height")} (px)"></ha-selector>
+          <ha-selector class="wd" label="${getTranslation(h,"width")}"></ha-selector>
         </div>
-        <ha-selector class="wd" label="${getTranslation(h,"width")}"></ha-selector>`;
+        
+        <div class="row" style="margin-top:8px; align-items:center">
+          <ha-formfield label="${getTranslation(h,"force_color")}"><ha-switch class="fc"></ha-switch></ha-formfield>
+        </div>
+        <div class="cl-row ${hideColor}"><ha-textfield class="cl" label="${getTranslation(h,"color")}"></ha-textfield><input type="color" class="cp cl-p"></div>
+
+        <div class="row" style="margin-top:8px; align-items:center"><ha-selector class="al" label="${getTranslation(h,"align")}"></ha-selector><ha-formfield label="${getTranslation(h,"visible")}"><ha-switch class="hd" checked></ha-switch></ha-formfield></div>`;
 
       const upd = (k, v) => { const c=[...this._config.controls]; c[i]={...c[i],[k]:v}; this._fire({...this._config, controls:c}); };
       
@@ -222,33 +300,68 @@ class RoomCardEditor extends HTMLElement {
       box.querySelector(".d").onclick=()=>{if(i<this._config.controls.length-1){const c=[...this._config.controls];[c[i],c[i+1]]=[c[i+1],c[i]];this._fire({...this._config,controls:c});this.renBtn();}};
       box.querySelector(".del").onclick=()=>{const c=[...this._config.controls];c.splice(i,1);this._fire({...this._config,controls:c});this.renBtn();};
 
-      const ep=box.querySelector(".ep"); ep.hass=h; ep.value=ctrl.entity; ep.addEventListener("value-changed", e=>upd("entity",e.detail.value));
-      const nm=box.querySelector(".nm"); nm.value=ctrl.name||""; nm.addEventListener("input", e=>upd("name",e.target.value));
-      const ic=box.querySelector(".ic"); ic.value=ctrl.icon||""; ic.addEventListener("value-changed", e=>upd("icon",e.detail.value));
-      const ht=box.querySelector(".ht"); ht.hass=h; ht.selector={number:{min:40,max:250,mode:"box",unit_of_measurement:"px"}}; ht.value=ctrl.height||60; ht.addEventListener("value-changed", e=>upd("height",Number(e.detail.value)));
+      const ep=box.querySelector(".ep"); ep.hass=h; ep.value=ctrl.entity; 
+      ep.addEventListener("value-changed", e=>{
+        const val = e.detail.value;
+        const st = h.states[val];
+        const c=[...this._config.controls];
+        let changes = {entity: val};
+        
+        if(st?.attributes?.icon) changes.icon=st.attributes.icon;
+        else {
+             const d = val.split(".")[0];
+             if(d==="light") changes.icon="mdi:lightbulb";
+             else if(d==="switch") changes.icon="mdi:power-socket";
+             else if(d==="cover") changes.icon="mdi:window-shutter";
+             else if(d==="climate") changes.icon="mdi:thermostat";
+             else changes.icon="mdi:help-circle-outline";
+        }
+        if(st?.attributes?.friendly_name) changes.name=st.attributes.friendly_name;
+        
+        c[i]={...c[i], ...changes};
+        this._fire({...this._config, controls:c});
+        this.renBtn();
+      });
 
-      const ty=box.querySelector(".ty"); ty.hass=h;
-      ty.selector={select:{mode:"dropdown",options:[
-        {value:"light",label:getTranslation(h,"light")},
-        {value:"shutter",label:getTranslation(h,"shutter")},
-        {value:"climate",label:getTranslation(h,"climate")}
-      ]}};
-      ty.value=ctrl.type||"light"; 
-      ty.addEventListener("value-changed", e=>{e.stopPropagation(); upd("type",e.detail.value);});
+      const nm=box.querySelector(".nm"); nm.value=ctrl.name||""; nm.addEventListener("change", e=>upd("name",e.target.value));
+      
+      const fc=box.querySelector(".fc"); 
+      fc.checked = ctrl.force_color === true;
+      fc.addEventListener("change", e=>{ upd("force_color",e.target.checked); this.renBtn(); }); 
 
-      // EDITOR FIX + LABEL FIX: Shows fractions but uses numbers internally
+      const cl=box.querySelector(".cl"); cl.value=ctrl.color||""; 
+      cl.addEventListener("change", e=>{ upd("color",e.target.value); }); 
+      const clp=box.querySelector(".cl-p"); clp.value=ctrl.color||"#000000";
+      clp.addEventListener("change", e=>{ upd("color",e.target.value); });
+
+      const ic=box.querySelector(".ic"); ic.value=ctrl.icon||""; ic.addEventListener("value-changed", e=>{e.stopPropagation(); upd("icon",e.detail.value);});
+      const ht=box.querySelector(".ht"); ht.hass=h; ht.selector={number:{min:40,max:250,mode:"box",unit_of_measurement:"px"}}; ht.value=ctrl.height||60; ht.addEventListener("value-changed", e=>{e.stopPropagation(); upd("height",Number(e.detail.value));});
+
       const wd=box.querySelector(".wd"); wd.hass=h;
       wd.selector={select:{mode:"dropdown",options:[
-        {value:"60",label:getTranslation(h,"full")},
-        {value:"40",label:getTranslation(h,"two_thirds")},
-        {value:"30",label:getTranslation(h,"half")},
-        {value:"20",label:getTranslation(h,"third")},
-        {value:"15",label:getTranslation(h,"quarter")},
-        {value:"12",label:getTranslation(h,"fifth")},
-        {value:"10",label:getTranslation(h,"sixth")}
+        {value:"60",label:"1/1"},
+        {value:"40",label:"2/3"},
+        {value:"30",label:"1/2"},
+        {value:"20",label:"1/3"},
+        {value:"15",label:"1/4"},
+        {value:"12",label:"1/5"},
+        {value:"10",label:"1/6"}
       ]}};
       wd.value=String(ctrl.width||15); 
       wd.addEventListener("value-changed", e=>{e.stopPropagation(); upd("width",parseInt(e.detail.value));});
+
+      const al=box.querySelector(".al"); al.hass=h;
+      al.selector={select:{mode:"dropdown",options:[
+        {value:"left",label:getTranslation(h,"left")},
+        {value:"center",label:getTranslation(h,"center")},
+        {value:"right",label:getTranslation(h,"right")}
+      ]}};
+      al.value=ctrl.align||"center"; 
+      al.addEventListener("value-changed", e=>{e.stopPropagation(); upd("align",e.detail.value);});
+
+      const hd=box.querySelector(".hd"); 
+      hd.checked = !ctrl.hide; 
+      hd.addEventListener("change", e=>{e.stopPropagation(); upd("hide",!e.target.checked);});
 
       div.appendChild(box);
     });
@@ -259,6 +372,15 @@ class RoomCardEditor extends HTMLElement {
     this.shadowRoot.querySelectorAll(".i").forEach(e => {
       const k = e.getAttribute("cfg");
       const v = k==="nav_path" ? this._config.tap_action?.navigation_path||"" : this._config[k]?? "";
+      if(e.value!==v) e.value=v;
+    });
+  }
+  
+  updCp() {
+    if(!this._config) return;
+    this.shadowRoot.querySelectorAll(".i-cp").forEach(e => {
+      const k = e.getAttribute("cfg");
+      const v = this._config[k] || "#000000";
       if(e.value!==v) e.value=v;
     });
   }
