@@ -20,6 +20,9 @@ Developed with a focus on stability, simple design, and maximum flexibility.
   * **Batteries:** Differentiates between "Critical" (≤ 5%), "Low" (≤ 15%), or "Empty" (Binary Sensors).
 * ⚡ **Performance:** Vanilla JS, no external dependencies, loads extremely fast.
 * 🖱️ **Sortable:** Easily move buttons using arrow keys in the editor.
+* 🖼️ **Built-in Image Uploader:** Upload your room background images directly in the card editor. No file manager needed!
+* 👆 **Configurable Actions:** Define what happens on **Tap**, **Hold**, and **Double Tap** for every single button (Toggle, More Info, Navigate, etc.).
+* 🌡️ **Target Temperature:** Optionally display the setpoint/target temperature next to the current room temperature.
 
 ## 📥 Installation
 
@@ -46,9 +49,9 @@ or
 Simply add the card via "Add Card" in your dashboard and select **"OneLine Room Card"**.
 The visual editor guides you through all settings:
 
-* **General:** Name, Icon, Image, Colors, and an optional **Main Climate Device** (auto-fills header info).
-* **Sensors:** Select your temperature, humidity, window, and battery sensors. *Note: If selected here, these sensors override the Main Climate attributes.*
-* **Buttons:** Add devices (Lights, Shutters, Climate, etc.) and define their width and height individually.
+* **General:** Name, Icon, Colors. **New:** Use the "Upload Image" button to set your background instantly.
+* **Sensors:** Select your temperature (current & target), humidity, window, and battery sensors.
+* **Buttons:** Add devices and configure their dimensions. You can now assign specific actions (Tap/Hold/Double Tap) to each button.
 
 ---
 
