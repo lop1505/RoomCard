@@ -9,11 +9,19 @@ Developed with a focus on stability, simple design, and maximum flexibility.
 ![Preview](preview.png)
 ![Preview](preview_dark.png)
 
+## ⚠️ Important: Renaming / Migration
+To ensure compatibility and avoid conflicts with other cards, this card has been renamed.
+* **Old Type:** `custom:room-card`
+* **New Type:** `custom:oneline-room-card`
+
+If you are updating from an older version, please update your YAML configuration. The old type will show a migration warning.
+
 ## ✨ Features
 
 * 🖱️ **Full Visual Editor:** No YAML required. The optimized editor ensures smooth configuration without focus loss.
 * 📱 **Responsive Flex Layout:** Buttons intelligently wrap on smaller screens (Mobile/Tablet) while maintaining your preferred relative widths. No more cut-off content!
 * 🌡️ **Smart Climate Integration:** Optionally select a main climate device (e.g., Tado, Netatmo) to automatically display temperature and humidity in the header.
+* 🌍 **Dynamic Unit Support:** Automatically adapts to your Home Assistant system settings (Celsius, Fahrenheit).
 * 📏 **Flexible Sizing:** Buttons can take up 1/3, 1/4, 1/5, etc. of the width. Important buttons can be taller, others smaller.
 * 🔋 **Advanced Status Chips:** Automatically alerts you about room status:
   * **Windows:** Shows open windows immediately.

@@ -1,12 +1,13 @@
-// UNIQUE LOGGING GUARD
-const VERSION = "1.0.6"; // Custom Upload Implementation
+// SAFE VERSION 1.0.7 - Resolved Naming Conflict and added dynamic unit support (Fahrenheit/Celsius)
+
+const VERSION = "1.0.7";
 const LOG_FLAG = `customCards_RoomCard_Logged_${VERSION}`;
 
 if (!window[LOG_FLAG]) {
   console.info(
-    `%c ROOM-CARD %c ${VERSION} `,
+    `%c ONELINE-ROOM-CARD %c ${VERSION} `,
     "color: white; background: #2c3e50; font-weight: 700;",
-    "color: white; background: #d35400; font-weight: 700;"
+    "color: white; background: #c0392b; font-weight: 700;"
   );
   window[LOG_FLAG] = true;
 }
@@ -23,7 +24,9 @@ const TRANSLATIONS = {
     height: "Height", width: "Width", align: "Align", visible: "Visible", left: "Left", center: "Center", right: "Right",
     tap_action: "Tap Action", hold_action: "Hold Action", double_tap_action: "Double Tap Action",
     act_more: "Details (Default)", act_toggle: "Toggle", act_none: "None",
-    upload_btn: "Upload Image", uploading: "Uploading...", upload_success: "Done!"
+    upload_btn: "Upload Image", uploading: "Uploading...", upload_success: "Done!",
+    migration_title: "Action Required", 
+    migration_text: "Card renamed to <b>oneline-room-card</b> to avoid conflicts.<br>Please change <code>type: custom:room-card</code> to <code>type: custom:oneline-room-card</code> in your YAML."
   },
   de: {
     empty: "Leer", low: "Niedrig", critical: "Kritisch", window: "Fenster", general: "Allgemein",
@@ -35,7 +38,9 @@ const TRANSLATIONS = {
     height: "Höhe", width: "Breite", align: "Ausrichtung", visible: "Sichtbar", left: "Links", center: "Mitte", right: "Rechts",
     tap_action: "Antippen", hold_action: "Gedrückt halten", double_tap_action: "Doppelklick",
     act_more: "Details (Standard)", act_toggle: "Umschalten", act_none: "Nichts",
-    upload_btn: "Bild hochladen", uploading: "Wird hochgeladen...", upload_success: "Fertig!"
+    upload_btn: "Bild hochladen", uploading: "Wird hochgeladen...", upload_success: "Fertig!",
+    migration_title: "Handlung erforderlich", 
+    migration_text: "Karte wurde in <b>oneline-room-card</b> umbenannt.<br>Bitte ändere <code>type: custom:room-card</code> zu <code>type: custom:oneline-room-card</code> in deiner YAML-Konfiguration."
   },
   fr: {
     empty: "Vide", low: "Faible", critical: "Critique", window: "Fenêtre", general: "Général",
@@ -47,7 +52,9 @@ const TRANSLATIONS = {
     height: "Hauteur", width: "Largeur", align: "Alignement", visible: "Visible", left: "Gauche", center: "Centre", right: "Droite",
     tap_action: "Appui court", hold_action: "Appui long", double_tap_action: "Double appui",
     act_more: "Détails (Défaut)", act_toggle: "Basculer", act_none: "Rien",
-    upload_btn: "Télécharger une image", uploading: "Téléchargement...", upload_success: "Terminé!"
+    upload_btn: "Télécharger une image", uploading: "Téléchargement...", upload_success: "Terminé!",
+    migration_title: "Action requise", 
+    migration_text: "Carte renommée en <b>oneline-room-card</b> pour éviter les conflits.<br>Veuillez changer <code>type: custom:room-card</code> en <code>type: custom:oneline-room-card</code>."
   }
 };
 
@@ -62,9 +69,9 @@ const clampNum = (v, min, max, fallback) => {
 };
 
 // =============================================================================
-// CARD CLASS
+// MAIN CARD CLASS
 // =============================================================================
-class RoomCard extends HTMLElement {
+class OneLineRoomCard extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
@@ -152,15 +159,15 @@ class RoomCard extends HTMLElement {
   _updateContentState() {
     if (!this.config || !this._hass || !this.content) return;
     const h = this._hass, c = this.config;
+    // --- NEW: DYNAMIC UNIT ---
+    const unit = h.config.unit_system.temperature || "°C";
 
-    // Header
     this.shadowRoot.getElementById("bg").src = c.image || "/static/images/card_media/cover.png";
     this.shadowRoot.getElementById("name").innerText = c.name || "Room";
     const ico = this.shadowRoot.getElementById("icon");
     ico.icon = c.icon || "mdi:home";
     ico.style.color = c.color || "white";
 
-    // Info Line
     let t = null, hm = null, tar = null;
     if (c.temp_sensor && h.states[c.temp_sensor]) t = h.states[c.temp_sensor].state;
     else if (c.entity && h.states[c.entity]?.attributes?.current_temperature !== undefined) t = h.states[c.entity].attributes.current_temperature;
@@ -173,15 +180,15 @@ class RoomCard extends HTMLElement {
 
     const infoParts = [];
     if (t != null && t !== "-" && !isNaN(parseFloat(t))) {
-      let tStr = t + "°C";
-      if (tar != null && tar !== "-") tStr += " (" + tar + "°C)";
+      // --- NEW: USE DYNAMIC UNIT ---
+      let tStr = t + unit;
+      if (tar != null && tar !== "-") tStr += " (" + tar + unit + ")";
       infoParts.push(tStr);
     }
     if (hm != null && hm !== "-" && !isNaN(parseFloat(hm))) infoParts.push(hm + "%");
 
     this.shadowRoot.getElementById("info").innerText = infoParts.join(" | ");
 
-    // Chips
     const ch = this.shadowRoot.getElementById("chips");
     ch.innerHTML = "";
     let al = null;
@@ -200,7 +207,6 @@ class RoomCard extends HTMLElement {
       if (st?.state === "on") ch.innerHTML += `<div class="chip"><ha-icon icon="mdi:window-open-variant" style="--mdc-icon-size:14px"></ha-icon> ${st.attributes.friendly_name || getTranslation(h, "window")}</div>`;
     });
 
-    // Controls
     const visibleCtrls = (c.controls || []).filter(ctrl => ctrl.entity && !ctrl.hide);
 
     if (this._configChanged) {
@@ -236,6 +242,8 @@ class RoomCard extends HTMLElement {
     const st = h.states[ctrl.entity];
     const s = st ? st.state : "N/A";
     const domain = ctrl.entity.split(".")[0];
+    const unit = h.config.unit_system.temperature || "°C"; // --- NEW: DYNAMIC UNIT ---
+
     let typ = "default";
     if (domain === "cover") typ = "shutter";
     else if (domain === "climate") typ = "climate";
@@ -272,13 +280,14 @@ class RoomCard extends HTMLElement {
     let badge = "";
     if (isUnavail) badge = `<ha-icon class="warn" icon="mdi:alert-circle"></ha-icon>`;
 
+    // --- NEW: USE DYNAMIC UNIT IN TEMPLATE ---
     btn.innerHTML = `
       <div class="icon-box" style="background:${bg}">
         <ha-icon icon="${ctrl.icon || "mdi:circle"}" style="color:${col};--mdc-icon-size:20px"></ha-icon>
       </div>
       <div class="btn-txt">
         <span class="btn-name">${nameTxt}</span>
-        <span class="btn-state">${typ === "climate" && st?.attributes?.current_temperature ? st.attributes.current_temperature + "°C" : s}</span>
+        <span class="btn-state">${typ === "climate" && st?.attributes?.current_temperature ? st.attributes.current_temperature + unit : s}</span>
       </div>
       ${badge}`;
   }
@@ -314,11 +323,8 @@ class RoomCard extends HTMLElement {
   _fireAction(type, config) {
     const actionKey = `${type}_action`;
     let actionConfig = config[actionKey] || {};
-
     if (!actionConfig || typeof actionConfig !== 'object') actionConfig = { action: 'none' };
     if (!actionConfig.action) actionConfig.action = "none";
-
-    // Smart Toggle Fix
     if (actionConfig.action === "toggle" && config.entity) {
       const domain = config.entity.split(".")[0];
       if (domain === "climate" && this._hass) {
@@ -330,7 +336,6 @@ class RoomCard extends HTMLElement {
         }
       }
     }
-
     const eventDetail = {
       config: {
         entity: config.entity,
@@ -348,15 +353,13 @@ class RoomCard extends HTMLElement {
     }
   }
 
-  static getConfigElement() { return document.createElement("room-card-editor"); }
+  static getConfigElement() { return document.createElement("oneline-room-card-editor"); }
 }
 
-customElements.define("room-card", RoomCard);
-
 // =============================================================================
-// EDITOR CLASS (CUSTOM UPLOAD IMPLEMENTATION)
+// EDITOR CLASS
 // =============================================================================
-class RoomCardEditor extends HTMLElement {
+class OneLineRoomCardEditor extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
@@ -372,7 +375,6 @@ class RoomCardEditor extends HTMLElement {
     const upd = this._hass?.language !== hass?.language;
     this._hass = hass;
     if (upd) this.render();
-
     if (this.shadowRoot) {
       this.shadowRoot.querySelectorAll("ha-selector,ha-entity-picker,ha-icon-picker,ha-textfield,ha-switch").forEach(e => {
         if (e.hass !== hass) e.hass = hass;
@@ -388,37 +390,25 @@ class RoomCardEditor extends HTMLElement {
     }, 300);
   }
 
-  // --- CUSTOM UPLOAD HANDLER ---
   async _handleUpload(e) {
     const file = e.target.files[0];
     if (!file || !this._hass) return;
-
     const btn = this.shadowRoot.getElementById("upload-btn");
     if (btn) btn.innerText = getTranslation(this._hass, "uploading");
-
     try {
       const formData = new FormData();
       formData.append("file", file);
-
-      // Use HA API to upload
       const response = await this._hass.fetchWithAuth("/api/image/upload", {
         method: "POST",
         body: formData,
       });
-
       if (!response.ok) throw new Error("Upload failed");
-
       const data = await response.json();
-      // HA Image API returns ID. The URL is usually /api/image/serve/<id>/original
       const imgUrl = `/api/image/serve/${data.id}/original`;
-
-      // Update config
       this._fire({ ...this._config, image: imgUrl });
       this.updPreview();
-
       if (btn) btn.innerText = getTranslation(this._hass, "upload_success");
       setTimeout(() => { if (btn) btn.innerText = getTranslation(this._hass, "upload_btn"); }, 2000);
-
     } catch (err) {
       console.error("Upload Error:", err);
       if (btn) btn.innerText = "Error!";
@@ -429,9 +419,7 @@ class RoomCardEditor extends HTMLElement {
     if (!this._config) return;
     const alreadyRendered = !!this.shadowRoot.innerHTML;
     if (alreadyRendered) { this.updVal(); this.renBtn(); return; }
-
     const h = this._hass;
-
     this.shadowRoot.innerHTML = `
       <style>
         .sec { padding: 12px 0; border-bottom: 1px solid var(--divider-color); }
@@ -439,18 +427,14 @@ class RoomCardEditor extends HTMLElement {
         .box { border: 1px solid var(--divider-color); padding: 12px; border-radius: 8px; background: var(--secondary-background-color); margin-bottom: 12px; }
         .head { display: flex; justify-content: space-between; margin-bottom: 8px; font-weight: bold; }
         ha-textfield, ha-selector, ha-entity-picker, ha-icon-picker { width: 100%; display: block; margin-bottom: 8px; }
-        
         .preview { width: 100%; height: 120px; object-fit: cover; border-radius: 8px; margin-bottom: 8px; background: #444; display: none; }
         .preview.show { display: block; }
-        
         .upload-row { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
         .upload-hidden { display: none; }
-        
         .cl-row { display: flex; gap: 8px; align-items: center; }
         .cp { width: 50px; height: 40px; border: 1px solid var(--divider-color); background: none; padding: 2px; border-radius: 4px; cursor: pointer; flex-shrink: 0; }
         .hidden { display: none !important; }
       </style>
-      
       <div class="sec">
         <h3>${getTranslation(h, "general")}</h3>
         <ha-textfield label="${getTranslation(h, "name")}" cfg="name" class="i"></ha-textfield>
@@ -462,22 +446,17 @@ class RoomCardEditor extends HTMLElement {
             <input type="color" class="cp i-cp" cfg="color">
           </div>
         </div>
-        
         <label style="display:block;margin-bottom:4px;font-weight:bold">${getTranslation(h, "img_url")}</label>
         <img id="prev-img" class="preview">
-        
         <ha-textfield id="img-url-field" cfg="image" class="i" icon="mdi:image"></ha-textfield>
-        
         <div class="upload-row">
           <input type="file" id="file-upload" class="upload-hidden" accept="image/*">
           <mwc-button id="upload-btn" raised label="${getTranslation(h, "upload_btn")}">
             <ha-icon icon="mdi:upload" slot="icon"></ha-icon>
           </mwc-button>
         </div>
-        
         <ha-textfield label="${getTranslation(h, "path")}" cfg="nav_path" class="i" style="margin-top:12px"></ha-textfield>
       </div>
-      
       <div class="sec">
         <h3>${getTranslation(h, "sensors_manual")}</h3>
         <ha-entity-picker label="${getTranslation(h, "temp_label")}" cfg="temp_sensor" class="i" allow-custom-entity></ha-entity-picker>
@@ -486,7 +465,6 @@ class RoomCardEditor extends HTMLElement {
         <ha-selector cfg="window_sensors" class="i" label="${getTranslation(h, "window_label")}"></ha-selector>
         <ha-selector cfg="battery_sensors" class="i" label="${getTranslation(h, "battery_label")}"></ha-selector>
       </div>
-
       <div class="sec">
         <h3>${getTranslation(h, "buttons")}</h3>
         <div id="b"></div>
@@ -495,44 +473,27 @@ class RoomCardEditor extends HTMLElement {
         </mwc-button>
       </div>`;
 
-    // --- BIND UPLOAD BUTTON ---
     const fileInput = this.shadowRoot.getElementById("file-upload");
     const uploadBtn = this.shadowRoot.getElementById("upload-btn");
-
     if (uploadBtn && fileInput) {
       uploadBtn.addEventListener("click", () => fileInput.click());
       fileInput.addEventListener("change", (e) => this._handleUpload(e));
     }
 
-    // INITIALIZE ALL INPUTS
     this.shadowRoot.querySelectorAll(".i").forEach(e => {
       const k = e.getAttribute("cfg");
-
-      if (k === "window_sensors") {
-        e.selector = { entity: { domain: "binary_sensor", device_class: ["window", "door", "garage_door"], multiple: true } };
-      }
-      else if (k === "battery_sensors") {
-        e.selector = { entity: { device_class: "battery", multiple: true } };
-      }
-
+      if (k === "window_sensors") e.selector = { entity: { domain: "binary_sensor", device_class: ["window", "door", "garage_door"], multiple: true } };
+      else if (k === "battery_sensors") e.selector = { entity: { device_class: "battery", multiple: true } };
       if (this._hass) e.hass = this._hass;
-
       const evType = e.localName === "ha-textfield" ? "change" : "value-changed";
       e.addEventListener(evType, (ev) => {
         ev.stopPropagation();
         const v = ev.detail?.value !== undefined ? ev.detail.value : ev.target.value;
         const c = { ...this._config };
-
         if (k === "nav_path") {
-          if (v?.trim()) {
-            c.tap_action = { action: "navigate", navigation_path: v };
-          } else {
-            delete c.tap_action;
-          }
-        } else {
-          c[k] = v;
-        }
-
+          if (v?.trim()) c.tap_action = { action: "navigate", navigation_path: v };
+          else delete c.tap_action;
+        } else { c[k] = v; }
         this._fire(c);
         if (k === "color") this.updCp();
         if (k === "image") this.updPreview();
@@ -562,7 +523,6 @@ class RoomCardEditor extends HTMLElement {
       this._fire({ ...this._config, controls: c });
       this.renBtn();
     });
-
     this.updVal(); this.updCp(); this.renBtn(); this.updPreview();
   }
 
@@ -572,27 +532,22 @@ class RoomCardEditor extends HTMLElement {
     if (this._config.image) {
       img.src = this._config.image;
       img.classList.add("show");
-    } else {
-      img.classList.remove("show");
-    }
+    } else { img.classList.remove("show"); }
   }
 
   renBtn() {
     if (!this._config?.controls) return;
     const div = this.shadowRoot.getElementById("b"); if (!div) return;
     const h = this._hass; div.replaceChildren();
-
     const actOpts = [
       { value: "more-info", label: getTranslation(h, "act_more") },
       { value: "toggle", label: getTranslation(h, "act_toggle") },
       { value: "none", label: getTranslation(h, "act_none") }
     ];
-
     this._config.controls.forEach((ctrl, i) => {
       const box = document.createElement("div"); box.className = "box";
       const hideColor = !ctrl.force_color ? "hidden" : "";
       const showNav = ctrl.tap_action?.action === "navigate" ? "" : "hidden";
-
       box.innerHTML = `
         <div class="head">#${i + 1}
           <div><ha-icon class="mv u" icon="mdi:arrow-up"></ha-icon><ha-icon class="mv d" icon="mdi:arrow-down"></ha-icon><ha-icon class="del" icon="mdi:delete" style="color:#d32f2f"></ha-icon></div>
@@ -607,11 +562,9 @@ class RoomCardEditor extends HTMLElement {
 
       const upd = (k, v) => { const c = [...this._config.controls]; c[i] = { ...c[i], [k]: v }; this._fire({ ...this._config, controls: c }); };
       const updAct = (type, val) => { const c = [...this._config.controls]; const old = c[i][type] || {}; c[i] = { ...c[i], [type]: { ...old, action: val } }; this._fire({ ...this._config, controls: c }); this.renBtn(); };
-
       box.querySelector(".u").onclick = () => { if (i > 0) { const c = [...this._config.controls];[c[i], c[i - 1]] = [c[i - 1], c[i]]; this._fire({ ...this._config, controls: c }); this.renBtn(); } };
       box.querySelector(".d").onclick = () => { if (i < this._config.controls.length - 1) { const c = [...this._config.controls];[c[i], c[i + 1]] = [c[i + 1], c[i]]; this._fire({ ...this._config, controls: c }); this.renBtn(); } };
       box.querySelector(".del").onclick = () => { const c = [...this._config.controls]; c.splice(i, 1); this._fire({ ...this._config, controls: c }); this.renBtn(); };
-
       const ep = box.querySelector(".ep"); ep.hass = h; ep.value = ctrl.entity;
       ep.addEventListener("value-changed", e => {
         const val = e.detail.value; const st = h.states[val]; const c = [...this._config.controls]; let changes = { entity: val };
@@ -619,27 +572,20 @@ class RoomCardEditor extends HTMLElement {
         if (st?.attributes?.friendly_name) changes.name = st.attributes.friendly_name;
         c[i] = { ...c[i], ...changes }; this._fire({ ...this._config, controls: c }); this.renBtn();
       });
-
       const nm = box.querySelector(".nm"); nm.value = ctrl.name || ""; nm.addEventListener("change", e => upd("name", e.target.value));
       const fc = box.querySelector(".fc"); fc.checked = ctrl.force_color === true; fc.addEventListener("change", e => { upd("force_color", e.target.checked); this.renBtn(); });
       const cl = box.querySelector(".cl"); cl.value = ctrl.color || ""; cl.addEventListener("change", e => upd("color", e.target.value));
       const clp = box.querySelector(".cl-p"); clp.value = ctrl.color || "#000000"; clp.addEventListener("change", e => upd("color", e.target.value));
       const ic = box.querySelector(".ic"); ic.value = ctrl.icon || ""; ic.addEventListener("value-changed", e => { e.stopPropagation(); upd("icon", e.detail.value); });
-
       const ht = box.querySelector(".ht"); ht.hass = h; ht.selector = { number: { min: 40, max: 250, mode: "box", unit_of_measurement: "px" } };
       ht.value = ctrl.height || 60; ht.addEventListener("value-changed", e => { e.stopPropagation(); upd("height", Number(e.detail.value)); });
-
       const wd = box.querySelector(".wd"); wd.hass = h; wd.selector = { select: { mode: "dropdown", options: [{ value: "60", label: "1/1" }, { value: "40", label: "2/3" }, { value: "30", label: "1/2" }, { value: "20", label: "1/3" }, { value: "15", label: "1/4" }, { value: "12", label: "1/5" }, { value: "10", label: "1/6" }] } };
       wd.value = String(ctrl.width || 15); wd.addEventListener("value-changed", e => { e.stopPropagation(); upd("width", parseInt(e.detail.value)); });
-
       const al = box.querySelector(".al"); al.hass = h; al.selector = { select: { mode: "dropdown", options: [{ value: "left", label: getTranslation(h, "left") }, { value: "center", label: getTranslation(h, "center") }, { value: "right", label: getTranslation(h, "right") }] } };
       al.value = ctrl.align || "center"; al.addEventListener("value-changed", e => { e.stopPropagation(); upd("align", e.detail.value); });
-
       const hd = box.querySelector(".hd"); hd.checked = !ctrl.hide; hd.addEventListener("change", e => { e.stopPropagation(); upd("hide", !e.target.checked); });
-
       const tap = box.querySelector(".tap"); tap.hass = h; tap.selector = { select: { mode: "dropdown", options: actOpts } };
       tap.value = ctrl.tap_action?.action || "more-info"; tap.addEventListener("value-changed", e => { e.stopPropagation(); updAct("tap_action", e.detail.value); });
-
       const tapNav = box.querySelector(".tap-nav"); if (tapNav) {
         tapNav.value = ctrl.tap_action?.navigation_path || ""; tapNav.addEventListener("change", e => {
           const c = [...this._config.controls];
@@ -648,13 +594,10 @@ class RoomCardEditor extends HTMLElement {
           this._fire({ ...this._config, controls: c });
         });
       }
-
       const hold = box.querySelector(".hold"); hold.hass = h; hold.selector = { select: { mode: "dropdown", options: actOpts } };
       hold.value = ctrl.hold_action?.action || "toggle"; hold.addEventListener("value-changed", e => { e.stopPropagation(); updAct("hold_action", e.detail.value); });
-
       const dbl = box.querySelector(".dbl"); dbl.hass = h; dbl.selector = { select: { mode: "dropdown", options: actOpts } };
       dbl.value = ctrl.double_tap_action?.action || "none"; dbl.addEventListener("value-changed", e => { e.stopPropagation(); updAct("double_tap_action", e.detail.value); });
-
       div.appendChild(box);
     });
   }
@@ -678,11 +621,63 @@ class RoomCardEditor extends HTMLElement {
   }
 }
 
-customElements.define("room-card-editor", RoomCardEditor);
+// =============================================================================
+// REGISTRATION (SAFE & ROBUST)
+// =============================================================================
+
+// 1. Editor registrieren (wenn noch nicht da)
+if (!customElements.get("oneline-room-card-editor")) {
+  customElements.define("oneline-room-card-editor", OneLineRoomCardEditor);
+}
+
+// 2. Neue Karte registrieren (wenn noch nicht da)
+if (!customElements.get("oneline-room-card")) {
+  customElements.define("oneline-room-card", OneLineRoomCard);
+}
+
+// 3. MIGRATION WARNING (wenn "room-card" noch frei ist)
+if (!customElements.get("room-card")) {
+  class MigrationWarningCard extends HTMLElement {
+    constructor() {
+      super();
+      this.attachShadow({ mode: "open" });
+    }
+
+    setConfig(config) {
+      this._config = config;
+    }
+
+    set hass(hass) {
+      const title = getTranslation(hass, "migration_title");
+      const text = getTranslation(hass, "migration_text");
+
+      this.shadowRoot.innerHTML = `
+        <style>
+          ha-card { background: var(--ha-card-background, var(--card-background-color, white)); border-radius: var(--ha-card-border-radius, 12px); box-shadow: var(--ha-card-box-shadow, none); }
+          .warn { padding: 16px; color: var(--error-color, #db4437); background: rgba(255, 0, 0, 0.1); border: 1px solid var(--error-color, #db4437); border-radius: 8px; }
+        </style>
+        <ha-card>
+          <div class="warn">
+            <h3 style="margin:0 0 8px 0; display:flex; align-items:center; gap:8px">
+              <ha-icon icon="mdi:alert-circle"></ha-icon> ${title}
+            </h3>
+            <div>${text}</div>
+          </div>
+        </ha-card>
+      `;
+    }
+
+    getCardSize() {
+      return 2;
+    }
+  }
+
+  customElements.define("room-card", MigrationWarningCard);
+}
 
 window.customCards = window.customCards || [];
 window.customCards.push({
-  type: "room-card",
+  type: "oneline-room-card",
   name: "OneLine Room Card",
   preview: true,
   description: "Minimalist Room Card for Home Assistant"
