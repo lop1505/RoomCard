@@ -21,6 +21,8 @@ const TRANSLATIONS = {
     temp_label: "Temperature (overrides climate)", target_temp_label: "Target Temperature", humid_label: "Humidity (overrides climate)",
     window_label: "Windows (List)", battery_label: "Batteries (List)", name: "Name", icon: "Icon", color: "Icon Color",
     force_color: "Force Manual Color (Always visible)", img_url: "Image URL", path: "Path (Tap Action)", entity: "Entity", device: "Device (Optional)",
+    template: "Type Filter", add_template: "with Filter", add_prefix: "Add",
+    tmpl_light: "Light", tmpl_switch: "Switch / Socket", tmpl_climate: "Climate", tmpl_cover: "Cover / Shutter", tmpl_media: "Media Player",
     show_state: "Show State",
     height: "Height", width: "Width", align: "Align", visible: "Visible", left: "Left", center: "Center", right: "Right",
     tap_action: "Tap Action", hold_action: "Hold Action", double_tap_action: "Double Tap Action",
@@ -36,6 +38,8 @@ const TRANSLATIONS = {
     temp_label: "Temperatur (überschreibt Klima)", target_temp_label: "Soll-Temperatur", humid_label: "Luftfeuchtigkeit (überschreibt Klima)",
     window_label: "Fenster (Liste)", battery_label: "Batterien (Liste)", name: "Name", icon: "Icon", color: "Iconfarbe",
     force_color: "Manuelle Farbe erzwingen (Immer sichtbar)", img_url: "Bild URL", path: "Pfad (Tap Action)", entity: "Entität", device: "Gerät (Optional)",
+    template: "Typ-Filter", add_template: "mit Filter", add_prefix: "Add",
+    tmpl_light: "Licht", tmpl_switch: "Schalter / Steckdose", tmpl_climate: "Klima", tmpl_cover: "Rollladen / Abdeckung", tmpl_media: "Media Player",
     show_state: "Status anzeigen",
     height: "Höhe", width: "Breite", align: "Ausrichtung", visible: "Sichtbar", left: "Links", center: "Mitte", right: "Rechts",
     tap_action: "Antippen", hold_action: "Gedrückt halten", double_tap_action: "Doppelklick",
@@ -51,6 +55,8 @@ const TRANSLATIONS = {
     temp_label: "Température (remplace climat)", target_temp_label: "Température cible", humid_label: "Humidité (remplace climat)",
     window_label: "Fenêtres (Liste)", battery_label: "Batteries (Liste)", name: "Nom", icon: "Icône", color: "Couleur",
     force_color: "Forcer la couleur", img_url: "URL de l'image", path: "Chemin (Tap Action)", entity: "Entité", device: "Appareil (Optionnel)",
+    template: "Filtre de type", add_template: "avec filtre", add_prefix: "Ajouter",
+    tmpl_light: "Lumière", tmpl_switch: "Interrupteur / Prise", tmpl_climate: "Climatisation", tmpl_cover: "Volet / Store", tmpl_media: "Lecteur multimédia",
     show_state: "Afficher l'état",
     height: "Hauteur", width: "Largeur", align: "Alignement", visible: "Visible", left: "Gauche", center: "Centre", right: "Droite",
     tap_action: "Appui court", hold_action: "Appui long", double_tap_action: "Double appui",
@@ -462,6 +468,111 @@ class OneLineRoomCardEditor extends HTMLElement {
     return map[domain] || "mdi:help-circle-outline";
   }
 
+  _getControlTemplates() {
+    const h = this._hass;
+    return [
+      {
+        id: "light",
+        label: getTranslation(h, "tmpl_light"),
+        domains: ["light"],
+        defaults: {
+          icon: "mdi:lightbulb",
+          width: 15,
+          height: 60,
+          align: "center",
+          tap_action: { action: "toggle" },
+          hold_action: { action: "more-info" },
+          double_tap_action: { action: "none" },
+          show_state: true
+        }
+      },
+      {
+        id: "switch",
+        label: getTranslation(h, "tmpl_switch"),
+        domains: ["switch"],
+        defaults: {
+          icon: "mdi:power-socket-eu",
+          width: 15,
+          height: 60,
+          align: "center",
+          tap_action: { action: "toggle" },
+          hold_action: { action: "more-info" },
+          double_tap_action: { action: "none" },
+          show_state: true
+        }
+      },
+      {
+        id: "climate",
+        label: getTranslation(h, "tmpl_climate"),
+        domains: ["climate"],
+        defaults: {
+          icon: "mdi:thermostat",
+          width: 30,
+          height: 60,
+          align: "left",
+          tap_action: { action: "more-info" },
+          hold_action: { action: "toggle" },
+          double_tap_action: { action: "none" },
+          show_state: true
+        }
+      },
+      {
+        id: "cover",
+        label: getTranslation(h, "tmpl_cover"),
+        domains: ["cover"],
+        defaults: {
+          icon: "mdi:window-shutter",
+          width: 20,
+          height: 60,
+          align: "center",
+          tap_action: { action: "toggle" },
+          hold_action: { action: "more-info" },
+          double_tap_action: { action: "none" },
+          show_state: true
+        }
+      },
+      {
+        id: "media_player",
+        label: getTranslation(h, "tmpl_media"),
+        domains: ["media_player"],
+        defaults: {
+          icon: "mdi:play-circle",
+          width: 30,
+          height: 60,
+          align: "left",
+          tap_action: { action: "toggle" },
+          hold_action: { action: "more-info" },
+          double_tap_action: { action: "none" },
+          show_state: true
+        }
+      }
+    ];
+  }
+
+  _getTemplateById(templateId) {
+    const templates = this._getControlTemplates();
+    return templates.find((t) => t.id === templateId);
+  }
+
+  _buildControlFromTemplate(template, entityId) {
+    const st = this._hass?.states?.[entityId];
+    const name = st?.attributes?.friendly_name || "";
+    const icon = st?.attributes?.icon || template?.defaults?.icon || this._iconForEntity(entityId);
+    const defaults = template?.defaults || {};
+    return {
+      entity: entityId || "",
+      name,
+      icon,
+      width: defaults.width ?? 15,
+      height: defaults.height ?? 60,
+      align: defaults.align || "center",
+      show_state: defaults.show_state !== false,
+      tap_action: defaults.tap_action || { action: "more-info" },
+      hold_action: defaults.hold_action || { action: "toggle" },
+      double_tap_action: defaults.double_tap_action || { action: "none" }
+    };
+  }
+
   _iconForEntity(entityId) {
     if (!this._hass || !entityId) return "mdi:help-circle-outline";
     const st = this._hass.states[entityId];
@@ -581,6 +692,15 @@ class OneLineRoomCardEditor extends HTMLElement {
       <style>
         .sec { padding: 12px 0; border-bottom: 1px solid var(--divider-color); }
         .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 8px; }
+        .tmpl-label-row { margin-bottom: 4px; }
+        .tmpl-label { font-size: 12px; font-weight: 600; opacity: 0.8; }
+        .tmpl-row { align-items: start; margin-bottom: 12px; }
+        .tmpl-row ha-textfield,
+        .tmpl-row ha-selector,
+        .tmpl-row ha-entity-picker,
+        .tmpl-row ha-icon-picker { margin-bottom: 0; }
+        .add-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+        .add-prefix { font-size: 12px; font-weight: 600; opacity: 0.8; }
         .box { border: 1px solid var(--divider-color); padding: 12px; border-radius: 8px; background: var(--secondary-background-color); margin-bottom: 12px; }
         .head { display: flex; justify-content: space-between; margin-bottom: 8px; font-weight: bold; }
         ha-textfield, ha-selector, ha-entity-picker, ha-icon-picker { width: 100%; display: block; margin-bottom: 8px; }
@@ -624,6 +744,20 @@ class OneLineRoomCardEditor extends HTMLElement {
       </div>
       <div class="sec">
         <h3>${getTranslation(h, "buttons")}</h3>
+        <div class="row tmpl-label-row">
+          <div class="tmpl-label">${getTranslation(h, "template")}</div>
+          <div class="tmpl-label">${getTranslation(h, "entity")}</div>
+        </div>
+        <div class="row tmpl-row">
+          <ha-selector id="tmpl-select" aria-label="${getTranslation(h, "template")}"></ha-selector>
+          <ha-entity-picker id="tmpl-entity" aria-label="${getTranslation(h, "entity")}"></ha-entity-picker>
+        </div>
+        <div class="add-row">
+          <span class="add-prefix">${getTranslation(h, "add_prefix")}</span>
+          <mwc-button id="add-template" raised label="${getTranslation(h, "add_template")}">
+            <ha-icon icon="mdi:playlist-plus" slot="icon"></ha-icon>
+          </mwc-button>
+        </div>
         <div id="b"></div>
         <mwc-button id="add" raised label="${getTranslation(h, "add_button")}">
           <ha-icon icon="mdi:plus" slot="icon"></ha-icon>
@@ -666,6 +800,45 @@ class OneLineRoomCardEditor extends HTMLElement {
     }
     this._applyNavSelectorOptions();
     this._ensureNavOptions();
+
+    const tmplSelect = this.shadowRoot.getElementById("tmpl-select");
+    const tmplEntity = this.shadowRoot.getElementById("tmpl-entity");
+    if (tmplSelect) {
+      tmplSelect.selector = {
+        select: {
+          mode: "dropdown",
+          options: this._getControlTemplates().map((t) => ({ value: t.id, label: t.label }))
+        }
+      };
+      tmplSelect.value = tmplSelect.value || "light";
+      if (this._hass) tmplSelect.hass = this._hass;
+      tmplSelect.addEventListener("value-changed", (ev) => {
+        ev.stopPropagation();
+        const tid = ev.detail?.value;
+        const template = this._getTemplateById(tid);
+        const domains = template?.domains || [];
+        if (tmplEntity && domains.length > 0) tmplEntity.setAttribute("include-domains", JSON.stringify(domains));
+      });
+    }
+    if (tmplEntity && this._hass) tmplEntity.hass = this._hass;
+    if (tmplEntity && tmplSelect) {
+      const template = this._getTemplateById(tmplSelect.value || "light");
+      const domains = template?.domains || [];
+      if (domains.length > 0) tmplEntity.setAttribute("include-domains", JSON.stringify(domains));
+    }
+    const addTemplateBtn = this.shadowRoot.getElementById("add-template");
+    if (addTemplateBtn) {
+      addTemplateBtn.addEventListener("click", () => {
+        const tid = tmplSelect?.value || "light";
+        const ent = tmplEntity?.value || "";
+        if (!ent) return;
+        const template = this._getTemplateById(tid);
+        const next = this._buildControlFromTemplate(template, ent);
+        const c = [...(this._config.controls || []), next];
+        this._fire({ ...this._config, controls: c });
+        this.renBtn();
+      });
+    }
 
     this.shadowRoot.querySelectorAll(".i-cp").forEach(e => {
       e.addEventListener("change", (ev) => {
