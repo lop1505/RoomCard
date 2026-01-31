@@ -62,6 +62,20 @@ The visual editor guides you through all settings:
 * **Buttons:** Add devices and configure their dimensions. You can now assign specific actions (Tap/Hold/Double Tap) to each button.
 * **Optional State Text:** Toggle **Show State** per button if you want a cleaner layout without the on/off line.
 
+### Template Buttons (Optional)
+You can switch a button row to **Template** to render dynamic text/icon/color/state.
+
+* Use **JavaScript** inside `${ ... }`.
+* Helpers available: `hass`, `states`, `entity(id)`, `attr(id, name)`, `ctrl`.
+
+Example:
+```
+content: ${entity("climate.living_room")?.state?.toUpperCase() ?? "—"}
+icon: ${(({heat:"mdi:fire",cool:"mdi:snowflake"}[(entity("climate.living_room")?.state||"").toLowerCase()]) ?? "mdi:help-circle")}
+color: ${(({heat:"#FF5722",cool:"#2196F3"}[(entity("climate.living_room")?.state||"").toLowerCase()]) ?? "#9E9E9E")}
+state: ${attr("climate.living_room","hvac_action") ?? ""}
+```
+
 ---
 
 ## ☕ Support

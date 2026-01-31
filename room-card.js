@@ -22,6 +22,8 @@ const TRANSLATIONS = {
     window_label: "Windows (List)", battery_label: "Batteries (List)", name: "Name", icon: "Icon", color: "Icon Color",
     force_color: "Force Manual Color (Always visible)", img_url: "Image URL", path: "Path (Tap Action)", entity: "Entity", device: "Device (Optional)",
     template: "Type Filter", add_template: "with Filter", add_prefix: "Add",
+    row_type: "Row Type", type_entity: "Entity", type_template: "Template",
+    tmpl_content: "Content (Template)", tmpl_icon: "Icon (Template)", tmpl_color: "Color (Template)", tmpl_state: "State (Template)", tmpl_preview: "Preview",
     tmpl_light: "Light", tmpl_switch: "Switch / Socket", tmpl_climate: "Climate", tmpl_cover: "Cover / Shutter", tmpl_media: "Media Player",
     show_state: "Show State",
     height: "Height", width: "Width", align: "Align", visible: "Visible", left: "Left", center: "Center", right: "Right",
@@ -39,6 +41,8 @@ const TRANSLATIONS = {
     window_label: "Fenster (Liste)", battery_label: "Batterien (Liste)", name: "Name", icon: "Icon", color: "Iconfarbe",
     force_color: "Manuelle Farbe erzwingen (Immer sichtbar)", img_url: "Bild URL", path: "Pfad (Tap Action)", entity: "Entität", device: "Gerät (Optional)",
     template: "Typ-Filter", add_template: "mit Filter", add_prefix: "Add",
+    row_type: "Zeilentyp", type_entity: "Entität", type_template: "Template",
+    tmpl_content: "Text (Template)", tmpl_icon: "Icon (Template)", tmpl_color: "Farbe (Template)", tmpl_state: "Status (Template)", tmpl_preview: "Vorschau",
     tmpl_light: "Licht", tmpl_switch: "Schalter / Steckdose", tmpl_climate: "Klima", tmpl_cover: "Rollladen / Abdeckung", tmpl_media: "Media Player",
     show_state: "Status anzeigen",
     height: "Höhe", width: "Breite", align: "Ausrichtung", visible: "Sichtbar", left: "Links", center: "Mitte", right: "Rechts",
@@ -56,6 +60,8 @@ const TRANSLATIONS = {
     window_label: "Fenêtres (Liste)", battery_label: "Batteries (Liste)", name: "Nom", icon: "Icône", color: "Couleur",
     force_color: "Forcer la couleur", img_url: "URL de l'image", path: "Chemin (Tap Action)", entity: "Entité", device: "Appareil (Optionnel)",
     template: "Filtre de type", add_template: "avec filtre", add_prefix: "Ajouter",
+    row_type: "Type de ligne", type_entity: "Entité", type_template: "Template",
+    tmpl_content: "Contenu (Template)", tmpl_icon: "Icône (Template)", tmpl_color: "Couleur (Template)", tmpl_state: "État (Template)", tmpl_preview: "Aperçu",
     tmpl_light: "Lumière", tmpl_switch: "Interrupteur / Prise", tmpl_climate: "Climatisation", tmpl_cover: "Volet / Store", tmpl_media: "Lecteur multimédia",
     show_state: "Afficher l'état",
     height: "Hauteur", width: "Largeur", align: "Alignement", visible: "Visible", left: "Gauche", center: "Centre", right: "Droite",
@@ -76,6 +82,71 @@ const clampNum = (v, min, max, fallback) => {
   const n = Number(v);
   return Number.isFinite(n) ? Math.max(min, Math.min(n, max)) : fallback;
 };
+
+const replaceTemplateExpressions = (str, evalExpr) => {
+  let out = "";
+  let i = 0;
+  while (i < str.length) {
+    if (str[i] === "$" && str[i + 1] === "{") {
+      i += 2;
+      let expr = "";
+      let depth = 0;
+      let inSingle = false;
+      let inDouble = false;
+      let inBacktick = false;
+      let esc = false;
+      let closed = false;
+      for (; i < str.length; i++) {
+        const ch = str[i];
+        if (esc) {
+          expr += ch;
+          esc = false;
+          continue;
+        }
+        if (ch === "\\") {
+          expr += ch;
+          esc = true;
+          continue;
+        }
+        if (inSingle) {
+          if (ch === "'") inSingle = false;
+          expr += ch;
+          continue;
+        }
+        if (inDouble) {
+          if (ch === '"') inDouble = false;
+          expr += ch;
+          continue;
+        }
+        if (inBacktick) {
+          if (ch === "`") inBacktick = false;
+          expr += ch;
+          continue;
+        }
+        if (ch === "'") { inSingle = true; expr += ch; continue; }
+        if (ch === '"') { inDouble = true; expr += ch; continue; }
+        if (ch === "`") { inBacktick = true; expr += ch; continue; }
+        if (ch === "{") { depth++; expr += ch; continue; }
+        if (ch === "}") {
+          if (depth === 0) { closed = true; i++; break; }
+          depth--; expr += ch; continue;
+        }
+        expr += ch;
+      }
+      if (!closed) {
+        out += "${" + expr;
+        break;
+      }
+      out += evalExpr(expr.trim());
+      continue;
+    }
+    out += str[i];
+    i++;
+  }
+  return out;
+};
+
+const trimStr = (v) => (typeof v === "string" ? v.trim() : v);
 
 // =============================================================================
 // MAIN CARD CLASS
@@ -223,7 +294,7 @@ class OneLineRoomCard extends HTMLElement {
       if (st?.state === "on") ch.innerHTML += `<div class="chip"><ha-icon icon="mdi:window-open-variant" style="--mdc-icon-size:14px"></ha-icon> ${st.attributes.friendly_name || getTranslation(h, "window")}</div>`;
     });
 
-    const visibleCtrls = (c.controls || []).filter(ctrl => ctrl.entity && !ctrl.hide);
+    const visibleCtrls = (c.controls || []).filter(ctrl => !ctrl.hide && (ctrl.entity || ctrl.type === "template"));
 
     if (this._configChanged) {
       this.controls.replaceChildren();
@@ -254,11 +325,43 @@ class OneLineRoomCard extends HTMLElement {
     return btn;
   }
 
+  _evalTemplateString(tpl, h, ctrl) {
+    if (tpl === undefined || tpl === null) return "";
+    const str = String(tpl);
+    if (!str.includes("${")) return str;
+    try {
+      const states = h?.states || {};
+      const entity = (id) => states[id];
+      const attr = (id, name) => states[id]?.attributes?.[name];
+      return replaceTemplateExpressions(str, (expr) => {
+        try {
+          // eslint-disable-next-line no-new-func
+          const fn = new Function("hass", "states", "entity", "attr", "ctrl", `return (${expr});`);
+          const res = fn(h, states, entity, attr, ctrl);
+          return res === undefined || res === null ? "" : String(res);
+        } catch (err) {
+          return "";
+        }
+      });
+    } catch (err) {
+      return "";
+    }
+  }
+
+  _resolveTemplateCtrl(ctrl, h) {
+    const content = this._evalTemplateString(ctrl.content, h, ctrl);
+    const icon = trimStr(this._evalTemplateString(ctrl.icon, h, ctrl));
+    const color = trimStr(this._evalTemplateString(ctrl.color, h, ctrl));
+    const state = this._evalTemplateString(ctrl.state, h, ctrl);
+    return { content, icon, color, state };
+  }
+
   _updateBtnState(btn, ctrl, h) {
-    const st = h.states[ctrl.entity];
-    const s = st ? st.state : "N/A";
-    const domain = ctrl.entity.split(".")[0];
     const unit = h.config.unit_system.temperature || "°C"; // --- NEW: DYNAMIC UNIT ---
+    const st = ctrl.entity ? h.states[ctrl.entity] : null;
+    const s = st ? st.state : "N/A";
+    const domain = ctrl.entity ? ctrl.entity.split(".")[0] : "";
+    const isTemplate = ctrl.type === "template";
 
     let typ = "default";
     if (domain === "cover") typ = "shutter";
@@ -269,7 +372,15 @@ class OneLineRoomCard extends HTMLElement {
     let col = "grey", bg = "rgba(128,128,128,0.1)";
     const isUnavail = s === "unavailable" || s === "unknown";
 
-    if (ctrl.force_color && ctrl.color) {
+    let tpl = null;
+    if (isTemplate) {
+      tpl = this._resolveTemplateCtrl(ctrl, h);
+      if (tpl.color) {
+        col = tpl.color;
+        const isHex = /^#[0-9A-F]{6}$/i.test(tpl.color);
+        bg = isHex ? tpl.color + "33" : `color-mix(in srgb, ${tpl.color} 20%, transparent)`;
+      }
+    } else if (ctrl.force_color && ctrl.color) {
       col = ctrl.color;
       const isHex = /^#[0-9A-F]{6}$/i.test(ctrl.color);
       bg = isHex ? ctrl.color + "33" : `color-mix(in srgb, ${ctrl.color} 20%, transparent)`;
@@ -292,20 +403,24 @@ class OneLineRoomCard extends HTMLElement {
       }
     }
 
-    const nameTxt = ctrl.name !== undefined ? ctrl.name : "Dev";
+    const nameTxt = isTemplate
+      ? (tpl?.content || ctrl.name || "")
+      : (ctrl.name !== undefined ? ctrl.name : "Dev");
     let badge = "";
     if (isUnavail) badge = `<ha-icon class="warn" icon="mdi:alert-circle"></ha-icon>`;
 
     // --- NEW: USE DYNAMIC UNIT IN TEMPLATE ---
-    const stateText = typ === "climate" && st?.attributes?.current_temperature
-      ? st.attributes.current_temperature + unit
-      : s;
-    const showState = ctrl.show_state !== false;
+    const stateText = isTemplate
+      ? (tpl?.state || "")
+      : (typ === "climate" && st?.attributes?.current_temperature
+        ? st.attributes.current_temperature + unit
+        : s);
+    const showState = isTemplate ? ctrl.show_state === true : ctrl.show_state !== false;
     const stateHtml = showState ? `<span class="btn-state">${stateText}</span>` : "";
 
     btn.innerHTML = `
       <div class="icon-box">
-        <ha-icon icon="${ctrl.icon || "mdi:circle"}" style="--mdc-icon-size:20px"></ha-icon>
+        <ha-icon icon="${(isTemplate ? (tpl?.icon || ctrl.icon) : ctrl.icon) || "mdi:circle"}" style="--mdc-icon-size:20px"></ha-icon>
       </div>
       <div class="btn-txt">
         <span class="btn-name">${nameTxt}</span>
@@ -319,6 +434,10 @@ class OneLineRoomCard extends HTMLElement {
   }
 
   _attachActions(node, ctrl) {
+    if (ctrl.type === "template") {
+      node.style.cursor = "default";
+      return;
+    }
     const domain = ctrl.entity ? ctrl.entity.split(".")[0] : "";
     const canToggle = ["light", "switch", "input_boolean", "automation", "fan", "cover", "lock", "media_player", "vacuum", "group", "humidifier", "climate"].includes(domain);
     const config = {
@@ -466,6 +585,37 @@ class OneLineRoomCardEditor extends HTMLElement {
       binary_sensor: "mdi:checkbox-marked-circle-outline"
     };
     return map[domain] || "mdi:help-circle-outline";
+  }
+
+  _evalTemplateString(tpl, h, ctrl) {
+    if (tpl === undefined || tpl === null) return "";
+    const str = String(tpl);
+    if (!str.includes("${")) return str;
+    try {
+      const states = h?.states || {};
+      const entity = (id) => states[id];
+      const attr = (id, name) => states[id]?.attributes?.[name];
+      return replaceTemplateExpressions(str, (expr) => {
+        try {
+          // eslint-disable-next-line no-new-func
+          const fn = new Function("hass", "states", "entity", "attr", "ctrl", `return (${expr});`);
+          const res = fn(h, states, entity, attr, ctrl);
+          return res === undefined || res === null ? "" : String(res);
+        } catch (err) {
+          return "";
+        }
+      });
+    } catch (err) {
+      return "";
+    }
+  }
+
+  _resolveTemplateCtrl(ctrl, h) {
+    const content = this._evalTemplateString(ctrl.content, h, ctrl);
+    const icon = trimStr(this._evalTemplateString(ctrl.icon, h, ctrl));
+    const color = trimStr(this._evalTemplateString(ctrl.color, h, ctrl));
+    const state = this._evalTemplateString(ctrl.state, h, ctrl);
+    return { content, icon, color, state };
   }
 
   _getControlTemplates() {
@@ -701,6 +851,10 @@ class OneLineRoomCardEditor extends HTMLElement {
         .tmpl-row ha-icon-picker { margin-bottom: 0; }
         .add-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
         .add-prefix { font-size: 12px; font-weight: 600; opacity: 0.8; }
+        .tmpl-preview { margin-top: 6px; font-size: 12px; opacity: 0.8; display: flex; align-items: center; gap: 6px; }
+        .tmpl-details { margin-top: 8px; border-top: 1px solid var(--divider-color); padding-top: 8px; }
+        .tmpl-details summary { cursor: pointer; font-weight: 600; font-size: 12px; opacity: 0.8; list-style: none; }
+        .tmpl-details summary::-webkit-details-marker { display: none; }
         .box { border: 1px solid var(--divider-color); padding: 12px; border-radius: 8px; background: var(--secondary-background-color); margin-bottom: 12px; }
         .head { display: flex; justify-content: space-between; margin-bottom: 8px; font-weight: bold; }
         ha-textfield, ha-selector, ha-entity-picker, ha-icon-picker { width: 100%; display: block; margin-bottom: 8px; }
@@ -886,33 +1040,71 @@ class OneLineRoomCardEditor extends HTMLElement {
     ];
     this._config.controls.forEach((ctrl, i) => {
       const box = document.createElement("div"); box.className = "box";
+      const isTemplate = ctrl.type === "template";
+      const hideEntity = isTemplate ? "hidden" : "";
+      const showTemplate = isTemplate ? "" : "hidden";
       const hideColor = !ctrl.force_color ? "hidden" : "";
       const showNav = ctrl.tap_action?.action === "navigate" ? "" : "hidden";
       box.innerHTML = `
         <div class="head">#${i + 1}
           <div><ha-icon class="mv u" icon="mdi:arrow-up"></ha-icon><ha-icon class="mv d" icon="mdi:arrow-down"></ha-icon><ha-icon class="del" icon="mdi:delete" style="color:#d32f2f"></ha-icon></div>
         </div>
-        <div class="dv-wrap"></div>
-        <ha-entity-picker class="ep" label="${getTranslation(h, "entity")}"></ha-entity-picker>
-        <div class="row"><ha-textfield class="nm" label="${getTranslation(h, "name")}"></ha-textfield><ha-icon-picker class="ic" label="${getTranslation(h, "icon")}"></ha-icon-picker></div>
-        <div class="row"><ha-selector class="ht" label="${getTranslation(h, "height")}"></ha-selector><ha-selector class="wd" label="${getTranslation(h, "width")}"></ha-selector></div>
-        <div class="row" style="margin-top:8px; align-items:center"><ha-formfield label="${getTranslation(h, "force_color")}"><ha-switch class="fc"></ha-switch></ha-formfield></div>
-        <div class="cl-row ${hideColor}"><ha-textfield class="cl" label="${getTranslation(h, "color")}"></ha-textfield><input type="color" class="cp cl-p"></div>
+        <div class="row">
+          <ha-selector class="rt" label="${getTranslation(h, "row_type")}"></ha-selector>
+        </div>
+        <div class="entity-only ${hideEntity}">
+          <div class="dv-wrap"></div>
+          <ha-entity-picker class="ep" label="${getTranslation(h, "entity")}"></ha-entity-picker>
+          <div class="row"><ha-textfield class="nm" label="${getTranslation(h, "name")}"></ha-textfield><ha-icon-picker class="ic" label="${getTranslation(h, "icon")}"></ha-icon-picker></div>
+          <div class="row"><ha-selector class="ht" label="${getTranslation(h, "height")}"></ha-selector><ha-selector class="wd" label="${getTranslation(h, "width")}"></ha-selector></div>
+          <div class="row" style="margin-top:8px; align-items:center"><ha-formfield label="${getTranslation(h, "force_color")}"><ha-switch class="fc"></ha-switch></ha-formfield></div>
+          <div class="cl-row ${hideColor}"><ha-textfield class="cl" label="${getTranslation(h, "color")}"></ha-textfield><input type="color" class="cp cl-p"></div>
+        </div>
+        <details class="tmpl-only tmpl-details ${showTemplate}" ${isTemplate ? "open" : ""}>
+          <summary>${getTranslation(h, "type_template")}</summary>
+          <ha-textfield class="tc" label="${getTranslation(h, "tmpl_content")}"></ha-textfield>
+          <div class="row"><ha-textfield class="ti" label="${getTranslation(h, "tmpl_icon")}"></ha-textfield><ha-textfield class="tcl" label="${getTranslation(h, "tmpl_color")}"></ha-textfield></div>
+          <ha-textfield class="ts" label="${getTranslation(h, "tmpl_state")}"></ha-textfield>
+          <div class="tmpl-preview"><span>${getTranslation(h, "tmpl_preview")}:</span> <ha-icon class="tp-ic"></ha-icon> <span class="tp-tx"></span></div>
+        </details>
         <div class="row" style="margin-top:8px; align-items:center"><ha-selector class="al" label="${getTranslation(h, "align")}"></ha-selector><ha-formfield label="${getTranslation(h, "show_state")}"><ha-switch class="ss" checked></ha-switch></ha-formfield><ha-formfield label="${getTranslation(h, "visible")}"><ha-switch class="hd" checked></ha-switch></ha-formfield></div>
-        <div style="margin-top:12px; border-top:1px solid var(--divider-color); padding-top:12px"><ha-selector class="tap" label="${getTranslation(h, "tap_action")}"></ha-selector><ha-textfield class="tap-nav ${showNav}" label="Nav Pfad"></ha-textfield><ha-selector class="hold" label="${getTranslation(h, "hold_action")}"></ha-selector><ha-selector class="dbl" label="${getTranslation(h, "double_tap_action")}"></ha-selector></div>`;
+        <div class="entity-only ${hideEntity}" style="margin-top:12px; border-top:1px solid var(--divider-color); padding-top:12px"><ha-selector class="tap" label="${getTranslation(h, "tap_action")}"></ha-selector><ha-textfield class="tap-nav ${showNav}" label="Nav Pfad"></ha-textfield><ha-selector class="hold" label="${getTranslation(h, "hold_action")}"></ha-selector><ha-selector class="dbl" label="${getTranslation(h, "double_tap_action")}"></ha-selector></div>`;
 
       const upd = (k, v) => { const c = [...this._config.controls]; c[i] = { ...c[i], [k]: v }; this._fire({ ...this._config, controls: c }); };
       const updAct = (type, val) => { const c = [...this._config.controls]; const old = c[i][type] || {}; c[i] = { ...c[i], [type]: { ...old, action: val } }; this._fire({ ...this._config, controls: c }); this.renBtn(); };
       box.querySelector(".u").onclick = () => { if (i > 0) { const c = [...this._config.controls];[c[i], c[i - 1]] = [c[i - 1], c[i]]; this._fire({ ...this._config, controls: c }); this.renBtn(); } };
       box.querySelector(".d").onclick = () => { if (i < this._config.controls.length - 1) { const c = [...this._config.controls];[c[i], c[i + 1]] = [c[i + 1], c[i]]; this._fire({ ...this._config, controls: c }); this.renBtn(); } };
       box.querySelector(".del").onclick = () => { const c = [...this._config.controls]; c.splice(i, 1); this._fire({ ...this._config, controls: c }); this.renBtn(); };
-      const ep = box.querySelector(".ep"); ep.hass = h; ep.value = ctrl.entity;
-      ep.addEventListener("value-changed", e => {
+      const rt = box.querySelector(".rt");
+      if (rt) {
+        rt.hass = h;
+        rt.selector = { select: { mode: "dropdown", options: [
+          { value: "entity", label: getTranslation(h, "type_entity") },
+          { value: "template", label: getTranslation(h, "type_template") }
+        ] } };
+        rt.value = isTemplate ? "template" : "entity";
+        rt.addEventListener("value-changed", e => {
+          e.stopPropagation();
+          const val = e.detail?.value;
+          const c = [...this._config.controls];
+          const next = { ...c[i] };
+          if (val === "template") {
+            next.type = "template";
+            next.tap_action = { action: "none" };
+            next.hold_action = { action: "none" };
+            next.double_tap_action = { action: "none" };
+          } else {
+            delete next.type;
+          }
+          c[i] = next; this._fire({ ...this._config, controls: c }); this.renBtn();
+        });
+      }
+      const ep = box.querySelector(".ep"); if (ep) { ep.hass = h; ep.value = ctrl.entity; ep.addEventListener("value-changed", e => {
         const val = e.detail.value; const st = h.states[val]; const c = [...this._config.controls]; let changes = { entity: val };
-        if (st?.attributes?.icon) changes.icon = st.attributes.icon; else changes.icon = "mdi:help-circle-outline";
+        if (st?.attributes?.icon) changes.icon = st.attributes.icon; else changes.icon = this._iconForEntity(val);
         if (st?.attributes?.friendly_name) changes.name = st.attributes.friendly_name;
         c[i] = { ...c[i], ...changes }; this._fire({ ...this._config, controls: c }); this.renBtn();
-      });
+      }); }
       const dvWrap = box.querySelector(".dv-wrap");
       if (dvWrap) {
         const dv = document.createElement("ha-selector");
@@ -939,11 +1131,15 @@ class OneLineRoomCardEditor extends HTMLElement {
         });
         dvWrap.appendChild(dv);
       }
-      const nm = box.querySelector(".nm"); nm.value = ctrl.name || ""; nm.addEventListener("change", e => upd("name", e.target.value));
-      const fc = box.querySelector(".fc"); fc.checked = ctrl.force_color === true; fc.addEventListener("change", e => { upd("force_color", e.target.checked); this.renBtn(); });
-      const cl = box.querySelector(".cl"); cl.value = ctrl.color || ""; cl.addEventListener("change", e => upd("color", e.target.value));
-      const clp = box.querySelector(".cl-p"); clp.value = ctrl.color || "#000000"; clp.addEventListener("change", e => upd("color", e.target.value));
-      const ic = box.querySelector(".ic"); ic.value = ctrl.icon || ""; ic.addEventListener("value-changed", e => { e.stopPropagation(); upd("icon", e.detail.value); });
+      const nm = box.querySelector(".nm"); if (nm) { nm.value = ctrl.name || ""; nm.addEventListener("change", e => upd("name", e.target.value)); }
+      const fc = box.querySelector(".fc"); if (fc) { fc.checked = ctrl.force_color === true; fc.addEventListener("change", e => { upd("force_color", e.target.checked); this.renBtn(); }); }
+      const cl = box.querySelector(".cl"); if (cl) { cl.value = ctrl.color || ""; cl.addEventListener("change", e => upd("color", e.target.value)); }
+      const clp = box.querySelector(".cl-p"); if (clp) { clp.value = ctrl.color || "#000000"; clp.addEventListener("change", e => upd("color", e.target.value)); }
+      const ic = box.querySelector(".ic"); if (ic) { ic.value = ctrl.icon || ""; ic.addEventListener("value-changed", e => { e.stopPropagation(); upd("icon", e.detail.value); }); }
+      const tc = box.querySelector(".tc"); if (tc) { tc.value = ctrl.content || ""; tc.addEventListener("change", e => { upd("content", e.target.value); this.renBtn(); }); }
+      const ti = box.querySelector(".ti"); if (ti) { ti.value = ctrl.icon || ""; ti.addEventListener("change", e => { upd("icon", e.target.value); this.renBtn(); }); }
+      const tcl = box.querySelector(".tcl"); if (tcl) { tcl.value = ctrl.color || ""; tcl.addEventListener("change", e => { upd("color", e.target.value); this.renBtn(); }); }
+      const ts = box.querySelector(".ts"); if (ts) { ts.value = ctrl.state || ""; ts.addEventListener("change", e => { upd("state", e.target.value); this.renBtn(); }); }
       const ht = box.querySelector(".ht"); ht.hass = h; ht.selector = { number: { min: 40, max: 250, mode: "box", unit_of_measurement: "px" } };
       ht.value = ctrl.height || 60; ht.addEventListener("value-changed", e => { e.stopPropagation(); upd("height", Number(e.detail.value)); });
       const wd = box.querySelector(".wd"); wd.hass = h; wd.selector = { select: { mode: "dropdown", options: [{ value: "60", label: "1/1" }, { value: "40", label: "2/3" }, { value: "30", label: "1/2" }, { value: "20", label: "1/3" }, { value: "15", label: "1/4" }, { value: "12", label: "1/5" }, { value: "10", label: "1/6" }] } };
@@ -952,8 +1148,8 @@ class OneLineRoomCardEditor extends HTMLElement {
       al.value = ctrl.align || "center"; al.addEventListener("value-changed", e => { e.stopPropagation(); upd("align", e.detail.value); });
       const ss = box.querySelector(".ss"); ss.checked = ctrl.show_state !== false; ss.addEventListener("change", e => { e.stopPropagation(); upd("show_state", e.target.checked); });
       const hd = box.querySelector(".hd"); hd.checked = !ctrl.hide; hd.addEventListener("change", e => { e.stopPropagation(); upd("hide", !e.target.checked); });
-      const tap = box.querySelector(".tap"); tap.hass = h; tap.selector = { select: { mode: "dropdown", options: actOpts } };
-      tap.value = ctrl.tap_action?.action || "more-info"; tap.addEventListener("value-changed", e => { e.stopPropagation(); updAct("tap_action", e.detail.value); });
+      const tap = box.querySelector(".tap"); if (tap) { tap.hass = h; tap.selector = { select: { mode: "dropdown", options: actOpts } };
+      tap.value = ctrl.tap_action?.action || "more-info"; tap.addEventListener("value-changed", e => { e.stopPropagation(); updAct("tap_action", e.detail.value); }); }
       const tapNav = box.querySelector(".tap-nav"); if (tapNav) {
         tapNav.value = ctrl.tap_action?.navigation_path || ""; tapNav.addEventListener("change", e => {
           const c = [...this._config.controls];
@@ -962,10 +1158,19 @@ class OneLineRoomCardEditor extends HTMLElement {
           this._fire({ ...this._config, controls: c });
         });
       }
-      const hold = box.querySelector(".hold"); hold.hass = h; hold.selector = { select: { mode: "dropdown", options: actOpts } };
-      hold.value = ctrl.hold_action?.action || "toggle"; hold.addEventListener("value-changed", e => { e.stopPropagation(); updAct("hold_action", e.detail.value); });
-      const dbl = box.querySelector(".dbl"); dbl.hass = h; dbl.selector = { select: { mode: "dropdown", options: actOpts } };
-      dbl.value = ctrl.double_tap_action?.action || "none"; dbl.addEventListener("value-changed", e => { e.stopPropagation(); updAct("double_tap_action", e.detail.value); });
+      const hold = box.querySelector(".hold"); if (hold) { hold.hass = h; hold.selector = { select: { mode: "dropdown", options: actOpts } };
+      hold.value = ctrl.hold_action?.action || "toggle"; hold.addEventListener("value-changed", e => { e.stopPropagation(); updAct("hold_action", e.detail.value); }); }
+      const dbl = box.querySelector(".dbl"); if (dbl) { dbl.hass = h; dbl.selector = { select: { mode: "dropdown", options: actOpts } };
+      dbl.value = ctrl.double_tap_action?.action || "none"; dbl.addEventListener("value-changed", e => { e.stopPropagation(); updAct("double_tap_action", e.detail.value); }); }
+      const tpIcon = box.querySelector(".tp-ic");
+      const tpText = box.querySelector(".tp-tx");
+      if (tpIcon && tpText && isTemplate) {
+        const prev = this._resolveTemplateCtrl(ctrl, h);
+        tpIcon.icon = prev.icon || "mdi:circle";
+        if (prev.color) tpIcon.style.setProperty("--icon-color", prev.color);
+        const previewText = [prev.content || "—", prev.state || ""].filter(Boolean).join(" | ");
+        tpText.textContent = previewText || "—";
+      }
       div.appendChild(box);
     });
   }
