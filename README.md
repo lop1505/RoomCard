@@ -60,6 +60,7 @@ The visual editor guides you through all settings:
 * **General:** Name, Icon, Colors. **New:** Use the "Upload Image" button to set your background instantly.
 * **Sensors:** Select your temperature (current & target), humidity, window, and battery sensors.
 * **Buttons:** Add devices and configure their dimensions. You can now assign specific actions (Tap/Hold/Double Tap) to each button.
+* **Optional State Text:** Toggle **Show State** per button if you want a cleaner layout without the on/off line.
 
 ---
 
