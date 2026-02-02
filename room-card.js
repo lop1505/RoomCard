@@ -1,6 +1,6 @@
 // SAFE VERSION 1.0.7 - Resolved Naming Conflict and added dynamic unit support (Fahrenheit/Celsius)
 
-const VERSION = "1.0.9";
+const VERSION = "1.0.8";
 const LOG_FLAG = `customCards_RoomCard_Logged_${VERSION}`;
 
 if (!window[LOG_FLAG]) {
