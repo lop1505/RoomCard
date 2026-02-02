@@ -865,7 +865,13 @@ class OneLineRoomCardEditor extends HTMLElement {
         .tmpl-details summary { cursor: pointer; font-weight: 600; font-size: 12px; opacity: 0.8; list-style: none; }
         .tmpl-details summary::-webkit-details-marker { display: none; }
         .box { border: 1px solid var(--divider-color); padding: 12px; border-radius: 8px; background: var(--secondary-background-color); margin-bottom: 12px; }
-        .head { display: flex; justify-content: space-between; margin-bottom: 8px; font-weight: bold; }
+        .head { display: flex; justify-content: space-between; align-items: center; font-weight: bold; cursor: pointer; }
+        .head::-webkit-details-marker { display: none; }
+        .head-left { display: flex; align-items: center; gap: 6px; min-width: 0; }
+        .chev { transition: transform 0.15s ease; --mdc-icon-size: 18px; opacity: 0.8; }
+        details[open] .chev { transform: rotate(90deg); }
+        .summary-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .body { margin-top: 8px; }
         ha-textfield, ha-selector, ha-entity-picker, ha-icon-picker { width: 100%; display: block; margin-bottom: 8px; }
         .preview { width: 100%; height: 120px; object-fit: cover; border-radius: 8px; margin-bottom: 8px; background: #444; display: none; }
         .preview.show { display: block; }
@@ -1048,16 +1054,23 @@ class OneLineRoomCardEditor extends HTMLElement {
       { value: "none", label: getTranslation(h, "act_none") }
     ];
     this._config.controls.forEach((ctrl, i) => {
-      const box = document.createElement("div"); box.className = "box";
+      const box = document.createElement("details"); box.className = "box";
       const isTemplate = ctrl.type === "template";
       const hideEntity = isTemplate ? "hidden" : "";
       const showTemplate = isTemplate ? "" : "hidden";
       const hideColor = !ctrl.force_color ? "hidden" : "";
       const showNav = ctrl.tap_action?.action === "navigate" ? "" : "hidden";
+      const key = ctrl.entity || ctrl.name || ctrl.content || ctrl.device || String(i);
+      this._collapsedState = this._collapsedState || {};
+      box.open = this._collapsedState[key] !== true;
+      box.addEventListener("toggle", () => { this._collapsedState[key] = !box.open; });
+      const summaryText = ctrl.name || ctrl.entity || (isTemplate ? (ctrl.content || "Template") : "Button");
       box.innerHTML = `
-        <div class="head">#${i + 1}
+        <summary class="head">
+          <span class="head-left"><ha-icon class="chev" icon="mdi:chevron-right"></ha-icon><span class="summary-text">#${i + 1} — ${summaryText}</span></span>
           <div><ha-icon class="mv u" icon="mdi:arrow-up"></ha-icon><ha-icon class="mv d" icon="mdi:arrow-down"></ha-icon><ha-icon class="del" icon="mdi:delete" style="color:#d32f2f"></ha-icon></div>
-        </div>
+        </summary>
+        <div class="body">
         <div class="row">
           <ha-selector class="rt" label="${getTranslation(h, "row_type")}"></ha-selector>
         </div>
@@ -1077,13 +1090,14 @@ class OneLineRoomCardEditor extends HTMLElement {
           <div class="tmpl-preview"><span>${getTranslation(h, "tmpl_preview")}:</span> <ha-icon class="tp-ic"></ha-icon> <span class="tp-tx"></span></div>
         </details>
         <div class="row" style="margin-top:8px; align-items:center"><ha-selector class="al" label="${getTranslation(h, "align")}"></ha-selector><ha-formfield label="${getTranslation(h, "show_state")}"><ha-switch class="ss" checked></ha-switch></ha-formfield><ha-formfield label="${getTranslation(h, "show_label")}"><ha-switch class="sl" checked></ha-switch></ha-formfield><ha-formfield label="${getTranslation(h, "state_first")}"><ha-switch class="sf"></ha-switch></ha-formfield><ha-formfield label="${getTranslation(h, "visible")}"><ha-switch class="hd" checked></ha-switch></ha-formfield></div>
-        <div class="entity-only ${hideEntity}" style="margin-top:12px; border-top:1px solid var(--divider-color); padding-top:12px"><ha-selector class="tap" label="${getTranslation(h, "tap_action")}"></ha-selector><ha-textfield class="tap-nav ${showNav}" label="Nav Pfad"></ha-textfield><ha-selector class="hold" label="${getTranslation(h, "hold_action")}"></ha-selector><ha-selector class="dbl" label="${getTranslation(h, "double_tap_action")}"></ha-selector></div>`;
+        <div class="entity-only ${hideEntity}" style="margin-top:12px; border-top:1px solid var(--divider-color); padding-top:12px"><ha-selector class="tap" label="${getTranslation(h, "tap_action")}"></ha-selector><ha-textfield class="tap-nav ${showNav}" label="Nav Pfad"></ha-textfield><ha-selector class="hold" label="${getTranslation(h, "hold_action")}"></ha-selector><ha-selector class="dbl" label="${getTranslation(h, "double_tap_action")}"></ha-selector></div>
+        </div>`;
 
       const upd = (k, v) => { const c = [...this._config.controls]; c[i] = { ...c[i], [k]: v }; this._fire({ ...this._config, controls: c }); };
       const updAct = (type, val) => { const c = [...this._config.controls]; const old = c[i][type] || {}; c[i] = { ...c[i], [type]: { ...old, action: val } }; this._fire({ ...this._config, controls: c }); this.renBtn(); };
-      box.querySelector(".u").onclick = () => { if (i > 0) { const c = [...this._config.controls];[c[i], c[i - 1]] = [c[i - 1], c[i]]; this._fire({ ...this._config, controls: c }); this.renBtn(); } };
-      box.querySelector(".d").onclick = () => { if (i < this._config.controls.length - 1) { const c = [...this._config.controls];[c[i], c[i + 1]] = [c[i + 1], c[i]]; this._fire({ ...this._config, controls: c }); this.renBtn(); } };
-      box.querySelector(".del").onclick = () => { const c = [...this._config.controls]; c.splice(i, 1); this._fire({ ...this._config, controls: c }); this.renBtn(); };
+      box.querySelector(".u").onclick = (e) => { e.preventDefault(); e.stopPropagation(); if (i > 0) { const c = [...this._config.controls];[c[i], c[i - 1]] = [c[i - 1], c[i]]; this._fire({ ...this._config, controls: c }); this.renBtn(); } };
+      box.querySelector(".d").onclick = (e) => { e.preventDefault(); e.stopPropagation(); if (i < this._config.controls.length - 1) { const c = [...this._config.controls];[c[i], c[i + 1]] = [c[i + 1], c[i]]; this._fire({ ...this._config, controls: c }); this.renBtn(); } };
+      box.querySelector(".del").onclick = (e) => { e.preventDefault(); e.stopPropagation(); const c = [...this._config.controls]; c.splice(i, 1); this._fire({ ...this._config, controls: c }); this.renBtn(); };
       const rt = box.querySelector(".rt");
       if (rt) {
         rt.hass = h;
