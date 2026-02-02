@@ -25,7 +25,7 @@ const TRANSLATIONS = {
     row_type: "Row Type", type_entity: "Entity", type_template: "Template",
     tmpl_content: "Content (Template)", tmpl_icon: "Icon (Template)", tmpl_color: "Color (Template)", tmpl_state: "State (Template)", tmpl_preview: "Preview",
     tmpl_light: "Light", tmpl_switch: "Switch / Socket", tmpl_climate: "Climate", tmpl_cover: "Cover / Shutter", tmpl_media: "Media Player",
-    show_state: "Show State", show_label: "Show Label", state_first: "State First",
+    show_state: "Show State", show_label: "Show Label", show_icon: "Show Icon", state_first: "State First", text_layout: "Text Order", primary_text: "First line", primary_state: "State / value first", primary_name: "Name first",
     height: "Height", width: "Width", align: "Align", visible: "Visible", left: "Left", center: "Center", right: "Right",
     tap_action: "Tap Action", hold_action: "Hold Action", double_tap_action: "Double Tap Action",
     act_more: "Details (Default)", act_toggle: "Toggle", act_none: "None",
@@ -44,7 +44,7 @@ const TRANSLATIONS = {
     row_type: "Zeilentyp", type_entity: "Entität", type_template: "Template",
     tmpl_content: "Text (Template)", tmpl_icon: "Icon (Template)", tmpl_color: "Farbe (Template)", tmpl_state: "Status (Template)", tmpl_preview: "Vorschau",
     tmpl_light: "Licht", tmpl_switch: "Schalter / Steckdose", tmpl_climate: "Klima", tmpl_cover: "Rollladen / Abdeckung", tmpl_media: "Media Player",
-    show_state: "Status anzeigen", show_label: "Bezeichnung anzeigen", state_first: "Wert zuerst",
+    show_state: "Status anzeigen", show_label: "Bezeichnung anzeigen", show_icon: "Icon anzeigen", state_first: "Wert zuerst", text_layout: "Text-Reihenfolge", primary_text: "Erste Zeile", primary_state: "Wert zuerst", primary_name: "Name zuerst",
     height: "Höhe", width: "Breite", align: "Ausrichtung", visible: "Sichtbar", left: "Links", center: "Mitte", right: "Rechts",
     tap_action: "Antippen", hold_action: "Gedrückt halten", double_tap_action: "Doppelklick",
     act_more: "Details (Standard)", act_toggle: "Umschalten", act_none: "Nichts",
@@ -63,7 +63,7 @@ const TRANSLATIONS = {
     row_type: "Type de ligne", type_entity: "Entité", type_template: "Template",
     tmpl_content: "Contenu (Template)", tmpl_icon: "Icône (Template)", tmpl_color: "Couleur (Template)", tmpl_state: "État (Template)", tmpl_preview: "Aperçu",
     tmpl_light: "Lumière", tmpl_switch: "Interrupteur / Prise", tmpl_climate: "Climatisation", tmpl_cover: "Volet / Store", tmpl_media: "Lecteur multimédia",
-    show_state: "Afficher l'état", show_label: "Afficher le libellé", state_first: "Valeur d'abord",
+    show_state: "Afficher l'état", show_label: "Afficher le libellé", show_icon: "Afficher l’icône", state_first: "Valeur d'abord", text_layout: "Ordre du texte", primary_text: "Première ligne", primary_state: "Valeur d’abord", primary_name: "Nom d’abord",
     height: "Hauteur", width: "Largeur", align: "Alignement", visible: "Visible", left: "Gauche", center: "Centre", right: "Droite",
     tap_action: "Appui court", hold_action: "Appui long", double_tap_action: "Double appui",
     act_more: "Détails (Défaut)", act_toggle: "Basculer", act_none: "Rien",
@@ -419,13 +419,17 @@ class OneLineRoomCard extends HTMLElement {
     const showLabel = ctrl.show_label !== false;
     const stateHtml = showState ? `<span class="btn-state">${stateText}</span>` : "";
     const labelHtml = showLabel ? `<span class="btn-name">${nameTxt}</span>` : "";
+    const showIcon = ctrl.show_icon !== false;
     const stateFirst = ctrl.state_first === true;
     const textHtml = stateFirst ? `${stateHtml}${labelHtml}` : `${labelHtml}${stateHtml}`;
 
-    btn.innerHTML = `
-      <div class="icon-box">
+    const iconHtml = showIcon
+      ? `<div class="icon-box">
         <ha-icon icon="${(isTemplate ? (tpl?.icon || ctrl.icon) : ctrl.icon) || "mdi:circle"}" style="--mdc-icon-size:20px"></ha-icon>
-      </div>
+      </div>`
+      : "";
+    btn.innerHTML = `
+      ${iconHtml}
       <div class="btn-txt">
         ${textHtml}
       </div>
@@ -637,7 +641,8 @@ class OneLineRoomCardEditor extends HTMLElement {
           hold_action: { action: "more-info" },
           double_tap_action: { action: "none" },
           show_state: true,
-          show_label: true
+          show_label: true,
+          show_icon: true
         }
       },
       {
@@ -653,7 +658,8 @@ class OneLineRoomCardEditor extends HTMLElement {
           hold_action: { action: "more-info" },
           double_tap_action: { action: "none" },
           show_state: true,
-          show_label: true
+          show_label: true,
+          show_icon: true
         }
       },
       {
@@ -669,7 +675,8 @@ class OneLineRoomCardEditor extends HTMLElement {
           hold_action: { action: "toggle" },
           double_tap_action: { action: "none" },
           show_state: true,
-          show_label: true
+          show_label: true,
+          show_icon: true
         }
       },
       {
@@ -685,7 +692,8 @@ class OneLineRoomCardEditor extends HTMLElement {
           hold_action: { action: "more-info" },
           double_tap_action: { action: "none" },
           show_state: true,
-          show_label: true
+          show_label: true,
+          show_icon: true
         }
       },
       {
@@ -701,7 +709,8 @@ class OneLineRoomCardEditor extends HTMLElement {
           hold_action: { action: "more-info" },
           double_tap_action: { action: "none" },
           show_state: true,
-          show_label: true
+          show_label: true,
+          show_icon: true
         }
       }
     ];
@@ -726,6 +735,7 @@ class OneLineRoomCardEditor extends HTMLElement {
       align: defaults.align || "center",
       show_state: defaults.show_state !== false,
       show_label: defaults.show_label !== false,
+      show_icon: defaults.show_icon !== false,
       tap_action: defaults.tap_action || { action: "more-info" },
       hold_action: defaults.hold_action || { action: "toggle" },
       double_tap_action: defaults.double_tap_action || { action: "none" }
@@ -1089,7 +1099,7 @@ class OneLineRoomCardEditor extends HTMLElement {
           <ha-textfield class="ts" label="${getTranslation(h, "tmpl_state")}"></ha-textfield>
           <div class="tmpl-preview"><span>${getTranslation(h, "tmpl_preview")}:</span> <ha-icon class="tp-ic"></ha-icon> <span class="tp-tx"></span></div>
         </details>
-        <div class="row" style="margin-top:8px; align-items:center"><ha-selector class="al" label="${getTranslation(h, "align")}"></ha-selector><ha-formfield label="${getTranslation(h, "show_state")}"><ha-switch class="ss" checked></ha-switch></ha-formfield><ha-formfield label="${getTranslation(h, "show_label")}"><ha-switch class="sl" checked></ha-switch></ha-formfield><ha-formfield label="${getTranslation(h, "state_first")}"><ha-switch class="sf"></ha-switch></ha-formfield><ha-formfield label="${getTranslation(h, "visible")}"><ha-switch class="hd" checked></ha-switch></ha-formfield></div>
+        <div class="row" style="margin-top:8px; align-items:center"><ha-selector class="al" label="${getTranslation(h, "align")}"></ha-selector><ha-selector class="tl" label="${getTranslation(h, "text_layout")}"></ha-selector><ha-formfield label="${getTranslation(h, "show_state")}"><ha-switch class="ss" checked></ha-switch></ha-formfield><ha-formfield label="${getTranslation(h, "show_label")}"><ha-switch class="sl" checked></ha-switch></ha-formfield><ha-formfield label="${getTranslation(h, "show_icon")}"><ha-switch class="si" checked></ha-switch></ha-formfield><ha-formfield label="${getTranslation(h, "visible")}"><ha-switch class="hd" checked></ha-switch></ha-formfield></div>
         <div class="entity-only ${hideEntity}" style="margin-top:12px; border-top:1px solid var(--divider-color); padding-top:12px"><ha-selector class="tap" label="${getTranslation(h, "tap_action")}"></ha-selector><ha-textfield class="tap-nav ${showNav}" label="Nav Pfad"></ha-textfield><ha-selector class="hold" label="${getTranslation(h, "hold_action")}"></ha-selector><ha-selector class="dbl" label="${getTranslation(h, "double_tap_action")}"></ha-selector></div>
         </div>`;
 
@@ -1169,9 +1179,18 @@ class OneLineRoomCardEditor extends HTMLElement {
       wd.value = String(ctrl.width || 15); wd.addEventListener("value-changed", e => { e.stopPropagation(); upd("width", parseInt(e.detail.value)); });
       const al = box.querySelector(".al"); al.hass = h; al.selector = { select: { mode: "dropdown", options: [{ value: "left", label: getTranslation(h, "left") }, { value: "center", label: getTranslation(h, "center") }, { value: "right", label: getTranslation(h, "right") }] } };
       al.value = ctrl.align || "center"; al.addEventListener("value-changed", e => { e.stopPropagation(); upd("align", e.detail.value); });
+      const tl = box.querySelector(".tl"); if (tl) {
+        tl.hass = h;
+        tl.selector = { select: { mode: "dropdown", options: [
+          { value: "state", label: getTranslation(h, "primary_state") },
+          { value: "name", label: getTranslation(h, "primary_name") }
+        ] } };
+        tl.value = ctrl.state_first === true ? "state" : "name";
+        tl.addEventListener("value-changed", e => { e.stopPropagation(); upd("state_first", e.detail.value === "state"); });
+      }
       const ss = box.querySelector(".ss"); ss.checked = ctrl.show_state !== false; ss.addEventListener("change", e => { e.stopPropagation(); upd("show_state", e.target.checked); });
       const sl = box.querySelector(".sl"); sl.checked = ctrl.show_label !== false; sl.addEventListener("change", e => { e.stopPropagation(); upd("show_label", e.target.checked); });
-      const sf = box.querySelector(".sf"); sf.checked = ctrl.state_first === true; sf.addEventListener("change", e => { e.stopPropagation(); upd("state_first", e.target.checked); });
+      const si = box.querySelector(".si"); si.checked = ctrl.show_icon !== false; si.addEventListener("change", e => { e.stopPropagation(); upd("show_icon", e.target.checked); });
       const hd = box.querySelector(".hd"); hd.checked = !ctrl.hide; hd.addEventListener("change", e => { e.stopPropagation(); upd("hide", !e.target.checked); });
       const tap = box.querySelector(".tap"); if (tap) { tap.hass = h; tap.selector = { select: { mode: "dropdown", options: actOpts } };
       tap.value = ctrl.tap_action?.action || "more-info"; tap.addEventListener("value-changed", e => { e.stopPropagation(); updAct("tap_action", e.detail.value); }); }
