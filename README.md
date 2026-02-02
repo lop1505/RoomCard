@@ -31,6 +31,13 @@ If you are updating from an older version, please update your YAML configuration
 * 🖼️ **Built-in Image Uploader:** Upload your room background images directly in the card editor. No file manager needed!
 * 👆 **Configurable Actions:** Define what happens on **Tap**, **Hold**, and **Double Tap** for every single button (Toggle, More Info, Navigate, etc.).
 * 🌡️ **Target Temperature:** Optionally display the setpoint/target temperature next to the current room temperature.
+* 🧩 **Collapsible Button Editor:** Each button configuration can be expanded/collapsed for faster navigation in large cards.
+* 🧼 **Cleaner Buttons:** Toggle **Show State**, **Show Label**, and **Show Icon** per button to reduce visual noise.
+* ↕️ **Text Order:** Choose which text comes first (State/Value or Name) per button.
+* 🎯 **Button Visibility:** Hide/show individual buttons without deleting them.
+* 🎛️ **Manual Color Override:** Force a custom color for a button icon even when the entity is inactive.
+* 🧭 **Device Picker:** Select a device and let the editor auto-pick a suitable entity.
+* 🧩 **Template Presets:** Add buttons using type presets (Light/Switch/Climate/Cover/Media).
 
 ## 📥 Installation
 
@@ -57,9 +64,28 @@ or
 Simply add the card via "Add Card" in your dashboard and select **"OneLine Room Card"**.
 The visual editor guides you through all settings:
 
-* **General:** Name, Icon, Colors. **New:** Use the "Upload Image" button to set your background instantly.
+* **General:** Name, Icon, Colors, Background Image, and optional **Tap → Navigate** path.
 * **Sensors:** Select your temperature (current & target), humidity, window, and battery sensors.
-* **Buttons:** Add devices and configure their dimensions. You can now assign specific actions (Tap/Hold/Double Tap) to each button.
+* **Buttons:** Add devices/entities, set width/height, alignment, and actions (Tap/Hold/Double Tap).
+* **Cleaner Buttons:** Toggle **Show State**, **Show Label**, **Show Icon**, and **Visible** per button.
+* **Text Order:** Choose whether **State/Value** or **Name** appears first.
+* **Manual Color:** Force a custom icon color (always visible).
+* **Template Presets:** Add buttons from type presets, or switch a row to **Template**.
+* **Editor UX:** Button entries are collapsible for better overview.
+
+### Template Buttons (Optional)
+You can switch a button row to **Template** to render dynamic text/icon/color/state.
+
+* Use **JavaScript** inside `${ ... }`.
+* Helpers available: `hass`, `states`, `entity(id)`, `attr(id, name)`, `ctrl`.
+
+Example:
+```
+content: ${entity("climate.living_room")?.state?.toUpperCase() ?? "—"}
+icon: ${(({heat:"mdi:fire",cool:"mdi:snowflake"}[(entity("climate.living_room")?.state||"").toLowerCase()]) ?? "mdi:help-circle")}
+color: ${(({heat:"#FF5722",cool:"#2196F3"}[(entity("climate.living_room")?.state||"").toLowerCase()]) ?? "#9E9E9E")}
+state: ${attr("climate.living_room","hvac_action") ?? ""}
+```
 
 ---
 

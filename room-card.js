@@ -1,6 +1,6 @@
 // SAFE VERSION 1.0.7 - Resolved Naming Conflict and added dynamic unit support (Fahrenheit/Celsius)
 
-const VERSION = "1.0.7";
+const VERSION = "1.0.8";
 const LOG_FLAG = `customCards_RoomCard_Logged_${VERSION}`;
 
 if (!window[LOG_FLAG]) {
@@ -20,7 +20,12 @@ const TRANSLATIONS = {
     main_climate: "Main Climate Device (Optional)", climate_info: "Fills Temp/Humidity automatically if empty below.",
     temp_label: "Temperature (overrides climate)", target_temp_label: "Target Temperature", humid_label: "Humidity (overrides climate)",
     window_label: "Windows (List)", battery_label: "Batteries (List)", name: "Name", icon: "Icon", color: "Icon Color",
-    force_color: "Force Manual Color (Always visible)", img_url: "Image URL", path: "Path (Tap Action)", entity: "Entity",
+    force_color: "Force Manual Color (Always visible)", img_url: "Image URL", path: "Path (Tap Action)", entity: "Entity", device: "Device (Optional)",
+    template: "Type Filter", add_template: "with Filter", add_prefix: "Add",
+    row_type: "Row Type", type_entity: "Entity", type_template: "Template",
+    tmpl_content: "Content (Template)", tmpl_icon: "Icon (Template)", tmpl_color: "Color (Template)", tmpl_state: "State (Template)", tmpl_preview: "Preview",
+    tmpl_light: "Light", tmpl_switch: "Switch / Socket", tmpl_climate: "Climate", tmpl_cover: "Cover / Shutter", tmpl_media: "Media Player",
+    show_state: "Show State", show_label: "Show Label", show_icon: "Show Icon", state_first: "State First", text_layout: "Text Order", primary_text: "First line", primary_state: "State / value first", primary_name: "Name first",
     height: "Height", width: "Width", align: "Align", visible: "Visible", left: "Left", center: "Center", right: "Right",
     tap_action: "Tap Action", hold_action: "Hold Action", double_tap_action: "Double Tap Action",
     act_more: "Details (Default)", act_toggle: "Toggle", act_none: "None",
@@ -34,7 +39,12 @@ const TRANSLATIONS = {
     main_climate: "Haupt-Klima-Gerät (Optional)", climate_info: "Füllt Temp/Feuchtigkeit automatisch, wenn unten leer.",
     temp_label: "Temperatur (überschreibt Klima)", target_temp_label: "Soll-Temperatur", humid_label: "Luftfeuchtigkeit (überschreibt Klima)",
     window_label: "Fenster (Liste)", battery_label: "Batterien (Liste)", name: "Name", icon: "Icon", color: "Iconfarbe",
-    force_color: "Manuelle Farbe erzwingen (Immer sichtbar)", img_url: "Bild URL", path: "Pfad (Tap Action)", entity: "Entität",
+    force_color: "Manuelle Farbe erzwingen (Immer sichtbar)", img_url: "Bild URL", path: "Pfad (Tap Action)", entity: "Entität", device: "Gerät (Optional)",
+    template: "Typ-Filter", add_template: "mit Filter", add_prefix: "Add",
+    row_type: "Zeilentyp", type_entity: "Entität", type_template: "Template",
+    tmpl_content: "Text (Template)", tmpl_icon: "Icon (Template)", tmpl_color: "Farbe (Template)", tmpl_state: "Status (Template)", tmpl_preview: "Vorschau",
+    tmpl_light: "Licht", tmpl_switch: "Schalter / Steckdose", tmpl_climate: "Klima", tmpl_cover: "Rollladen / Abdeckung", tmpl_media: "Media Player",
+    show_state: "Status anzeigen", show_label: "Bezeichnung anzeigen", show_icon: "Icon anzeigen", state_first: "Wert zuerst", text_layout: "Text-Reihenfolge", primary_text: "Erste Zeile", primary_state: "Wert zuerst", primary_name: "Name zuerst",
     height: "Höhe", width: "Breite", align: "Ausrichtung", visible: "Sichtbar", left: "Links", center: "Mitte", right: "Rechts",
     tap_action: "Antippen", hold_action: "Gedrückt halten", double_tap_action: "Doppelklick",
     act_more: "Details (Standard)", act_toggle: "Umschalten", act_none: "Nichts",
@@ -48,7 +58,12 @@ const TRANSLATIONS = {
     main_climate: "Appareil climatique principal (Optionnel)", climate_info: "Remplit automatiquement Temp/Humidité si vide ci-dessous.",
     temp_label: "Température (remplace climat)", target_temp_label: "Température cible", humid_label: "Humidité (remplace climat)",
     window_label: "Fenêtres (Liste)", battery_label: "Batteries (Liste)", name: "Nom", icon: "Icône", color: "Couleur",
-    force_color: "Forcer la couleur", img_url: "URL de l'image", path: "Chemin (Tap Action)", entity: "Entité",
+    force_color: "Forcer la couleur", img_url: "URL de l'image", path: "Chemin (Tap Action)", entity: "Entité", device: "Appareil (Optionnel)",
+    template: "Filtre de type", add_template: "avec filtre", add_prefix: "Ajouter",
+    row_type: "Type de ligne", type_entity: "Entité", type_template: "Template",
+    tmpl_content: "Contenu (Template)", tmpl_icon: "Icône (Template)", tmpl_color: "Couleur (Template)", tmpl_state: "État (Template)", tmpl_preview: "Aperçu",
+    tmpl_light: "Lumière", tmpl_switch: "Interrupteur / Prise", tmpl_climate: "Climatisation", tmpl_cover: "Volet / Store", tmpl_media: "Lecteur multimédia",
+    show_state: "Afficher l'état", show_label: "Afficher le libellé", show_icon: "Afficher l’icône", state_first: "Valeur d'abord", text_layout: "Ordre du texte", primary_text: "Première ligne", primary_state: "Valeur d’abord", primary_name: "Nom d’abord",
     height: "Hauteur", width: "Largeur", align: "Alignement", visible: "Visible", left: "Gauche", center: "Centre", right: "Droite",
     tap_action: "Appui court", hold_action: "Appui long", double_tap_action: "Double appui",
     act_more: "Détails (Défaut)", act_toggle: "Basculer", act_none: "Rien",
@@ -67,6 +82,71 @@ const clampNum = (v, min, max, fallback) => {
   const n = Number(v);
   return Number.isFinite(n) ? Math.max(min, Math.min(n, max)) : fallback;
 };
+
+const replaceTemplateExpressions = (str, evalExpr) => {
+  let out = "";
+  let i = 0;
+  while (i < str.length) {
+    if (str[i] === "$" && str[i + 1] === "{") {
+      i += 2;
+      let expr = "";
+      let depth = 0;
+      let inSingle = false;
+      let inDouble = false;
+      let inBacktick = false;
+      let esc = false;
+      let closed = false;
+      for (; i < str.length; i++) {
+        const ch = str[i];
+        if (esc) {
+          expr += ch;
+          esc = false;
+          continue;
+        }
+        if (ch === "\\") {
+          expr += ch;
+          esc = true;
+          continue;
+        }
+        if (inSingle) {
+          if (ch === "'") inSingle = false;
+          expr += ch;
+          continue;
+        }
+        if (inDouble) {
+          if (ch === '"') inDouble = false;
+          expr += ch;
+          continue;
+        }
+        if (inBacktick) {
+          if (ch === "`") inBacktick = false;
+          expr += ch;
+          continue;
+        }
+        if (ch === "'") { inSingle = true; expr += ch; continue; }
+        if (ch === '"') { inDouble = true; expr += ch; continue; }
+        if (ch === "`") { inBacktick = true; expr += ch; continue; }
+        if (ch === "{") { depth++; expr += ch; continue; }
+        if (ch === "}") {
+          if (depth === 0) { closed = true; i++; break; }
+          depth--; expr += ch; continue;
+        }
+        expr += ch;
+      }
+      if (!closed) {
+        out += "${" + expr;
+        break;
+      }
+      out += evalExpr(expr.trim());
+      continue;
+    }
+    out += str[i];
+    i++;
+  }
+  return out;
+};
+
+const trimStr = (v) => (typeof v === "string" ? v.trim() : v);
 
 // =============================================================================
 // MAIN CARD CLASS
@@ -109,17 +189,19 @@ class OneLineRoomCard extends HTMLElement {
         .img { width: 100%; height: 100%; object-fit: cover; display: block; }
         .overlay { position: absolute; top: 0; left: 0; width: 100%; padding: 12px; background: linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%); display: flex; align-items: center; gap: 12px; }
         .text { display: flex; flex-direction: column; color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
+        ha-icon { color: var(--icon-color, white); }
         .primary { font-weight: bold; font-size: 14px; }
         .secondary { font-size: 12px; opacity: 0.9; }
         .chips { position: absolute; bottom: 8px; left: 8px; display: flex; gap: 6px; flex-wrap: wrap; z-index: 2; }
         .chip { display: flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 8px; font-size: 11px; font-weight: bold; background: #FFF8E1; color: #FFA000; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
         .chip.alert { background: #FFEBEE; color: #D32F2F; }
         .controls { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px; }
-        .btn { position: relative; display: flex; align-items: center; gap: 10px; padding: 0 10px; border-radius: 12px; cursor: pointer; background: var(--card-background-color, rgba(128,128,128,0.05)); border: 1px solid transparent; flex-grow: 1; flex-shrink: 1; min-width: 0; overflow: hidden; box-sizing: border-box; transition: background 0.2s; user-select: none; -webkit-user-select: none; }
+        .btn { position: relative; display: flex; align-items: center; gap: 10px; padding: 0 10px; border-radius: 12px; cursor: pointer; background: var(--btn-bg, var(--card-background-color, rgba(128,128,128,0.05))); border: 1px solid transparent; flex-grow: 1; flex-shrink: 1; min-width: 0; overflow: hidden; box-sizing: border-box; transition: background 0.2s; user-select: none; -webkit-user-select: none; flex-basis: var(--btn-flex-basis, auto); height: var(--btn-height, 60px); justify-content: var(--btn-justify, center); }
         .btn:hover { background: rgba(128,128,128,0.1); border-color: rgba(128,128,128,0.2); }
         .btn:active { background: rgba(128,128,128,0.15); }
-        .icon-box { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0; }
-        .btn-txt { display: flex; flex-direction: column; text-align: left; overflow: hidden; min-width: 0; flex: initial; max-width: 100%; } 
+        .icon-box { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0; background: var(--icon-bg, transparent); }
+        .btn-txt { display: flex; flex-direction: column; text-align: left; overflow: hidden; min-width: 0; flex: initial; max-width: 100%; }
+        .btn ha-icon { color: var(--icon-color, grey); --mdc-icon-size: 20px; }
         .btn-name { font-size: 13px; font-weight: 600; color: var(--primary-text-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .btn-state { font-size: 11px; color: var(--secondary-text-color); margin-top: 1px; }
         .warn { position: absolute; top: 4px; right: 4px; color: #d32f2f; --mdc-icon-size: 16px; background: rgba(255,255,255,0.8); border-radius: 50%; padding: 1px; }
@@ -159,6 +241,11 @@ class OneLineRoomCard extends HTMLElement {
   _updateContentState() {
     if (!this.config || !this._hass || !this.content) return;
     const h = this._hass, c = this.config;
+    const effectiveEntity = c.entity;
+    const effectiveTempSensor = c.temp_sensor;
+    const effectiveHumidSensor = c.humid_sensor;
+    const effectiveWindowSensors = c.window_sensors || [];
+    const effectiveBatterySensors = c.battery_sensors || [];
     // --- NEW: DYNAMIC UNIT ---
     const unit = h.config.unit_system.temperature || "°C";
 
@@ -166,17 +253,17 @@ class OneLineRoomCard extends HTMLElement {
     this.shadowRoot.getElementById("name").innerText = c.name || "Room";
     const ico = this.shadowRoot.getElementById("icon");
     ico.icon = c.icon || "mdi:home";
-    ico.style.color = c.color || "white";
+    ico.style.setProperty("--icon-color", c.color || "white");
 
     let t = null, hm = null, tar = null;
-    if (c.temp_sensor && h.states[c.temp_sensor]) t = h.states[c.temp_sensor].state;
-    else if (c.entity && h.states[c.entity]?.attributes?.current_temperature !== undefined) t = h.states[c.entity].attributes.current_temperature;
+    if (effectiveTempSensor && h.states[effectiveTempSensor]) t = h.states[effectiveTempSensor].state;
+    else if (effectiveEntity && h.states[effectiveEntity]?.attributes?.current_temperature !== undefined) t = h.states[effectiveEntity].attributes.current_temperature;
 
-    if (c.entity && h.states[c.entity]?.attributes?.temperature !== undefined) tar = h.states[c.entity].attributes.temperature;
+    if (effectiveEntity && h.states[effectiveEntity]?.attributes?.temperature !== undefined) tar = h.states[effectiveEntity].attributes.temperature;
     if (c.target_temp_sensor && h.states[c.target_temp_sensor]) tar = h.states[c.target_temp_sensor].state;
 
-    if (c.humid_sensor && h.states[c.humid_sensor]) hm = h.states[c.humid_sensor].state;
-    else if (c.entity && h.states[c.entity]?.attributes?.current_humidity !== undefined) hm = h.states[c.entity].attributes.current_humidity;
+    if (effectiveHumidSensor && h.states[effectiveHumidSensor]) hm = h.states[effectiveHumidSensor].state;
+    else if (effectiveEntity && h.states[effectiveEntity]?.attributes?.current_humidity !== undefined) hm = h.states[effectiveEntity].attributes.current_humidity;
 
     const infoParts = [];
     if (t != null && t !== "-" && !isNaN(parseFloat(t))) {
@@ -192,7 +279,7 @@ class OneLineRoomCard extends HTMLElement {
     const ch = this.shadowRoot.getElementById("chips");
     ch.innerHTML = "";
     let al = null;
-    (Array.isArray(c.battery_sensors) ? c.battery_sensors : []).forEach(s => {
+    (Array.isArray(effectiveBatterySensors) ? effectiveBatterySensors : []).forEach(s => {
       const st = h.states[s]; if (!st) return;
       if (st.state === "on") al = getTranslation(h, "empty");
       else if (!isNaN(parseFloat(st.state))) {
@@ -202,12 +289,12 @@ class OneLineRoomCard extends HTMLElement {
     });
 
     if (al) ch.innerHTML += `<div class="chip alert"><ha-icon icon="mdi:battery-alert" style="--mdc-icon-size:14px"></ha-icon> ${al}</div>`;
-    (Array.isArray(c.window_sensors) ? c.window_sensors : []).forEach(s => {
+    (Array.isArray(effectiveWindowSensors) ? effectiveWindowSensors : []).forEach(s => {
       const st = h.states[s];
       if (st?.state === "on") ch.innerHTML += `<div class="chip"><ha-icon icon="mdi:window-open-variant" style="--mdc-icon-size:14px"></ha-icon> ${st.attributes.friendly_name || getTranslation(h, "window")}</div>`;
     });
 
-    const visibleCtrls = (c.controls || []).filter(ctrl => ctrl.entity && !ctrl.hide);
+    const visibleCtrls = (c.controls || []).filter(ctrl => !ctrl.hide && (ctrl.entity || ctrl.type === "template"));
 
     if (this._configChanged) {
       this.controls.replaceChildren();
@@ -228,21 +315,53 @@ class OneLineRoomCard extends HTMLElement {
   _createBtn(ctrl) {
     const btn = document.createElement("div");
     btn.className = "btn";
-    btn.style.flexBasis = `calc(${(clampNum(ctrl.width, 1, 60, 15) / 60) * 100}% - 6px)`;
-    btn.style.height = `${clampNum(ctrl.height, 40, 250, 60)}px`;
+    btn.style.setProperty("--btn-flex-basis", `calc(${(clampNum(ctrl.width, 1, 60, 15) / 60) * 100}% - 6px)`);
+    btn.style.setProperty("--btn-height", `${clampNum(ctrl.height, 40, 250, 60)}px`);
     let justify = "center";
     if (ctrl.align === "left") justify = "flex-start";
     if (ctrl.align === "right") justify = "flex-end";
-    btn.style.justifyContent = justify;
+    btn.style.setProperty("--btn-justify", justify);
     this._attachActions(btn, ctrl);
     return btn;
   }
 
+  _evalTemplateString(tpl, h, ctrl) {
+    if (tpl === undefined || tpl === null) return "";
+    const str = String(tpl);
+    if (!str.includes("${")) return str;
+    try {
+      const states = h?.states || {};
+      const entity = (id) => states[id];
+      const attr = (id, name) => states[id]?.attributes?.[name];
+      return replaceTemplateExpressions(str, (expr) => {
+        try {
+          // eslint-disable-next-line no-new-func
+          const fn = new Function("hass", "states", "entity", "attr", "ctrl", `return (${expr});`);
+          const res = fn(h, states, entity, attr, ctrl);
+          return res === undefined || res === null ? "" : String(res);
+        } catch (err) {
+          return "";
+        }
+      });
+    } catch (err) {
+      return "";
+    }
+  }
+
+  _resolveTemplateCtrl(ctrl, h) {
+    const content = this._evalTemplateString(ctrl.content, h, ctrl);
+    const icon = trimStr(this._evalTemplateString(ctrl.icon, h, ctrl));
+    const color = trimStr(this._evalTemplateString(ctrl.color, h, ctrl));
+    const state = this._evalTemplateString(ctrl.state, h, ctrl);
+    return { content, icon, color, state };
+  }
+
   _updateBtnState(btn, ctrl, h) {
-    const st = h.states[ctrl.entity];
-    const s = st ? st.state : "N/A";
-    const domain = ctrl.entity.split(".")[0];
     const unit = h.config.unit_system.temperature || "°C"; // --- NEW: DYNAMIC UNIT ---
+    const st = ctrl.entity ? h.states[ctrl.entity] : null;
+    const s = st ? st.state : "N/A";
+    const domain = ctrl.entity ? ctrl.entity.split(".")[0] : "";
+    const isTemplate = ctrl.type === "template";
 
     let typ = "default";
     if (domain === "cover") typ = "shutter";
@@ -253,7 +372,15 @@ class OneLineRoomCard extends HTMLElement {
     let col = "grey", bg = "rgba(128,128,128,0.1)";
     const isUnavail = s === "unavailable" || s === "unknown";
 
-    if (ctrl.force_color && ctrl.color) {
+    let tpl = null;
+    if (isTemplate) {
+      tpl = this._resolveTemplateCtrl(ctrl, h);
+      if (tpl.color) {
+        col = tpl.color;
+        const isHex = /^#[0-9A-F]{6}$/i.test(tpl.color);
+        bg = isHex ? tpl.color + "33" : `color-mix(in srgb, ${tpl.color} 20%, transparent)`;
+      }
+    } else if (ctrl.force_color && ctrl.color) {
       col = ctrl.color;
       const isHex = /^#[0-9A-F]{6}$/i.test(ctrl.color);
       bg = isHex ? ctrl.color + "33" : `color-mix(in srgb, ${ctrl.color} 20%, transparent)`;
@@ -276,23 +403,48 @@ class OneLineRoomCard extends HTMLElement {
       }
     }
 
-    const nameTxt = ctrl.name !== undefined ? ctrl.name : "Dev";
+    const nameTxt = isTemplate
+      ? (tpl?.content || ctrl.name || "")
+      : (ctrl.name !== undefined ? ctrl.name : "Dev");
     let badge = "";
     if (isUnavail) badge = `<ha-icon class="warn" icon="mdi:alert-circle"></ha-icon>`;
 
     // --- NEW: USE DYNAMIC UNIT IN TEMPLATE ---
+    const stateText = isTemplate
+      ? (tpl?.state || "")
+      : (typ === "climate" && st?.attributes?.current_temperature
+        ? st.attributes.current_temperature + unit
+        : s);
+    const showState = isTemplate ? ctrl.show_state === true : ctrl.show_state !== false;
+    const showLabel = ctrl.show_label !== false;
+    const stateHtml = showState ? `<span class="btn-state">${stateText}</span>` : "";
+    const labelHtml = showLabel ? `<span class="btn-name">${nameTxt}</span>` : "";
+    const showIcon = ctrl.show_icon !== false;
+    const stateFirst = ctrl.state_first === true;
+    const textHtml = stateFirst ? `${stateHtml}${labelHtml}` : `${labelHtml}${stateHtml}`;
+
+    const iconHtml = showIcon
+      ? `<div class="icon-box">
+        <ha-icon icon="${(isTemplate ? (tpl?.icon || ctrl.icon) : ctrl.icon) || "mdi:circle"}" style="--mdc-icon-size:20px"></ha-icon>
+      </div>`
+      : "";
     btn.innerHTML = `
-      <div class="icon-box" style="background:${bg}">
-        <ha-icon icon="${ctrl.icon || "mdi:circle"}" style="color:${col};--mdc-icon-size:20px"></ha-icon>
-      </div>
+      ${iconHtml}
       <div class="btn-txt">
-        <span class="btn-name">${nameTxt}</span>
-        <span class="btn-state">${typ === "climate" && st?.attributes?.current_temperature ? st.attributes.current_temperature + unit : s}</span>
+        ${textHtml}
       </div>
       ${badge}`;
+    
+    // Apply dynamic colors via CSS custom properties
+    btn.style.setProperty("--icon-color", col);
+    btn.style.setProperty("--btn-bg", bg);
   }
 
   _attachActions(node, ctrl) {
+    if (ctrl.type === "template") {
+      node.style.cursor = "default";
+      return;
+    }
     const domain = ctrl.entity ? ctrl.entity.split(".")[0] : "";
     const canToggle = ["light", "switch", "input_boolean", "automation", "fan", "cover", "lock", "media_player", "vacuum", "group", "humidifier", "climate"].includes(domain);
     const config = {
@@ -415,17 +567,321 @@ class OneLineRoomCardEditor extends HTMLElement {
     }
   }
 
+  _applyNavSelectorOptions() {
+    const nav = this.shadowRoot?.getElementById("nav-path");
+    if (!nav) return;
+    const options = Array.isArray(this._navOptions) ? this._navOptions : [];
+    nav.selector = { select: { mode: "dropdown", options, custom_value: true } };
+    nav.value = this._config?.tap_action?.navigation_path || "";
+    if (this._hass && nav.hass !== this._hass) nav.hass = this._hass;
+  }
+
+  _defaultIconForDomain(domain) {
+    const map = {
+      light: "mdi:lightbulb",
+      switch: "mdi:toggle-switch",
+      climate: "mdi:thermostat",
+      cover: "mdi:window-shutter",
+      fan: "mdi:fan",
+      media_player: "mdi:play-circle",
+      lock: "mdi:lock",
+      input_boolean: "mdi:toggle-switch",
+      vacuum: "mdi:robot-vacuum",
+      humidifier: "mdi:air-humidifier",
+      sensor: "mdi:gauge",
+      binary_sensor: "mdi:checkbox-marked-circle-outline"
+    };
+    return map[domain] || "mdi:help-circle-outline";
+  }
+
+  _evalTemplateString(tpl, h, ctrl) {
+    if (tpl === undefined || tpl === null) return "";
+    const str = String(tpl);
+    if (!str.includes("${")) return str;
+    try {
+      const states = h?.states || {};
+      const entity = (id) => states[id];
+      const attr = (id, name) => states[id]?.attributes?.[name];
+      return replaceTemplateExpressions(str, (expr) => {
+        try {
+          // eslint-disable-next-line no-new-func
+          const fn = new Function("hass", "states", "entity", "attr", "ctrl", `return (${expr});`);
+          const res = fn(h, states, entity, attr, ctrl);
+          return res === undefined || res === null ? "" : String(res);
+        } catch (err) {
+          return "";
+        }
+      });
+    } catch (err) {
+      return "";
+    }
+  }
+
+  _resolveTemplateCtrl(ctrl, h) {
+    const content = this._evalTemplateString(ctrl.content, h, ctrl);
+    const icon = trimStr(this._evalTemplateString(ctrl.icon, h, ctrl));
+    const color = trimStr(this._evalTemplateString(ctrl.color, h, ctrl));
+    const state = this._evalTemplateString(ctrl.state, h, ctrl);
+    return { content, icon, color, state };
+  }
+
+  _getControlTemplates() {
+    const h = this._hass;
+    return [
+      {
+        id: "light",
+        label: getTranslation(h, "tmpl_light"),
+        domains: ["light"],
+        defaults: {
+          icon: "mdi:lightbulb",
+          width: 15,
+          height: 60,
+          align: "center",
+          tap_action: { action: "toggle" },
+          hold_action: { action: "more-info" },
+          double_tap_action: { action: "none" },
+          show_state: true,
+          show_label: true,
+          show_icon: true
+        }
+      },
+      {
+        id: "switch",
+        label: getTranslation(h, "tmpl_switch"),
+        domains: ["switch"],
+        defaults: {
+          icon: "mdi:power-socket-eu",
+          width: 15,
+          height: 60,
+          align: "center",
+          tap_action: { action: "toggle" },
+          hold_action: { action: "more-info" },
+          double_tap_action: { action: "none" },
+          show_state: true,
+          show_label: true,
+          show_icon: true
+        }
+      },
+      {
+        id: "climate",
+        label: getTranslation(h, "tmpl_climate"),
+        domains: ["climate"],
+        defaults: {
+          icon: "mdi:thermostat",
+          width: 30,
+          height: 60,
+          align: "left",
+          tap_action: { action: "more-info" },
+          hold_action: { action: "toggle" },
+          double_tap_action: { action: "none" },
+          show_state: true,
+          show_label: true,
+          show_icon: true
+        }
+      },
+      {
+        id: "cover",
+        label: getTranslation(h, "tmpl_cover"),
+        domains: ["cover"],
+        defaults: {
+          icon: "mdi:window-shutter",
+          width: 20,
+          height: 60,
+          align: "center",
+          tap_action: { action: "toggle" },
+          hold_action: { action: "more-info" },
+          double_tap_action: { action: "none" },
+          show_state: true,
+          show_label: true,
+          show_icon: true
+        }
+      },
+      {
+        id: "media_player",
+        label: getTranslation(h, "tmpl_media"),
+        domains: ["media_player"],
+        defaults: {
+          icon: "mdi:play-circle",
+          width: 30,
+          height: 60,
+          align: "left",
+          tap_action: { action: "toggle" },
+          hold_action: { action: "more-info" },
+          double_tap_action: { action: "none" },
+          show_state: true,
+          show_label: true,
+          show_icon: true
+        }
+      }
+    ];
+  }
+
+  _getTemplateById(templateId) {
+    const templates = this._getControlTemplates();
+    return templates.find((t) => t.id === templateId);
+  }
+
+  _buildControlFromTemplate(template, entityId) {
+    const st = this._hass?.states?.[entityId];
+    const name = st?.attributes?.friendly_name || "";
+    const icon = st?.attributes?.icon || template?.defaults?.icon || this._iconForEntity(entityId);
+    const defaults = template?.defaults || {};
+    return {
+      entity: entityId || "",
+      name,
+      icon,
+      width: defaults.width ?? 15,
+      height: defaults.height ?? 60,
+      align: defaults.align || "center",
+      show_state: defaults.show_state !== false,
+      show_label: defaults.show_label !== false,
+      show_icon: defaults.show_icon !== false,
+      tap_action: defaults.tap_action || { action: "more-info" },
+      hold_action: defaults.hold_action || { action: "toggle" },
+      double_tap_action: defaults.double_tap_action || { action: "none" }
+    };
+  }
+
+  _iconForEntity(entityId) {
+    if (!this._hass || !entityId) return "mdi:help-circle-outline";
+    const st = this._hass.states[entityId];
+    if (st?.attributes?.icon) return st.attributes.icon;
+    const domain = entityId.split(".")[0];
+    return this._defaultIconForDomain(domain);
+  }
+
+  async _resolveEntityFromDevice(deviceId) {
+    if (!this._hass || !deviceId) return;
+    try {
+      const entries = await this._hass.callWS({ type: "config/entity_registry/list" });
+      const devEntries = (Array.isArray(entries) ? entries : []).filter(
+        (e) => e.device_id === deviceId && !e.disabled_by
+      );
+      if (devEntries.length === 0) return null;
+      const preferredDomains = [
+        "light",
+        "switch",
+        "climate",
+        "cover",
+        "fan",
+        "media_player",
+        "lock",
+        "input_boolean",
+        "vacuum",
+        "humidifier",
+        "sensor",
+        "binary_sensor"
+      ];
+      for (const domain of preferredDomains) {
+        const found = devEntries.find((e) => e.entity_id?.startsWith(`${domain}.`));
+        if (found?.entity_id) return found.entity_id;
+      }
+      return devEntries[0].entity_id || null;
+    } catch (err) {
+      return null;
+    }
+  }
+
+  async _ensureNavOptions() {
+    if (!this._hass || this._navOptionsLoaded) return;
+    this._navOptionsLoaded = true;
+    try {
+      const optionsMap = new Map();
+
+      const addOption = (value, label) => {
+        if (!value || optionsMap.has(value)) return;
+        optionsMap.set(value, { value, label: label || value });
+      };
+
+      const addPanelViews = (panel, config) => {
+        const panelPath = panel?.url_path || "lovelace";
+        const panelLabel = panel?.title || panelPath;
+        addOption(`/${panelPath}`, `${panelLabel} / (default)`);
+        const views = Array.isArray(config?.views) ? config.views : [];
+        views.forEach((view, index) => {
+          const viewPath = view?.path || String(index);
+          const fullPath = `/${panelPath}/${viewPath}`;
+          const viewLabel = view?.title || viewPath || String(index);
+          addOption(fullPath, `${panelLabel} / ${viewLabel}`);
+        });
+      };
+
+      // Always include default Lovelace dashboard + views
+      try {
+        const cfg = await this._hass.connection.sendMessagePromise({ type: "lovelace/config" });
+        addPanelViews({ url_path: "lovelace", title: "Lovelace" }, cfg);
+      } catch (err) {
+        addOption("/lovelace", "Lovelace (/lovelace)");
+      }
+
+      // Prefer Lovelace dashboards + views
+      let dashboards = [];
+      try {
+        const dashResp = await this._hass.connection.sendMessagePromise({ type: "lovelace/dashboards" });
+        if (Array.isArray(dashResp?.dashboards)) dashboards = dashResp.dashboards;
+        else if (dashResp?.dashboards && typeof dashResp.dashboards === "object") dashboards = Object.values(dashResp.dashboards);
+      } catch (err) {
+        dashboards = [];
+      }
+
+      if (dashboards.length === 0) {
+        const lovelacePanels = Object.values(this._hass.panels || {}).filter(p => p.component_name === "lovelace");
+        dashboards = lovelacePanels.map(p => ({ url_path: p.url_path, title: p.title || p.url_path, default: p?.url_path === "lovelace" }));
+      }
+
+      if (dashboards.length > 0) {
+        for (const dash of dashboards) {
+          const isDefault = dash?.default || dash?.url_path === undefined || dash?.url_path === null || dash?.url_path === "";
+          const urlPath = isDefault ? "lovelace" : dash.url_path;
+          const title = dash.title || urlPath;
+          try {
+            const cfg = isDefault
+              ? await this._hass.connection.sendMessagePromise({ type: "lovelace/config" })
+              : await this._hass.connection.sendMessagePromise({ type: "lovelace/config", url_path: urlPath });
+            addPanelViews({ url_path: urlPath, title }, cfg);
+          } catch (err) {
+            addOption(`/${urlPath}`, `${title} (${`/${urlPath}`})`);
+          }
+        }
+      }
+
+      this._navOptions = Array.from(optionsMap.values());
+      this._applyNavSelectorOptions();
+    } catch (err) {
+      this._navOptionsLoaded = false;
+    }
+  }
+
   render() {
     if (!this._config) return;
     const alreadyRendered = !!this.shadowRoot.innerHTML;
-    if (alreadyRendered) { this.updVal(); this.renBtn(); return; }
+    if (alreadyRendered) { this.updVal(); this.renBtn(); this._applyNavSelectorOptions(); this._ensureNavOptions(); return; }
     const h = this._hass;
     this.shadowRoot.innerHTML = `
       <style>
         .sec { padding: 12px 0; border-bottom: 1px solid var(--divider-color); }
         .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 8px; }
+        .tmpl-label-row { margin-bottom: 4px; }
+        .tmpl-label { font-size: 12px; font-weight: 600; opacity: 0.8; }
+        .tmpl-row { align-items: start; margin-bottom: 12px; }
+        .tmpl-row ha-textfield,
+        .tmpl-row ha-selector,
+        .tmpl-row ha-entity-picker,
+        .tmpl-row ha-icon-picker { margin-bottom: 0; }
+        .add-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+        .add-prefix { font-size: 12px; font-weight: 600; opacity: 0.8; }
+        .tmpl-preview { margin-top: 6px; font-size: 12px; opacity: 0.8; display: flex; align-items: center; gap: 6px; }
+        .tmpl-details { margin-top: 8px; border-top: 1px solid var(--divider-color); padding-top: 8px; }
+        .tmpl-details summary { cursor: pointer; font-weight: 600; font-size: 12px; opacity: 0.8; list-style: none; }
+        .tmpl-details summary::-webkit-details-marker { display: none; }
         .box { border: 1px solid var(--divider-color); padding: 12px; border-radius: 8px; background: var(--secondary-background-color); margin-bottom: 12px; }
-        .head { display: flex; justify-content: space-between; margin-bottom: 8px; font-weight: bold; }
+        .head { display: flex; justify-content: space-between; align-items: center; font-weight: bold; cursor: pointer; }
+        .head::-webkit-details-marker { display: none; }
+        .head-left { display: flex; align-items: center; gap: 6px; min-width: 0; }
+        .chev { transition: transform 0.15s ease; --mdc-icon-size: 18px; opacity: 0.8; }
+        details[open] .chev { transform: rotate(90deg); }
+        .summary-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .body { margin-top: 8px; }
         ha-textfield, ha-selector, ha-entity-picker, ha-icon-picker { width: 100%; display: block; margin-bottom: 8px; }
         .preview { width: 100%; height: 120px; object-fit: cover; border-radius: 8px; margin-bottom: 8px; background: #444; display: none; }
         .preview.show { display: block; }
@@ -455,7 +911,7 @@ class OneLineRoomCardEditor extends HTMLElement {
             <ha-icon icon="mdi:upload" slot="icon"></ha-icon>
           </mwc-button>
         </div>
-        <ha-textfield label="${getTranslation(h, "path")}" cfg="nav_path" class="i" style="margin-top:12px"></ha-textfield>
+        <ha-selector id="nav-path" label="${getTranslation(h, "path")}" style="margin-top:12px"></ha-selector>
       </div>
       <div class="sec">
         <h3>${getTranslation(h, "sensors_manual")}</h3>
@@ -467,6 +923,20 @@ class OneLineRoomCardEditor extends HTMLElement {
       </div>
       <div class="sec">
         <h3>${getTranslation(h, "buttons")}</h3>
+        <div class="row tmpl-label-row">
+          <div class="tmpl-label">${getTranslation(h, "template")}</div>
+          <div class="tmpl-label">${getTranslation(h, "entity")}</div>
+        </div>
+        <div class="row tmpl-row">
+          <ha-selector id="tmpl-select" aria-label="${getTranslation(h, "template")}"></ha-selector>
+          <ha-entity-picker id="tmpl-entity" aria-label="${getTranslation(h, "entity")}"></ha-entity-picker>
+        </div>
+        <div class="add-row">
+          <span class="add-prefix">${getTranslation(h, "add_prefix")}</span>
+          <mwc-button id="add-template" raised label="${getTranslation(h, "add_template")}">
+            <ha-icon icon="mdi:playlist-plus" slot="icon"></ha-icon>
+          </mwc-button>
+        </div>
         <div id="b"></div>
         <mwc-button id="add" raised label="${getTranslation(h, "add_button")}">
           <ha-icon icon="mdi:plus" slot="icon"></ha-icon>
@@ -490,15 +960,64 @@ class OneLineRoomCardEditor extends HTMLElement {
         ev.stopPropagation();
         const v = ev.detail?.value !== undefined ? ev.detail.value : ev.target.value;
         const c = { ...this._config };
-        if (k === "nav_path") {
-          if (v?.trim()) c.tap_action = { action: "navigate", navigation_path: v };
-          else delete c.tap_action;
-        } else { c[k] = v; }
+        c[k] = v;
         this._fire(c);
         if (k === "color") this.updCp();
         if (k === "image") this.updPreview();
       });
     });
+    const navSelect = this.shadowRoot.getElementById("nav-path");
+    if (navSelect) {
+      navSelect.addEventListener("value-changed", (ev) => {
+        ev.stopPropagation();
+        const v = ev.detail?.value ?? "";
+        const c = { ...this._config };
+        if (v?.trim()) c.tap_action = { action: "navigate", navigation_path: v };
+        else delete c.tap_action;
+        this._fire(c);
+      });
+    }
+    this._applyNavSelectorOptions();
+    this._ensureNavOptions();
+
+    const tmplSelect = this.shadowRoot.getElementById("tmpl-select");
+    const tmplEntity = this.shadowRoot.getElementById("tmpl-entity");
+    if (tmplSelect) {
+      tmplSelect.selector = {
+        select: {
+          mode: "dropdown",
+          options: this._getControlTemplates().map((t) => ({ value: t.id, label: t.label }))
+        }
+      };
+      tmplSelect.value = tmplSelect.value || "light";
+      if (this._hass) tmplSelect.hass = this._hass;
+      tmplSelect.addEventListener("value-changed", (ev) => {
+        ev.stopPropagation();
+        const tid = ev.detail?.value;
+        const template = this._getTemplateById(tid);
+        const domains = template?.domains || [];
+        if (tmplEntity && domains.length > 0) tmplEntity.setAttribute("include-domains", JSON.stringify(domains));
+      });
+    }
+    if (tmplEntity && this._hass) tmplEntity.hass = this._hass;
+    if (tmplEntity && tmplSelect) {
+      const template = this._getTemplateById(tmplSelect.value || "light");
+      const domains = template?.domains || [];
+      if (domains.length > 0) tmplEntity.setAttribute("include-domains", JSON.stringify(domains));
+    }
+    const addTemplateBtn = this.shadowRoot.getElementById("add-template");
+    if (addTemplateBtn) {
+      addTemplateBtn.addEventListener("click", () => {
+        const tid = tmplSelect?.value || "light";
+        const ent = tmplEntity?.value || "";
+        if (!ent) return;
+        const template = this._getTemplateById(tid);
+        const next = this._buildControlFromTemplate(template, ent);
+        const c = [...(this._config.controls || []), next];
+        this._fire({ ...this._config, controls: c });
+        this.renBtn();
+      });
+    }
 
     this.shadowRoot.querySelectorAll(".i-cp").forEach(e => {
       e.addEventListener("change", (ev) => {
@@ -545,47 +1064,136 @@ class OneLineRoomCardEditor extends HTMLElement {
       { value: "none", label: getTranslation(h, "act_none") }
     ];
     this._config.controls.forEach((ctrl, i) => {
-      const box = document.createElement("div"); box.className = "box";
+      const box = document.createElement("details"); box.className = "box";
+      const isTemplate = ctrl.type === "template";
+      const hideEntity = isTemplate ? "hidden" : "";
+      const showTemplate = isTemplate ? "" : "hidden";
       const hideColor = !ctrl.force_color ? "hidden" : "";
       const showNav = ctrl.tap_action?.action === "navigate" ? "" : "hidden";
+      const key = ctrl.entity || ctrl.name || ctrl.content || ctrl.device || String(i);
+      this._collapsedState = this._collapsedState || {};
+      box.open = this._collapsedState[key] !== true;
+      box.addEventListener("toggle", () => { this._collapsedState[key] = !box.open; });
+      const summaryText = ctrl.name || ctrl.entity || (isTemplate ? (ctrl.content || "Template") : "Button");
       box.innerHTML = `
-        <div class="head">#${i + 1}
+        <summary class="head">
+          <span class="head-left"><ha-icon class="chev" icon="mdi:chevron-right"></ha-icon><span class="summary-text">#${i + 1} — ${summaryText}</span></span>
           <div><ha-icon class="mv u" icon="mdi:arrow-up"></ha-icon><ha-icon class="mv d" icon="mdi:arrow-down"></ha-icon><ha-icon class="del" icon="mdi:delete" style="color:#d32f2f"></ha-icon></div>
+        </summary>
+        <div class="body">
+        <div class="row">
+          <ha-selector class="rt" label="${getTranslation(h, "row_type")}"></ha-selector>
         </div>
-        <ha-entity-picker class="ep" label="${getTranslation(h, "entity")}"></ha-entity-picker>
-        <div class="row"><ha-textfield class="nm" label="${getTranslation(h, "name")}"></ha-textfield><ha-icon-picker class="ic" label="${getTranslation(h, "icon")}"></ha-icon-picker></div>
-        <div class="row"><ha-selector class="ht" label="${getTranslation(h, "height")}"></ha-selector><ha-selector class="wd" label="${getTranslation(h, "width")}"></ha-selector></div>
-        <div class="row" style="margin-top:8px; align-items:center"><ha-formfield label="${getTranslation(h, "force_color")}"><ha-switch class="fc"></ha-switch></ha-formfield></div>
-        <div class="cl-row ${hideColor}"><ha-textfield class="cl" label="${getTranslation(h, "color")}"></ha-textfield><input type="color" class="cp cl-p"></div>
-        <div class="row" style="margin-top:8px; align-items:center"><ha-selector class="al" label="${getTranslation(h, "align")}"></ha-selector><ha-formfield label="${getTranslation(h, "visible")}"><ha-switch class="hd" checked></ha-switch></ha-formfield></div>
-        <div style="margin-top:12px; border-top:1px solid var(--divider-color); padding-top:12px"><ha-selector class="tap" label="${getTranslation(h, "tap_action")}"></ha-selector><ha-textfield class="tap-nav ${showNav}" label="Nav Pfad"></ha-textfield><ha-selector class="hold" label="${getTranslation(h, "hold_action")}"></ha-selector><ha-selector class="dbl" label="${getTranslation(h, "double_tap_action")}"></ha-selector></div>`;
+        <div class="entity-only ${hideEntity}">
+          <div class="dv-wrap"></div>
+          <ha-entity-picker class="ep" label="${getTranslation(h, "entity")}"></ha-entity-picker>
+          <div class="row"><ha-textfield class="nm" label="${getTranslation(h, "name")}"></ha-textfield><ha-icon-picker class="ic" label="${getTranslation(h, "icon")}"></ha-icon-picker></div>
+          <div class="row"><ha-selector class="ht" label="${getTranslation(h, "height")}"></ha-selector><ha-selector class="wd" label="${getTranslation(h, "width")}"></ha-selector></div>
+          <div class="row" style="margin-top:8px; align-items:center"><ha-formfield label="${getTranslation(h, "force_color")}"><ha-switch class="fc"></ha-switch></ha-formfield></div>
+          <div class="cl-row ${hideColor}"><ha-textfield class="cl" label="${getTranslation(h, "color")}"></ha-textfield><input type="color" class="cp cl-p"></div>
+        </div>
+        <details class="tmpl-only tmpl-details ${showTemplate}" ${isTemplate ? "open" : ""}>
+          <summary>${getTranslation(h, "type_template")}</summary>
+          <ha-textfield class="tc" label="${getTranslation(h, "tmpl_content")}"></ha-textfield>
+          <div class="row"><ha-textfield class="ti" label="${getTranslation(h, "tmpl_icon")}"></ha-textfield><ha-textfield class="tcl" label="${getTranslation(h, "tmpl_color")}"></ha-textfield></div>
+          <ha-textfield class="ts" label="${getTranslation(h, "tmpl_state")}"></ha-textfield>
+          <div class="tmpl-preview"><span>${getTranslation(h, "tmpl_preview")}:</span> <ha-icon class="tp-ic"></ha-icon> <span class="tp-tx"></span></div>
+        </details>
+        <div class="row" style="margin-top:8px; align-items:center"><ha-selector class="al" label="${getTranslation(h, "align")}"></ha-selector><ha-selector class="tl" label="${getTranslation(h, "text_layout")}"></ha-selector><ha-formfield label="${getTranslation(h, "show_state")}"><ha-switch class="ss" checked></ha-switch></ha-formfield><ha-formfield label="${getTranslation(h, "show_label")}"><ha-switch class="sl" checked></ha-switch></ha-formfield><ha-formfield label="${getTranslation(h, "show_icon")}"><ha-switch class="si" checked></ha-switch></ha-formfield><ha-formfield label="${getTranslation(h, "visible")}"><ha-switch class="hd" checked></ha-switch></ha-formfield></div>
+        <div class="entity-only ${hideEntity}" style="margin-top:12px; border-top:1px solid var(--divider-color); padding-top:12px"><ha-selector class="tap" label="${getTranslation(h, "tap_action")}"></ha-selector><ha-textfield class="tap-nav ${showNav}" label="Nav Pfad"></ha-textfield><ha-selector class="hold" label="${getTranslation(h, "hold_action")}"></ha-selector><ha-selector class="dbl" label="${getTranslation(h, "double_tap_action")}"></ha-selector></div>
+        </div>`;
 
       const upd = (k, v) => { const c = [...this._config.controls]; c[i] = { ...c[i], [k]: v }; this._fire({ ...this._config, controls: c }); };
       const updAct = (type, val) => { const c = [...this._config.controls]; const old = c[i][type] || {}; c[i] = { ...c[i], [type]: { ...old, action: val } }; this._fire({ ...this._config, controls: c }); this.renBtn(); };
-      box.querySelector(".u").onclick = () => { if (i > 0) { const c = [...this._config.controls];[c[i], c[i - 1]] = [c[i - 1], c[i]]; this._fire({ ...this._config, controls: c }); this.renBtn(); } };
-      box.querySelector(".d").onclick = () => { if (i < this._config.controls.length - 1) { const c = [...this._config.controls];[c[i], c[i + 1]] = [c[i + 1], c[i]]; this._fire({ ...this._config, controls: c }); this.renBtn(); } };
-      box.querySelector(".del").onclick = () => { const c = [...this._config.controls]; c.splice(i, 1); this._fire({ ...this._config, controls: c }); this.renBtn(); };
-      const ep = box.querySelector(".ep"); ep.hass = h; ep.value = ctrl.entity;
-      ep.addEventListener("value-changed", e => {
+      box.querySelector(".u").onclick = (e) => { e.preventDefault(); e.stopPropagation(); if (i > 0) { const c = [...this._config.controls];[c[i], c[i - 1]] = [c[i - 1], c[i]]; this._fire({ ...this._config, controls: c }); this.renBtn(); } };
+      box.querySelector(".d").onclick = (e) => { e.preventDefault(); e.stopPropagation(); if (i < this._config.controls.length - 1) { const c = [...this._config.controls];[c[i], c[i + 1]] = [c[i + 1], c[i]]; this._fire({ ...this._config, controls: c }); this.renBtn(); } };
+      box.querySelector(".del").onclick = (e) => { e.preventDefault(); e.stopPropagation(); const c = [...this._config.controls]; c.splice(i, 1); this._fire({ ...this._config, controls: c }); this.renBtn(); };
+      const rt = box.querySelector(".rt");
+      if (rt) {
+        rt.hass = h;
+        rt.selector = { select: { mode: "dropdown", options: [
+          { value: "entity", label: getTranslation(h, "type_entity") },
+          { value: "template", label: getTranslation(h, "type_template") }
+        ] } };
+        rt.value = isTemplate ? "template" : "entity";
+        rt.addEventListener("value-changed", e => {
+          e.stopPropagation();
+          const val = e.detail?.value;
+          const c = [...this._config.controls];
+          const next = { ...c[i] };
+          if (val === "template") {
+            next.type = "template";
+            next.tap_action = { action: "none" };
+            next.hold_action = { action: "none" };
+            next.double_tap_action = { action: "none" };
+          } else {
+            delete next.type;
+          }
+          c[i] = next; this._fire({ ...this._config, controls: c }); this.renBtn();
+        });
+      }
+      const ep = box.querySelector(".ep"); if (ep) { ep.hass = h; ep.value = ctrl.entity; ep.addEventListener("value-changed", e => {
         const val = e.detail.value; const st = h.states[val]; const c = [...this._config.controls]; let changes = { entity: val };
-        if (st?.attributes?.icon) changes.icon = st.attributes.icon; else changes.icon = "mdi:help-circle-outline";
+        if (st?.attributes?.icon) changes.icon = st.attributes.icon; else changes.icon = this._iconForEntity(val);
         if (st?.attributes?.friendly_name) changes.name = st.attributes.friendly_name;
         c[i] = { ...c[i], ...changes }; this._fire({ ...this._config, controls: c }); this.renBtn();
-      });
-      const nm = box.querySelector(".nm"); nm.value = ctrl.name || ""; nm.addEventListener("change", e => upd("name", e.target.value));
-      const fc = box.querySelector(".fc"); fc.checked = ctrl.force_color === true; fc.addEventListener("change", e => { upd("force_color", e.target.checked); this.renBtn(); });
-      const cl = box.querySelector(".cl"); cl.value = ctrl.color || ""; cl.addEventListener("change", e => upd("color", e.target.value));
-      const clp = box.querySelector(".cl-p"); clp.value = ctrl.color || "#000000"; clp.addEventListener("change", e => upd("color", e.target.value));
-      const ic = box.querySelector(".ic"); ic.value = ctrl.icon || ""; ic.addEventListener("value-changed", e => { e.stopPropagation(); upd("icon", e.detail.value); });
+      }); }
+      const dvWrap = box.querySelector(".dv-wrap");
+      if (dvWrap) {
+        const dv = document.createElement("ha-selector");
+        dv.className = "dv";
+        dv.label = getTranslation(h, "device");
+        dv.hass = h;
+        dv.selector = { device: {} };
+        dv.value = ctrl.device || "";
+        dv.addEventListener("value-changed", async e => {
+          e.stopPropagation();
+          const deviceId = e.detail?.value ?? "";
+          const c = [...this._config.controls];
+          const next = { ...c[i], device: deviceId || undefined };
+          if (deviceId) {
+            const ent = await this._resolveEntityFromDevice(deviceId);
+            if (ent) {
+              next.entity = ent;
+              next.icon = this._iconForEntity(ent);
+              const st = h.states[ent];
+              if (st?.attributes?.friendly_name) next.name = st.attributes.friendly_name;
+            }
+          }
+          c[i] = next; this._fire({ ...this._config, controls: c }); this.renBtn();
+        });
+        dvWrap.appendChild(dv);
+      }
+      const nm = box.querySelector(".nm"); if (nm) { nm.value = ctrl.name || ""; nm.addEventListener("change", e => upd("name", e.target.value)); }
+      const fc = box.querySelector(".fc"); if (fc) { fc.checked = ctrl.force_color === true; fc.addEventListener("change", e => { upd("force_color", e.target.checked); this.renBtn(); }); }
+      const cl = box.querySelector(".cl"); if (cl) { cl.value = ctrl.color || ""; cl.addEventListener("change", e => upd("color", e.target.value)); }
+      const clp = box.querySelector(".cl-p"); if (clp) { clp.value = ctrl.color || "#000000"; clp.addEventListener("change", e => upd("color", e.target.value)); }
+      const ic = box.querySelector(".ic"); if (ic) { ic.value = ctrl.icon || ""; ic.addEventListener("value-changed", e => { e.stopPropagation(); upd("icon", e.detail.value); }); }
+      const tc = box.querySelector(".tc"); if (tc) { tc.value = ctrl.content || ""; tc.addEventListener("change", e => { upd("content", e.target.value); this.renBtn(); }); }
+      const ti = box.querySelector(".ti"); if (ti) { ti.value = ctrl.icon || ""; ti.addEventListener("change", e => { upd("icon", e.target.value); this.renBtn(); }); }
+      const tcl = box.querySelector(".tcl"); if (tcl) { tcl.value = ctrl.color || ""; tcl.addEventListener("change", e => { upd("color", e.target.value); this.renBtn(); }); }
+      const ts = box.querySelector(".ts"); if (ts) { ts.value = ctrl.state || ""; ts.addEventListener("change", e => { upd("state", e.target.value); this.renBtn(); }); }
       const ht = box.querySelector(".ht"); ht.hass = h; ht.selector = { number: { min: 40, max: 250, mode: "box", unit_of_measurement: "px" } };
       ht.value = ctrl.height || 60; ht.addEventListener("value-changed", e => { e.stopPropagation(); upd("height", Number(e.detail.value)); });
       const wd = box.querySelector(".wd"); wd.hass = h; wd.selector = { select: { mode: "dropdown", options: [{ value: "60", label: "1/1" }, { value: "40", label: "2/3" }, { value: "30", label: "1/2" }, { value: "20", label: "1/3" }, { value: "15", label: "1/4" }, { value: "12", label: "1/5" }, { value: "10", label: "1/6" }] } };
       wd.value = String(ctrl.width || 15); wd.addEventListener("value-changed", e => { e.stopPropagation(); upd("width", parseInt(e.detail.value)); });
       const al = box.querySelector(".al"); al.hass = h; al.selector = { select: { mode: "dropdown", options: [{ value: "left", label: getTranslation(h, "left") }, { value: "center", label: getTranslation(h, "center") }, { value: "right", label: getTranslation(h, "right") }] } };
       al.value = ctrl.align || "center"; al.addEventListener("value-changed", e => { e.stopPropagation(); upd("align", e.detail.value); });
+      const tl = box.querySelector(".tl"); if (tl) {
+        tl.hass = h;
+        tl.selector = { select: { mode: "dropdown", options: [
+          { value: "state", label: getTranslation(h, "primary_state") },
+          { value: "name", label: getTranslation(h, "primary_name") }
+        ] } };
+        tl.value = ctrl.state_first === true ? "state" : "name";
+        tl.addEventListener("value-changed", e => { e.stopPropagation(); upd("state_first", e.detail.value === "state"); });
+      }
+      const ss = box.querySelector(".ss"); ss.checked = ctrl.show_state !== false; ss.addEventListener("change", e => { e.stopPropagation(); upd("show_state", e.target.checked); });
+      const sl = box.querySelector(".sl"); sl.checked = ctrl.show_label !== false; sl.addEventListener("change", e => { e.stopPropagation(); upd("show_label", e.target.checked); });
+      const si = box.querySelector(".si"); si.checked = ctrl.show_icon !== false; si.addEventListener("change", e => { e.stopPropagation(); upd("show_icon", e.target.checked); });
       const hd = box.querySelector(".hd"); hd.checked = !ctrl.hide; hd.addEventListener("change", e => { e.stopPropagation(); upd("hide", !e.target.checked); });
-      const tap = box.querySelector(".tap"); tap.hass = h; tap.selector = { select: { mode: "dropdown", options: actOpts } };
-      tap.value = ctrl.tap_action?.action || "more-info"; tap.addEventListener("value-changed", e => { e.stopPropagation(); updAct("tap_action", e.detail.value); });
+      const tap = box.querySelector(".tap"); if (tap) { tap.hass = h; tap.selector = { select: { mode: "dropdown", options: actOpts } };
+      tap.value = ctrl.tap_action?.action || "more-info"; tap.addEventListener("value-changed", e => { e.stopPropagation(); updAct("tap_action", e.detail.value); }); }
       const tapNav = box.querySelector(".tap-nav"); if (tapNav) {
         tapNav.value = ctrl.tap_action?.navigation_path || ""; tapNav.addEventListener("change", e => {
           const c = [...this._config.controls];
@@ -594,10 +1202,19 @@ class OneLineRoomCardEditor extends HTMLElement {
           this._fire({ ...this._config, controls: c });
         });
       }
-      const hold = box.querySelector(".hold"); hold.hass = h; hold.selector = { select: { mode: "dropdown", options: actOpts } };
-      hold.value = ctrl.hold_action?.action || "toggle"; hold.addEventListener("value-changed", e => { e.stopPropagation(); updAct("hold_action", e.detail.value); });
-      const dbl = box.querySelector(".dbl"); dbl.hass = h; dbl.selector = { select: { mode: "dropdown", options: actOpts } };
-      dbl.value = ctrl.double_tap_action?.action || "none"; dbl.addEventListener("value-changed", e => { e.stopPropagation(); updAct("double_tap_action", e.detail.value); });
+      const hold = box.querySelector(".hold"); if (hold) { hold.hass = h; hold.selector = { select: { mode: "dropdown", options: actOpts } };
+      hold.value = ctrl.hold_action?.action || "toggle"; hold.addEventListener("value-changed", e => { e.stopPropagation(); updAct("hold_action", e.detail.value); }); }
+      const dbl = box.querySelector(".dbl"); if (dbl) { dbl.hass = h; dbl.selector = { select: { mode: "dropdown", options: actOpts } };
+      dbl.value = ctrl.double_tap_action?.action || "none"; dbl.addEventListener("value-changed", e => { e.stopPropagation(); updAct("double_tap_action", e.detail.value); }); }
+      const tpIcon = box.querySelector(".tp-ic");
+      const tpText = box.querySelector(".tp-tx");
+      if (tpIcon && tpText && isTemplate) {
+        const prev = this._resolveTemplateCtrl(ctrl, h);
+        tpIcon.icon = prev.icon || "mdi:circle";
+        if (prev.color) tpIcon.style.setProperty("--icon-color", prev.color);
+        const previewText = [prev.content || "—", prev.state || ""].filter(Boolean).join(" | ");
+        tpText.textContent = previewText || "—";
+      }
       div.appendChild(box);
     });
   }
@@ -609,6 +1226,10 @@ class OneLineRoomCardEditor extends HTMLElement {
       const v = k === "nav_path" ? this._config.tap_action?.navigation_path || "" : this._config[k] ?? "";
       if (e.value !== v) e.value = v;
     });
+    const nav = this.shadowRoot.getElementById("nav-path");
+    if (nav && nav.value !== (this._config.tap_action?.navigation_path || "")) {
+      nav.value = this._config.tap_action?.navigation_path || "";
+    }
   }
 
   updCp() {
@@ -625,9 +1246,23 @@ class OneLineRoomCardEditor extends HTMLElement {
 // REGISTRATION (SAFE & ROBUST)
 // =============================================================================
 
+const patchExistingEditor = (ExistingEditor, NewEditor) => {
+  const methods = ["render", "updVal", "updCp", "renBtn", "setConfig", "_fire", "_handleUpload", "updPreview"];
+  methods.forEach((name) => {
+    if (typeof NewEditor.prototype[name] === "function") {
+      ExistingEditor.prototype[name] = NewEditor.prototype[name];
+    }
+  });
+  const hassDesc = Object.getOwnPropertyDescriptor(NewEditor.prototype, "hass");
+  if (hassDesc) Object.defineProperty(ExistingEditor.prototype, "hass", hassDesc);
+};
+
 // 1. Editor registrieren (wenn noch nicht da)
-if (!customElements.get("oneline-room-card-editor")) {
+const existingEditor = customElements.get("oneline-room-card-editor");
+if (!existingEditor) {
   customElements.define("oneline-room-card-editor", OneLineRoomCardEditor);
+} else if (existingEditor !== OneLineRoomCardEditor) {
+  patchExistingEditor(existingEditor, OneLineRoomCardEditor);
 }
 
 // 2. Neue Karte registrieren (wenn noch nicht da)
