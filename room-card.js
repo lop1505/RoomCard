@@ -18,7 +18,8 @@ const TRANSLATIONS = {
     main_climate: "Main Climate Device (Optional)", climate_info: "Fills Temp/Humidity automatically if empty below.",
     temp_label: "Temperature (overrides climate)", target_temp_label: "Target Temperature", humid_label: "Humidity (overrides climate)",
     window_label: "Windows (List)", battery_label: "Batteries (List)", name: "Name", icon: "Icon", color: "Icon Color",
-    force_color: "Force Manual Color (Always visible)", img_url: "Image URL", path: "Path (Tap Action)", entity: "Entity", device: "Device (Optional)",
+    humid_warn_threshold: "Humidity Warning Threshold (%)", high_humidity: "High humidity",
+    force_color: "Force Manual Color (Always visible)", img_url: "Image URL", image: "Image", path: "Path (Tap Action)", entity: "Entity", device: "Device (Optional)",
     template: "Type Filter", add_template: "with Filter", add_prefix: "Add",
     quick_add_title: "Quick Add",
     quick_add_desc: "Quickly add buttons from existing entities.",
@@ -55,7 +56,8 @@ const TRANSLATIONS = {
     main_climate: "Haupt-Klima-Gerät (Optional)", climate_info: "Füllt Temp/Feuchtigkeit automatisch, wenn unten leer.",
     temp_label: "Temperatur (überschreibt Klima)", target_temp_label: "Soll-Temperatur", humid_label: "Luftfeuchtigkeit (überschreibt Klima)",
     window_label: "Fenster (Liste)", battery_label: "Batterien (Liste)", name: "Name", icon: "Icon", color: "Iconfarbe",
-    force_color: "Manuelle Farbe erzwingen (Immer sichtbar)", img_url: "Bild URL", path: "Pfad (Tap Action)", entity: "Entität", device: "Gerät (Optional)",
+    humid_warn_threshold: "Feuchte-Warnschwelle (%)", high_humidity: "Hohe Luftfeuchtigkeit",
+    force_color: "Manuelle Farbe erzwingen (Immer sichtbar)", img_url: "Bild URL", image: "Bild", path: "Pfad (Tap Action)", entity: "Entität", device: "Gerät (Optional)",
     template: "Typ-Filter", add_template: "mit Filter", add_prefix: "Add",
     quick_add_title: "Schnellerfassung",
     quick_add_desc: "Schnell Buttons aus bestehenden Entitäten hinzufügen.",
@@ -92,7 +94,8 @@ const TRANSLATIONS = {
     main_climate: "Appareil climatique principal (Optionnel)", climate_info: "Remplit automatiquement Temp/Humidité si vide ci-dessous.",
     temp_label: "Température (remplace climat)", target_temp_label: "Température cible", humid_label: "Humidité (remplace climat)",
     window_label: "Fenêtres (Liste)", battery_label: "Batteries (Liste)", name: "Nom", icon: "Icône", color: "Couleur",
-    force_color: "Forcer la couleur", img_url: "URL de l'image", path: "Chemin (Tap Action)", entity: "Entité", device: "Appareil (Optionnel)",
+    humid_warn_threshold: "Seuil d'alerte d'humidité (%)", high_humidity: "Humidité élevée",
+    force_color: "Forcer la couleur", img_url: "URL de l'image", image: "Image", path: "Chemin (Tap Action)", entity: "Entité", device: "Appareil (Optionnel)",
     template: "Filtre de type", add_template: "avec filtre", add_prefix: "Ajouter",
     quick_add_title: "Ajout rapide",
     quick_add_desc: "Ajouter rapidement des boutons à partir d’entités existantes.",
@@ -201,7 +204,7 @@ const replaceTemplateExpressions = (str, evalExpr) => {
 const trimStr = (v) => (typeof v === "string" ? v.trim() : v);
 
 const resolveLabelPosition = (btn, config) => {
-  const globalPos = config?.global_label_position || "right";
+  const globalPos = config?.global_label_position ?? config?.buttons_label_position ?? "right";
   const per = btn?.label_position;
   if (!per || per === "global") return globalPos;
   return per;
@@ -306,6 +309,8 @@ class OneLineRoomCard extends HTMLElement {
     this.shadowRoot.innerHTML = `
       <style>
         ha-card { position: relative; overflow: hidden; border-radius: 16px; background: none; border: none; cursor: default; }
+        ha-card.warning-battery { outline: 2px solid var(--error-color, #d32f2f); outline-offset: -2px; }
+        ha-card.warning-humidity { outline: 2px solid var(--info-color, #2196F3); outline-offset: -2px; box-shadow: 0 0 0 2px rgba(33,150,243,0.35), 0 0 12px rgba(33,150,243,0.35), 0 0 22px rgba(33,150,243,0.25); }
         .container { display: flex; flex-direction: column; background: var(--ha-card-background, rgba(255,255,255,0.1)); border-radius: 16px; }
         .img-box { position: relative; width: 100%; height: 120px; overflow: hidden; border-radius: 16px 16px 0 0; background: #444; cursor: pointer; }
         .img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -317,21 +322,27 @@ class OneLineRoomCard extends HTMLElement {
         .chips { position: absolute; bottom: 8px; left: 8px; display: flex; gap: 6px; flex-wrap: wrap; z-index: 2; }
         .chip { display: flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 8px; font-size: 11px; font-weight: bold; background: #FFF8E1; color: #FFA000; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
         .chip.alert { background: #FFEBEE; color: #D32F2F; }
+        .chip.humidity { background: #E3F2FD; color: #1976D2; }
         .controls { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px; }
         .btn { position: relative; display: flex; align-items: center; gap: 10px; padding: 0 10px; border-radius: 12px; cursor: pointer; background: var(--btn-bg, var(--card-background-color, rgba(128,128,128,0.05))); border: 1px solid transparent; flex-grow: 1; flex-shrink: 1; min-width: 0; overflow: hidden; box-sizing: border-box; transition: background 0.2s; user-select: none; -webkit-user-select: none; flex-basis: var(--btn-flex-basis, auto); height: var(--btn-height, 60px); justify-content: var(--btn-justify, center); }
         .btn.label-right { flex-direction: row; align-items: center; justify-content: var(--btn-justify, center); gap: 10px; padding: 0 10px; }
         .btn.label-left { flex-direction: row-reverse; align-items: center; justify-content: var(--btn-justify, center); gap: 10px; padding: 0 10px; }
-        .btn.label-bottom { flex-direction: column; justify-content: center; gap: 4px; padding: 6px 8px; overflow: hidden; }
+        .btn.label-bottom { flex-direction: column; justify-content: flex-start; align-items: center; gap: 1px; padding: 2px 4px; overflow: hidden; }
         .btn.label-top { flex-direction: column-reverse; justify-content: center; gap: 4px; padding: 6px 8px; overflow: hidden; }
         .btn.label-left .btn-txt { text-align: right; align-items: flex-end; }
         .btn.label-bottom .icon-box,
         .btn.label-top .icon-box { flex-shrink: 0; }
+        .btn.label-bottom .icon-box { width: 28px; height: 28px; margin-top: 1px; }
+        .btn.label-bottom ha-icon { --mdc-icon-size: 18px; }
         .btn.label-bottom .btn-txt,
         .btn.label-top .btn-txt { text-align: center; align-items: center; flex: 1; min-height: 0; max-width: 100%; overflow: hidden; }
+        .btn.label-bottom .btn-txt { flex: 0 0 auto; min-height: 22px; max-height: 22px; gap: 1px; }
         .btn.label-bottom .btn-name,
         .btn.label-bottom .btn-state,
         .btn.label-top .btn-name,
         .btn.label-top .btn-state { font-size: 11px; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+        .btn.label-bottom .btn-name { font-size: 11px; line-height: 11px; }
+        .btn.label-bottom .btn-state { font-size: 10px; line-height: 10px; margin-top: 0; }
         .btn:hover { background: rgba(128,128,128,0.1); border-color: rgba(128,128,128,0.2); }
         .btn:active { background: rgba(128,128,128,0.15); }
         .icon-box { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0; background: var(--icon-bg, transparent); }
@@ -423,11 +434,27 @@ class OneLineRoomCard extends HTMLElement {
       }
     });
 
-    if (al) ch.innerHTML += `<div class="chip alert"><ha-icon icon="mdi:battery-alert" style="--mdc-icon-size:14px"></ha-icon> ${al}</div>`;
+    const batteryWarn = !!al;
+    if (batteryWarn) ch.innerHTML += `<div class="chip alert"><ha-icon icon="mdi:battery-alert" style="--mdc-icon-size:14px"></ha-icon> ${al}</div>`;
+
+    const humidNum = hm != null ? parseFloat(hm) : NaN;
+    const thresholdRaw = c.humidity_warning_threshold ?? 60;
+    const humidThreshold = Number.isFinite(Number(thresholdRaw)) ? Number(thresholdRaw) : 60;
+    const humidityWarn = Number.isFinite(humidNum) && humidNum > humidThreshold;
+    if (humidityWarn) {
+      const txt = getTranslation(h, "high_humidity");
+      ch.innerHTML += `<div class="chip humidity"><ha-icon icon="mdi:water-alert" style="--mdc-icon-size:14px"></ha-icon> ${txt}</div>`;
+    }
     (Array.isArray(effectiveWindowSensors) ? effectiveWindowSensors : []).forEach(s => {
       const st = h.states[s];
       if (st?.state === "on") ch.innerHTML += `<div class="chip"><ha-icon icon="mdi:window-open-variant" style="--mdc-icon-size:14px"></ha-icon> ${st.attributes.friendly_name || getTranslation(h, "window")}</div>`;
     });
+
+    const cardEl = this.shadowRoot.querySelector("ha-card");
+    if (cardEl) {
+      cardEl.classList.toggle("warning-battery", batteryWarn);
+      cardEl.classList.toggle("warning-humidity", !batteryWarn && humidityWarn);
+    }
 
     const visibleCtrls = (c.controls || []).filter(ctrl => !ctrl.hide && (ctrl.entity || ctrl.type === "template"));
 
@@ -558,7 +585,12 @@ class OneLineRoomCard extends HTMLElement {
     const stateFirst = ctrl.state_first === true;
     const textHtml = stateFirst ? `${stateHtml}${labelHtml}` : `${labelHtml}${stateHtml}`;
 
+    const per = ctrl.label_position;
+    const globalPos = this.config?.global_label_position;
     const pos = resolveLabelPosition(ctrl, this.config);
+    btn.dataset.lpPer = per ?? "";
+    btn.dataset.lpGlobal = globalPos ?? "";
+    btn.dataset.lpEff = pos ?? "";
     applyLabelPosition(btn, pos);
 
     const iconHtml = showIcon
@@ -653,6 +685,9 @@ class OneLineRoomCardEditor extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
+    this._batteryListOpen = false;
+    this._manualSensorsOpen = false;
+    this._imageSectionOpen = false;
   }
 
   setConfig(config) {
@@ -1027,12 +1062,33 @@ class OneLineRoomCardEditor extends HTMLElement {
   render() {
     if (!this._config) return;
     const alreadyRendered = !!this.shadowRoot.innerHTML;
-    if (alreadyRendered) { this.updVal(); this.renBtn(); this._applyNavSelectorOptions(); this._ensureNavOptions(); return; }
+    if (alreadyRendered) { this.updVal(); this.renBtn(); this._applyNavSelectorOptions(); this._ensureNavOptions(); this._updateBatteryListUI(); this._updateManualSensorsUI(); this._updateImageSectionUI(); return; }
     const h = this._hass;
     this.shadowRoot.innerHTML = `
       <style>
         .sec { padding: 12px 0; border-bottom: 1px solid var(--divider-color); }
         .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 8px; }
+        .image-sec { border: 1px solid var(--divider-color); border-radius: 8px; background: var(--secondary-background-color); padding: 6px 10px; margin-bottom: 8px; }
+        .image-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer; user-select: none; padding: 4px 0; }
+        .image-title { font-size: 12px; font-weight: 600; opacity: 0.8; }
+        .image-chev { --mdc-icon-size: 18px; opacity: 0.7; transition: transform 0.15s ease; }
+        .image-sec.open .image-chev { transform: rotate(90deg); }
+        .image-content { margin-top: 6px; }
+        .image-content[hidden] { display: none; }
+        .manual-sec { border: 1px solid var(--divider-color); border-radius: 8px; background: var(--secondary-background-color); padding: 6px 10px; margin-bottom: 8px; }
+        .manual-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer; user-select: none; padding: 4px 0; }
+        .manual-title { font-size: 12px; font-weight: 600; opacity: 0.8; }
+        .manual-chev { --mdc-icon-size: 18px; opacity: 0.7; transition: transform 0.15s ease; }
+        .manual-sec.open .manual-chev { transform: rotate(90deg); }
+        .manual-content { margin-top: 6px; }
+        .manual-content[hidden] { display: none; }
+        .battery-sec { border: 1px solid var(--divider-color); border-radius: 8px; background: var(--secondary-background-color); padding: 6px 10px; margin-bottom: 8px; }
+        .battery-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer; user-select: none; padding: 4px 0; }
+        .battery-title { font-size: 12px; font-weight: 600; opacity: 0.8; }
+        .battery-chev { --mdc-icon-size: 18px; opacity: 0.7; transition: transform 0.15s ease; }
+        .battery-sec.open .battery-chev { transform: rotate(90deg); }
+        .battery-content { margin-top: 6px; }
+        .battery-content[hidden] { display: none; }
         .tmpl-label-row { margin-bottom: 4px; }
         .tmpl-label { font-size: 12px; font-weight: 600; opacity: 0.8; }
         .tmpl-row { align-items: start; margin-bottom: 12px; }
@@ -1100,24 +1156,47 @@ class OneLineRoomCardEditor extends HTMLElement {
             <input type="color" class="cp i-cp" cfg="color">
           </div>
         </div>
-        <label style="display:block;margin-bottom:4px;font-weight:bold">${getTranslation(h, "img_url")}</label>
-        <img id="prev-img" class="preview">
-        <ha-textfield id="img-url-field" cfg="image" class="i" icon="mdi:image"></ha-textfield>
-        <div class="upload-row">
-          <input type="file" id="file-upload" class="upload-hidden" accept="image/*">
-          <mwc-button id="upload-btn" raised label="${getTranslation(h, "upload_btn")}">
-            <ha-icon icon="mdi:upload" slot="icon"></ha-icon>
-          </mwc-button>
+        <div id="image-sec" class="image-sec">
+          <div id="image-head" class="image-head">
+            <span id="image-title" class="image-title"></span>
+            <ha-icon id="image-chev" class="image-chev" icon="mdi:chevron-right"></ha-icon>
+          </div>
+          <div id="image-content" class="image-content" hidden>
+            <img id="prev-img" class="preview">
+            <ha-textfield id="img-url-field" cfg="image" class="i" icon="mdi:image"></ha-textfield>
+            <div class="upload-row">
+              <input type="file" id="file-upload" class="upload-hidden" accept="image/*">
+              <mwc-button id="upload-btn" raised label="${getTranslation(h, "upload_btn")}">
+                <ha-icon icon="mdi:upload" slot="icon"></ha-icon>
+              </mwc-button>
+            </div>
+          </div>
         </div>
         <ha-selector id="nav-path" label="${getTranslation(h, "path")}" style="margin-top:12px"></ha-selector>
       </div>
       <div class="sec">
-        <h3>${getTranslation(h, "sensors_manual")}</h3>
-        <ha-entity-picker label="${getTranslation(h, "temp_label")}" cfg="temp_sensor" class="i" allow-custom-entity></ha-entity-picker>
-        <ha-entity-picker label="${getTranslation(h, "target_temp_label")}" cfg="target_temp_sensor" class="i" allow-custom-entity></ha-entity-picker>
-        <ha-entity-picker label="${getTranslation(h, "humid_label")}" cfg="humid_sensor" class="i" allow-custom-entity></ha-entity-picker>
-        <ha-selector cfg="window_sensors" class="i" label="${getTranslation(h, "window_label")}"></ha-selector>
-        <ha-selector cfg="battery_sensors" class="i" label="${getTranslation(h, "battery_label")}"></ha-selector>
+        <div id="manual-sec" class="manual-sec">
+          <div id="manual-head" class="manual-head">
+            <span id="manual-title" class="manual-title"></span>
+            <ha-icon id="manual-chev" class="manual-chev" icon="mdi:chevron-right"></ha-icon>
+          </div>
+          <div id="manual-content" class="manual-content" hidden>
+            <ha-entity-picker label="${getTranslation(h, "temp_label")}" cfg="temp_sensor" class="i" allow-custom-entity></ha-entity-picker>
+            <ha-entity-picker label="${getTranslation(h, "target_temp_label")}" cfg="target_temp_sensor" class="i" allow-custom-entity></ha-entity-picker>
+            <ha-entity-picker label="${getTranslation(h, "humid_label")}" cfg="humid_sensor" class="i" allow-custom-entity></ha-entity-picker>
+            <ha-textfield label="${getTranslation(h, "humid_warn_threshold")}" cfg="humidity_warning_threshold" class="i" type="number"></ha-textfield>
+            <ha-selector cfg="window_sensors" class="i" label="${getTranslation(h, "window_label")}"></ha-selector>
+          </div>
+        </div>
+        <div id="battery-sec" class="battery-sec">
+          <div id="battery-head" class="battery-head">
+            <span id="battery-title" class="battery-title"></span>
+            <ha-icon id="battery-chev" class="battery-chev" icon="mdi:chevron-right"></ha-icon>
+          </div>
+          <div id="battery-content" class="battery-content" hidden>
+            <ha-selector cfg="battery_sensors" class="i" label="${getTranslation(h, "battery_label")}"></ha-selector>
+          </div>
+        </div>
       </div>
       <div class="sec">
         <div class="sec-head">
@@ -1176,6 +1255,13 @@ class OneLineRoomCardEditor extends HTMLElement {
       uploadBtn.addEventListener("click", () => fileInput.click());
       fileInput.addEventListener("change", (e) => this._handleUpload(e));
     }
+    const imageHead = this.shadowRoot.getElementById("image-head");
+    if (imageHead) {
+      imageHead.addEventListener("click", () => {
+        this._imageSectionOpen = !this._imageSectionOpen;
+        this._updateImageSectionUI();
+      });
+    }
 
     this.shadowRoot.querySelectorAll(".i").forEach(e => {
       const k = e.getAttribute("cfg");
@@ -1187,12 +1273,33 @@ class OneLineRoomCardEditor extends HTMLElement {
         ev.stopPropagation();
         const v = ev.detail?.value !== undefined ? ev.detail.value : ev.target.value;
         const c = { ...this._config };
-        c[k] = v;
+        if (k === "humidity_warning_threshold") {
+          const raw = v ?? "";
+          const num = raw === "" ? 60 : Number(raw);
+          c[k] = Number.isFinite(num) ? num : 60;
+          if (e.value !== String(c[k])) e.value = String(c[k]);
+        } else {
+          c[k] = v;
+        }
         this._fire(c);
         if (k === "color") this.updCp();
         if (k === "image") this.updPreview();
       });
     });
+    const manualHead = this.shadowRoot.getElementById("manual-head");
+    if (manualHead) {
+      manualHead.addEventListener("click", () => {
+        this._manualSensorsOpen = !this._manualSensorsOpen;
+        this._updateManualSensorsUI();
+      });
+    }
+    const batteryHead = this.shadowRoot.getElementById("battery-head");
+    if (batteryHead) {
+      batteryHead.addEventListener("click", () => {
+        this._batteryListOpen = !this._batteryListOpen;
+        this._updateBatteryListUI();
+      });
+    }
     const navSelect = this.shadowRoot.getElementById("nav-path");
     if (navSelect) {
       navSelect.addEventListener("value-changed", (ev) => {
@@ -1223,10 +1330,10 @@ class OneLineRoomCardEditor extends HTMLElement {
         { value: "top", label: getTranslation(h, "pos_top") },
         { value: "left", label: getTranslation(h, "pos_left") }
       ] } };
-      globalLabelPos.value = this._config?.global_label_position || "right";
+      globalLabelPos.value = this._config?.global_label_position ?? this._config?.buttons_label_position ?? "right";
       globalLabelPos.addEventListener("value-changed", (ev) => {
         ev.stopPropagation();
-        const v = ev.detail?.value || "right";
+        const v = ev.detail?.value ?? "right";
         this._fire({ ...this._config, global_label_position: v });
         this.renBtn();
       });
@@ -1320,6 +1427,50 @@ class OneLineRoomCardEditor extends HTMLElement {
     }
     this._updateBulkToggleButton();
     this.updVal(); this.updCp(); this.renBtn(); this.updPreview();
+    this._updateBatteryListUI();
+    this._updateManualSensorsUI();
+    this._updateImageSectionUI();
+  }
+
+  _updateImageSectionUI() {
+    const sec = this.shadowRoot?.getElementById("image-sec");
+    const content = this.shadowRoot?.getElementById("image-content");
+    const title = this.shadowRoot?.getElementById("image-title");
+    if (!sec || !content || !title) return;
+    title.textContent = getTranslation(this._hass, "image");
+    sec.classList.toggle("open", this._imageSectionOpen);
+    content.hidden = !this._imageSectionOpen;
+  }
+
+  _updateManualSensorsUI() {
+    const sec = this.shadowRoot?.getElementById("manual-sec");
+    const content = this.shadowRoot?.getElementById("manual-content");
+    const title = this.shadowRoot?.getElementById("manual-title");
+    if (!sec || !content || !title) return;
+    const c = this._config || {};
+    const count = [
+      c.temp_sensor,
+      c.target_temp_sensor,
+      c.humid_sensor,
+      ...(Array.isArray(c.window_sensors) ? c.window_sensors : [])
+    ].filter((v) => v && String(v).trim() !== "").length;
+    const label = getTranslation(this._hass, "sensors_manual");
+    title.textContent = count > 0 ? `${label} (${count})` : label;
+    sec.classList.toggle("open", this._manualSensorsOpen);
+    content.hidden = !this._manualSensorsOpen;
+  }
+
+  _updateBatteryListUI() {
+    const sec = this.shadowRoot?.getElementById("battery-sec");
+    const content = this.shadowRoot?.getElementById("battery-content");
+    const title = this.shadowRoot?.getElementById("battery-title");
+    if (!sec || !content || !title) return;
+    const items = Array.isArray(this._config?.battery_sensors) ? this._config.battery_sensors : [];
+    const count = items.length;
+    const label = getTranslation(this._hass, "battery_label");
+    title.textContent = count > 0 ? `${label} (${count})` : label;
+    sec.classList.toggle("open", this._batteryListOpen);
+    content.hidden = !this._batteryListOpen;
   }
 
   updPreview() {
@@ -1552,7 +1703,8 @@ class OneLineRoomCardEditor extends HTMLElement {
     if (!this._config) return;
     this.shadowRoot.querySelectorAll(".i").forEach(e => {
       const k = e.getAttribute("cfg");
-      const v = k === "nav_path" ? this._config.tap_action?.navigation_path || "" : this._config[k] ?? "";
+      let v = k === "nav_path" ? this._config.tap_action?.navigation_path || "" : this._config[k] ?? "";
+      if (k === "humidity_warning_threshold") v = this._config[k] ?? 60;
       if (e.value !== v) e.value = v;
     });
     const nav = this.shadowRoot.getElementById("nav-path");
