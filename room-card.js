@@ -688,11 +688,14 @@ class OneLineRoomCardEditor extends HTMLElement {
     this._batteryListOpen = false;
     this._manualSensorsOpen = false;
     this._imageSectionOpen = false;
+    this._controlIds = [];
+    this._nextControlId = 1;
   }
 
   setConfig(config) {
     this._config = config || {};
     if (!Array.isArray(this._config.controls)) this._config = { ...this._config, controls: [] };
+    this._syncControlIds();
     this.render();
   }
 
@@ -709,10 +712,41 @@ class OneLineRoomCardEditor extends HTMLElement {
 
   _fire(config) {
     this._config = config;
+    this._syncControlIds();
     clearTimeout(this._tm);
     this._tm = setTimeout(() => {
       this.dispatchEvent(new CustomEvent("config-changed", { detail: { config }, bubbles: true, composed: true }));
     }, 300);
+  }
+
+  _makeControlId() {
+    const id = `c${this._nextControlId}`;
+    this._nextControlId += 1;
+    return id;
+  }
+
+  _syncControlIds() {
+    const len = Array.isArray(this._config?.controls) ? this._config.controls.length : 0;
+    while (this._controlIds.length < len) this._controlIds.push(this._makeControlId());
+    if (this._controlIds.length > len) this._controlIds.length = len;
+  }
+
+  _getScrollParent() {
+    let el = this;
+    while (el && el.parentElement) {
+      const style = getComputedStyle(el);
+      const oy = style.overflowY;
+      if (oy === "auto" || oy === "scroll") return el;
+      el = el.parentElement;
+    }
+    return null;
+  }
+
+  _withScrollRestore(fn) {
+    const sc = this._getScrollParent();
+    const top = sc ? sc.scrollTop : 0;
+    fn();
+    if (sc) sc.scrollTop = top;
   }
 
   _areAllButtonsExpanded() {
@@ -1485,7 +1519,10 @@ class OneLineRoomCardEditor extends HTMLElement {
   renBtn() {
     if (!this._config?.controls) return;
     const div = this.shadowRoot.getElementById("b"); if (!div) return;
-    const h = this._hass; div.replaceChildren();
+    const h = this._hass;
+    this._syncControlIds();
+    this._withScrollRestore(() => {
+      div.replaceChildren();
     const actOpts = [
       { value: "more-info", label: getTranslation(h, "act_more") },
       { value: "toggle", label: getTranslation(h, "act_toggle") },
@@ -1498,7 +1535,8 @@ class OneLineRoomCardEditor extends HTMLElement {
       const showTemplate = isTemplate ? "" : "hidden";
       const hideColor = !ctrl.force_color ? "hidden" : "";
       const showNav = ctrl.tap_action?.action === "navigate" ? "" : "hidden";
-      const key = ctrl.entity || ctrl.name || ctrl.content || ctrl.device || String(i);
+      const key = this._controlIds[i] || this._makeControlId();
+      this._controlIds[i] = key;
       this._collapsedState = this._collapsedState || {};
       if (this._collapsedState[key] === undefined) this._collapsedState[key] = true;
       box.open = this._collapsedState[key] !== true;
@@ -1567,15 +1605,52 @@ class OneLineRoomCardEditor extends HTMLElement {
         const c = [...this._config.controls];
         const [moved] = c.splice(from, 1);
         c.splice(to, 0, moved);
+        const ids = [...this._controlIds];
+        const [movedId] = ids.splice(from, 1);
+        ids.splice(to, 0, movedId);
+        this._controlIds = ids;
         this._fire({ ...this._config, controls: c });
         this.renBtn();
       });
 
-      const upd = (k, v) => { const c = [...this._config.controls]; c[i] = { ...c[i], [k]: v }; this._fire({ ...this._config, controls: c }); };
-      const updAct = (type, val) => { const c = [...this._config.controls]; const old = c[i][type] || {}; c[i] = { ...c[i], [type]: { ...old, action: val } }; this._fire({ ...this._config, controls: c }); this.renBtn(); };
+      const keepOpen = () => { this._collapsedState[key] = false; };
+      const upd = (k, v) => { keepOpen(); const c = [...this._config.controls]; c[i] = { ...c[i], [k]: v }; this._fire({ ...this._config, controls: c }); };
+      const updAct = (type, val) => { keepOpen(); const c = [...this._config.controls]; const old = c[i][type] || {}; c[i] = { ...c[i], [type]: { ...old, action: val } }; this._fire({ ...this._config, controls: c }); this.renBtn(); };
       box.querySelector(".u").onclick = (e) => { e.preventDefault(); e.stopPropagation(); if (i > 0) { const c = [...this._config.controls];[c[i], c[i - 1]] = [c[i - 1], c[i]]; this._fire({ ...this._config, controls: c }); this.renBtn(); } };
       box.querySelector(".d").onclick = (e) => { e.preventDefault(); e.stopPropagation(); if (i < this._config.controls.length - 1) { const c = [...this._config.controls];[c[i], c[i + 1]] = [c[i + 1], c[i]]; this._fire({ ...this._config, controls: c }); this.renBtn(); } };
-      box.querySelector(".del").onclick = (e) => { e.preventDefault(); e.stopPropagation(); const c = [...this._config.controls]; c.splice(i, 1); this._fire({ ...this._config, controls: c }); this.renBtn(); this._updateBulkToggleButton(); };
+      box.querySelector(".u").onclick = (e) => {
+        e.preventDefault(); e.stopPropagation();
+        if (i > 0) {
+          const c = [...this._config.controls];
+          [c[i], c[i - 1]] = [c[i - 1], c[i]];
+          const ids = [...this._controlIds];
+          [ids[i], ids[i - 1]] = [ids[i - 1], ids[i]];
+          this._controlIds = ids;
+          this._fire({ ...this._config, controls: c });
+          this.renBtn();
+        }
+      };
+      box.querySelector(".d").onclick = (e) => {
+        e.preventDefault(); e.stopPropagation();
+        if (i < this._config.controls.length - 1) {
+          const c = [...this._config.controls];
+          [c[i], c[i + 1]] = [c[i + 1], c[i]];
+          const ids = [...this._controlIds];
+          [ids[i], ids[i + 1]] = [ids[i + 1], ids[i]];
+          this._controlIds = ids;
+          this._fire({ ...this._config, controls: c });
+          this.renBtn();
+        }
+      };
+      box.querySelector(".del").onclick = (e) => {
+        e.preventDefault(); e.stopPropagation();
+        const c = [...this._config.controls];
+        c.splice(i, 1);
+        this._controlIds.splice(i, 1);
+        this._fire({ ...this._config, controls: c });
+        this.renBtn();
+        this._updateBulkToggleButton();
+      };
       const rt = box.querySelector(".rt");
       if (rt) {
         rt.hass = h;
@@ -1604,7 +1679,7 @@ class OneLineRoomCardEditor extends HTMLElement {
         const val = e.detail.value; const st = h.states[val]; const c = [...this._config.controls]; let changes = { entity: val };
         if (st?.attributes?.icon) changes.icon = st.attributes.icon; else changes.icon = this._iconForEntity(val);
         if (st?.attributes?.friendly_name) changes.name = st.attributes.friendly_name;
-        c[i] = { ...c[i], ...changes }; this._fire({ ...this._config, controls: c }); this.renBtn();
+        keepOpen(); c[i] = { ...c[i], ...changes }; this._fire({ ...this._config, controls: c }); this.renBtn();
       }); }
       const dvWrap = box.querySelector(".dv-wrap");
       if (dvWrap) {
@@ -1628,7 +1703,7 @@ class OneLineRoomCardEditor extends HTMLElement {
               if (st?.attributes?.friendly_name) next.name = st.attributes.friendly_name;
             }
           }
-          c[i] = next; this._fire({ ...this._config, controls: c }); this.renBtn();
+          keepOpen(); c[i] = next; this._fire({ ...this._config, controls: c }); this.renBtn();
         });
         dvWrap.appendChild(dv);
       }
@@ -1696,6 +1771,7 @@ class OneLineRoomCardEditor extends HTMLElement {
         tpText.textContent = previewText || "—";
       }
       div.appendChild(box);
+    });
     });
   }
 
