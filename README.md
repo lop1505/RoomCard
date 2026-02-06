@@ -22,13 +22,18 @@ If you are updating from an older version, please update your YAML configuration
 * 📱 **Responsive Flex Layout:** Buttons intelligently wrap on smaller screens (Mobile/Tablet) while maintaining your preferred relative widths. No more cut-off content!
 * 🌡️ **Smart Climate Integration:** Optionally select a main climate device (e.g., Tado, Netatmo) to automatically display temperature and humidity in the header.
 * 🌍 **Dynamic Unit Support:** Automatically adapts to your Home Assistant system settings (Celsius, Fahrenheit).
+* 🧭 **Label & Status Position:** Choose where label/status appear (**Right / Left / Top / Bottom**) per button, with a global default.
 * 📏 **Flexible Sizing:** Buttons can take up 1/3, 1/4, 1/5, etc. of the width. Important buttons can be taller, others smaller.
 * 🔋 **Advanced Status Chips:** Automatically alerts you about room status:
   * **Windows:** Shows open windows immediately.
   * **Batteries:** Differentiates between "Critical" (≤ 5%), "Low" (≤ 15%), or "Empty" (Binary Sensors).
+* 💧 **Humidity Warning:** Optional high-humidity chip and blue outline with configurable threshold.
 * ⚡ **Performance:** Vanilla JS, no external dependencies, loads extremely fast.
-* 🖱️ **Sortable:** Easily move buttons using arrow keys in the editor.
+* 🖱️ **Sortable:** Reorder buttons via drag & drop or arrow keys in the editor.
 * 🖼️ **Built-in Image Uploader:** Upload your room background images directly in the card editor. No file manager needed!
+* ⚡ **Quick Add (Editor):** Add buttons quickly from existing entity types using the Quick Add accordion.
+* 🧩 **Editor Sections:** Collapsible sections for Image, Manual Sensors, and Batteries.
+* 🧭 **Bulk Expand/Collapse (Editor):** Expand or collapse all button settings at once.
 * 👆 **Configurable Actions:** Define what happens on **Tap**, **Hold**, and **Double Tap** for every single button (Toggle, More Info, Navigate, etc.).
 * 🌡️ **Target Temperature:** Optionally display the setpoint/target temperature next to the current room temperature.
 * 🧩 **Collapsible Button Editor:** Each button configuration can be expanded/collapsed for faster navigation in large cards.
@@ -38,6 +43,16 @@ If you are updating from an older version, please update your YAML configuration
 * 🎛️ **Manual Color Override:** Force a custom color for a button icon even when the entity is inactive.
 * 🧭 **Device Picker:** Select a device and let the editor auto-pick a suitable entity.
 * 🧩 **Template Presets:** Add buttons using type presets (Light/Switch/Climate/Cover/Media).
+
+## 🆕 What’s new in 1.0.9
+
+* Runtime: High-humidity warning chip and blue outline with configurable threshold (`humidity_warning_threshold`, default `60`).
+* Runtime: Label/status position modes (**right/left/top/bottom**) with per-button `label_position` and global `global_label_position`.
+* Runtime: Battery and humidity warnings now highlight the card outline.
+* Editor UX: Quick Add accordion to add buttons from existing entity types.
+* Editor UX: Collapsible sections for Image, Manual Sensors, and Battery list.
+* Editor UX: Drag & drop reordering plus bulk expand/collapse button settings.
+* Fix: Editing a button no longer collapses entries or jumps the editor scroll.
 
 ## 📥 Installation
 
@@ -65,13 +80,28 @@ Simply add the card via "Add Card" in your dashboard and select **"OneLine Room 
 The visual editor guides you through all settings:
 
 * **General:** Name, Icon, Colors, Background Image, and optional **Tap → Navigate** path.
-* **Sensors:** Select your temperature (current & target), humidity, window, and battery sensors.
+* **Sensors:** Select your temperature (current & target), humidity, window, and battery sensors. Optional humidity warning threshold.
 * **Buttons:** Add devices/entities, set width/height, alignment, and actions (Tap/Hold/Double Tap).
 * **Cleaner Buttons:** Toggle **Show State**, **Show Label**, **Show Icon**, and **Visible** per button.
 * **Text Order:** Choose whether **State/Value** or **Name** appears first.
+* **Label Position:** Set **Right / Left / Top / Bottom** per button and a global default.
 * **Manual Color:** Force a custom icon color (always visible).
 * **Template Presets:** Add buttons from type presets, or switch a row to **Template**.
 * **Editor UX:** Button entries are collapsible for better overview.
+
+### New in 1.0.9 (YAML options)
+```
+type: custom:oneline-room-card
+humidity_warning_threshold: 60
+global_label_position: bottom  # right | left | top | bottom
+controls:
+  - entity: light.living_room
+    label_position: bottom      # global | right | left | top | bottom
+```
+
+## ⚠️ Migration 1.0.8 → 1.0.9
+
+No breaking changes. `global_label_position` is new; existing configs using `buttons_label_position` remain supported as a fallback.
 
 ### Template Buttons (Optional)
 You can switch a button row to **Template** to render dynamic text/icon/color/state.

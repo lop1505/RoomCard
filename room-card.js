@@ -1,6 +1,4 @@
-// SAFE VERSION 1.0.7 - Resolved Naming Conflict and added dynamic unit support (Fahrenheit/Celsius)
-
-const VERSION = "1.0.8";
+const VERSION = "1.0.9";
 const LOG_FLAG = `customCards_RoomCard_Logged_${VERSION}`;
 
 if (!window[LOG_FLAG]) {
@@ -20,8 +18,27 @@ const TRANSLATIONS = {
     main_climate: "Main Climate Device (Optional)", climate_info: "Fills Temp/Humidity automatically if empty below.",
     temp_label: "Temperature (overrides climate)", target_temp_label: "Target Temperature", humid_label: "Humidity (overrides climate)",
     window_label: "Windows (List)", battery_label: "Batteries (List)", name: "Name", icon: "Icon", color: "Icon Color",
-    force_color: "Force Manual Color (Always visible)", img_url: "Image URL", path: "Path (Tap Action)", entity: "Entity", device: "Device (Optional)",
+    humid_warn_threshold: "Humidity Warning Threshold (%)", high_humidity: "High humidity",
+    force_color: "Force Manual Color (Always visible)", img_url: "Image URL", image: "Image", path: "Path (Tap Action)", entity: "Entity", device: "Device (Optional)",
     template: "Type Filter", add_template: "with Filter", add_prefix: "Add",
+    quick_add_title: "Quick Add",
+    quick_add_desc: "Quickly add buttons from existing entities.",
+    quick_add_entity_type_label: "Entity type",
+    quick_add_entity_label: "Entity (filtered)",
+    quick_add_entity_type_help: "Filters the entity list on the right.",
+    quick_add_entity_help: "Select an entity of this type and click ‘Add’.",
+    quick_add_entity_placeholder: "Select entity ({type})",
+    quick_add_empty_hint: "No matching entities found.",
+    quick_add_settings_caption: "Button settings (for added entries)",
+    expand_all: "Expand all",
+    collapse_all: "Collapse all",
+    label_position: "Label & Status Position",
+    label_position_all: "Label & status position (all buttons)",
+    use_global: "Use global setting",
+    pos_right: "Right",
+    pos_bottom: "Bottom",
+    pos_left: "Left",
+    pos_top: "Top",
     row_type: "Row Type", type_entity: "Entity", type_template: "Template",
     tmpl_content: "Content (Template)", tmpl_icon: "Icon (Template)", tmpl_color: "Color (Template)", tmpl_state: "State (Template)", tmpl_preview: "Preview",
     tmpl_light: "Light", tmpl_switch: "Switch / Socket", tmpl_climate: "Climate", tmpl_cover: "Cover / Shutter", tmpl_media: "Media Player",
@@ -39,8 +56,27 @@ const TRANSLATIONS = {
     main_climate: "Haupt-Klima-Gerät (Optional)", climate_info: "Füllt Temp/Feuchtigkeit automatisch, wenn unten leer.",
     temp_label: "Temperatur (überschreibt Klima)", target_temp_label: "Soll-Temperatur", humid_label: "Luftfeuchtigkeit (überschreibt Klima)",
     window_label: "Fenster (Liste)", battery_label: "Batterien (Liste)", name: "Name", icon: "Icon", color: "Iconfarbe",
-    force_color: "Manuelle Farbe erzwingen (Immer sichtbar)", img_url: "Bild URL", path: "Pfad (Tap Action)", entity: "Entität", device: "Gerät (Optional)",
+    humid_warn_threshold: "Feuchte-Warnschwelle (%)", high_humidity: "Hohe Luftfeuchtigkeit",
+    force_color: "Manuelle Farbe erzwingen (Immer sichtbar)", img_url: "Bild URL", image: "Bild", path: "Pfad (Tap Action)", entity: "Entität", device: "Gerät (Optional)",
     template: "Typ-Filter", add_template: "mit Filter", add_prefix: "Add",
+    quick_add_title: "Schnellerfassung",
+    quick_add_desc: "Schnell Buttons aus bestehenden Entitäten hinzufügen.",
+    quick_add_entity_type_label: "Entitätstyp",
+    quick_add_entity_label: "Entität (gefiltert)",
+    quick_add_entity_type_help: "Filtert die Entitätenliste rechts.",
+    quick_add_entity_help: "Wähle eine Entität dieses Typs und klicke anschließend auf ‘Hinzufügen’.",
+    quick_add_entity_placeholder: "Entität auswählen ({type})",
+    quick_add_empty_hint: "Keine passenden Entitäten gefunden.",
+    quick_add_settings_caption: "Button-Einstellungen (für hinzugefügte Einträge)",
+    expand_all: "Alle aufklappen",
+    collapse_all: "Alle zuklappen",
+    label_position: "Position von Label & Status",
+    label_position_all: "Label & Status Position (alle Buttons)",
+    use_global: "Globale Einstellung verwenden",
+    pos_right: "Rechts",
+    pos_bottom: "Unten",
+    pos_left: "Links",
+    pos_top: "Oben",
     row_type: "Zeilentyp", type_entity: "Entität", type_template: "Template",
     tmpl_content: "Text (Template)", tmpl_icon: "Icon (Template)", tmpl_color: "Farbe (Template)", tmpl_state: "Status (Template)", tmpl_preview: "Vorschau",
     tmpl_light: "Licht", tmpl_switch: "Schalter / Steckdose", tmpl_climate: "Klima", tmpl_cover: "Rollladen / Abdeckung", tmpl_media: "Media Player",
@@ -58,8 +94,27 @@ const TRANSLATIONS = {
     main_climate: "Appareil climatique principal (Optionnel)", climate_info: "Remplit automatiquement Temp/Humidité si vide ci-dessous.",
     temp_label: "Température (remplace climat)", target_temp_label: "Température cible", humid_label: "Humidité (remplace climat)",
     window_label: "Fenêtres (Liste)", battery_label: "Batteries (Liste)", name: "Nom", icon: "Icône", color: "Couleur",
-    force_color: "Forcer la couleur", img_url: "URL de l'image", path: "Chemin (Tap Action)", entity: "Entité", device: "Appareil (Optionnel)",
+    humid_warn_threshold: "Seuil d'alerte d'humidité (%)", high_humidity: "Humidité élevée",
+    force_color: "Forcer la couleur", img_url: "URL de l'image", image: "Image", path: "Chemin (Tap Action)", entity: "Entité", device: "Appareil (Optionnel)",
     template: "Filtre de type", add_template: "avec filtre", add_prefix: "Ajouter",
+    quick_add_title: "Ajout rapide",
+    quick_add_desc: "Ajouter rapidement des boutons à partir d’entités existantes.",
+    quick_add_entity_type_label: "Type d’entité",
+    quick_add_entity_label: "Entité (filtrée)",
+    quick_add_entity_type_help: "Filtre la liste des entités à droite.",
+    quick_add_entity_help: "Sélectionnez une entité de ce type puis cliquez sur « Ajouter ».",
+    quick_add_entity_placeholder: "Sélectionner une entité ({type})",
+    quick_add_empty_hint: "Aucune entité correspondante trouvée.",
+    quick_add_settings_caption: "Paramètres des boutons (pour les éléments ajoutés)",
+    expand_all: "Tout développer",
+    collapse_all: "Tout replier",
+    label_position: "Position du libellé et de l’état",
+    label_position_all: "Position du libellé et de l’état (tous les boutons)",
+    use_global: "Utiliser le réglage global",
+    pos_right: "Droite",
+    pos_bottom: "Bas",
+    pos_left: "Gauche",
+    pos_top: "Haut",
     row_type: "Type de ligne", type_entity: "Entité", type_template: "Template",
     tmpl_content: "Contenu (Template)", tmpl_icon: "Icône (Template)", tmpl_color: "Couleur (Template)", tmpl_state: "État (Template)", tmpl_preview: "Aperçu",
     tmpl_light: "Lumière", tmpl_switch: "Interrupteur / Prise", tmpl_climate: "Climatisation", tmpl_cover: "Volet / Store", tmpl_media: "Lecteur multimédia",
@@ -148,6 +203,75 @@ const replaceTemplateExpressions = (str, evalExpr) => {
 
 const trimStr = (v) => (typeof v === "string" ? v.trim() : v);
 
+const resolveLabelPosition = (btn, config) => {
+  const globalPos = config?.global_label_position ?? config?.buttons_label_position ?? "right";
+  const per = btn?.label_position;
+  if (!per || per === "global") return globalPos;
+  return per;
+};
+
+const setAlignmentClass = (el, pos) => {
+  if (!el) return;
+  el.classList.remove("label-right", "label-left", "label-bottom", "label-top");
+  el.classList.add(
+    pos === "bottom"
+      ? "label-bottom"
+      : (pos === "left"
+        ? "label-left"
+        : (pos === "top" ? "label-top" : "label-right"))
+  );
+};
+
+const applyLabelPosition = (layoutEl, pos) => {
+  if (!layoutEl) return;
+  // Reset layout element inline styles
+  layoutEl.style.flexDirection = "";
+  layoutEl.style.alignItems = "";
+  layoutEl.style.justifyContent = "";
+  layoutEl.style.gap = "";
+  layoutEl.style.textAlign = "";
+  layoutEl.style.padding = "";
+  layoutEl.style.overflow = "";
+  layoutEl.style.flexWrap = "";
+
+  // Reset common child inline styles if any
+  const txt = layoutEl.querySelector(".btn-txt");
+  if (txt) {
+    txt.style.textAlign = "";
+    txt.style.alignItems = "";
+    txt.style.flex = "";
+    txt.style.minHeight = "";
+    txt.style.maxWidth = "";
+    txt.style.overflow = "";
+    txt.style.whiteSpace = "";
+  }
+  const iconBox = layoutEl.querySelector(".icon-box");
+  if (iconBox) {
+    iconBox.style.flexShrink = "";
+  }
+  const nameEl = layoutEl.querySelector(".btn-name");
+  if (nameEl) {
+    nameEl.style.overflow = "";
+    nameEl.style.textOverflow = "";
+    nameEl.style.whiteSpace = "";
+    nameEl.style.maxWidth = "";
+    nameEl.style.lineHeight = "";
+    nameEl.style.fontSize = "";
+  }
+  const stateEl = layoutEl.querySelector(".btn-state");
+  if (stateEl) {
+    stateEl.style.overflow = "";
+    stateEl.style.textOverflow = "";
+    stateEl.style.whiteSpace = "";
+    stateEl.style.maxWidth = "";
+    stateEl.style.lineHeight = "";
+    stateEl.style.fontSize = "";
+  }
+
+  layoutEl.classList.remove("label-right", "label-left", "label-bottom", "label-top");
+  setAlignmentClass(layoutEl, pos);
+};
+
 // =============================================================================
 // MAIN CARD CLASS
 // =============================================================================
@@ -155,6 +279,7 @@ class OneLineRoomCard extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
+    this._quickAddOpen = false;
   }
 
   set hass(hass) {
@@ -184,6 +309,8 @@ class OneLineRoomCard extends HTMLElement {
     this.shadowRoot.innerHTML = `
       <style>
         ha-card { position: relative; overflow: hidden; border-radius: 16px; background: none; border: none; cursor: default; }
+        ha-card.warning-battery { outline: 2px solid var(--error-color, #d32f2f); outline-offset: -2px; }
+        ha-card.warning-humidity { outline: 2px solid var(--info-color, #2196F3); outline-offset: -2px; box-shadow: 0 0 0 2px rgba(33,150,243,0.35), 0 0 12px rgba(33,150,243,0.35), 0 0 22px rgba(33,150,243,0.25); }
         .container { display: flex; flex-direction: column; background: var(--ha-card-background, rgba(255,255,255,0.1)); border-radius: 16px; }
         .img-box { position: relative; width: 100%; height: 120px; overflow: hidden; border-radius: 16px 16px 0 0; background: #444; cursor: pointer; }
         .img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -195,15 +322,34 @@ class OneLineRoomCard extends HTMLElement {
         .chips { position: absolute; bottom: 8px; left: 8px; display: flex; gap: 6px; flex-wrap: wrap; z-index: 2; }
         .chip { display: flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 8px; font-size: 11px; font-weight: bold; background: #FFF8E1; color: #FFA000; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
         .chip.alert { background: #FFEBEE; color: #D32F2F; }
+        .chip.humidity { background: #E3F2FD; color: #1976D2; }
         .controls { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px; }
         .btn { position: relative; display: flex; align-items: center; gap: 10px; padding: 0 10px; border-radius: 12px; cursor: pointer; background: var(--btn-bg, var(--card-background-color, rgba(128,128,128,0.05))); border: 1px solid transparent; flex-grow: 1; flex-shrink: 1; min-width: 0; overflow: hidden; box-sizing: border-box; transition: background 0.2s; user-select: none; -webkit-user-select: none; flex-basis: var(--btn-flex-basis, auto); height: var(--btn-height, 60px); justify-content: var(--btn-justify, center); }
+        .btn.label-right { flex-direction: row; align-items: center; justify-content: var(--btn-justify, center); gap: 10px; padding: 0 10px; }
+        .btn.label-left { flex-direction: row-reverse; align-items: center; justify-content: var(--btn-justify, center); gap: 10px; padding: 0 10px; }
+        .btn.label-bottom { flex-direction: column; justify-content: flex-start; align-items: center; gap: 1px; padding: 2px 4px; overflow: hidden; }
+        .btn.label-top { flex-direction: column-reverse; justify-content: center; gap: 4px; padding: 6px 8px; overflow: hidden; }
+        .btn.label-left .btn-txt { text-align: right; align-items: flex-end; }
+        .btn.label-bottom .icon-box,
+        .btn.label-top .icon-box { flex-shrink: 0; }
+        .btn.label-bottom .icon-box { width: 28px; height: 28px; margin-top: 1px; }
+        .btn.label-bottom ha-icon { --mdc-icon-size: 18px; }
+        .btn.label-bottom .btn-txt,
+        .btn.label-top .btn-txt { text-align: center; align-items: center; flex: 1; min-height: 0; max-width: 100%; overflow: hidden; }
+        .btn.label-bottom .btn-txt { flex: 0 0 auto; min-height: 22px; max-height: 22px; gap: 1px; }
+        .btn.label-bottom .btn-name,
+        .btn.label-bottom .btn-state,
+        .btn.label-top .btn-name,
+        .btn.label-top .btn-state { font-size: 11px; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+        .btn.label-bottom .btn-name { font-size: 11px; line-height: 11px; }
+        .btn.label-bottom .btn-state { font-size: 10px; line-height: 10px; margin-top: 0; }
         .btn:hover { background: rgba(128,128,128,0.1); border-color: rgba(128,128,128,0.2); }
         .btn:active { background: rgba(128,128,128,0.15); }
         .icon-box { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0; background: var(--icon-bg, transparent); }
         .btn-txt { display: flex; flex-direction: column; text-align: left; overflow: hidden; min-width: 0; flex: initial; max-width: 100%; }
         .btn ha-icon { color: var(--icon-color, grey); --mdc-icon-size: 20px; }
-        .btn-name { font-size: 13px; font-weight: 600; color: var(--primary-text-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .btn-state { font-size: 11px; color: var(--secondary-text-color); margin-top: 1px; }
+        .btn-name { font-size: 13px; font-weight: 600; color: var(--primary-text-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+        .btn-state { font-size: 11px; color: var(--secondary-text-color); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
         .warn { position: absolute; top: 4px; right: 4px; color: #d32f2f; --mdc-icon-size: 16px; background: rgba(255,255,255,0.8); border-radius: 50%; padding: 1px; }
       </style>
       <ha-card>
@@ -288,11 +434,27 @@ class OneLineRoomCard extends HTMLElement {
       }
     });
 
-    if (al) ch.innerHTML += `<div class="chip alert"><ha-icon icon="mdi:battery-alert" style="--mdc-icon-size:14px"></ha-icon> ${al}</div>`;
+    const batteryWarn = !!al;
+    if (batteryWarn) ch.innerHTML += `<div class="chip alert"><ha-icon icon="mdi:battery-alert" style="--mdc-icon-size:14px"></ha-icon> ${al}</div>`;
+
+    const humidNum = hm != null ? parseFloat(hm) : NaN;
+    const thresholdRaw = c.humidity_warning_threshold ?? 60;
+    const humidThreshold = Number.isFinite(Number(thresholdRaw)) ? Number(thresholdRaw) : 60;
+    const humidityWarn = Number.isFinite(humidNum) && humidNum > humidThreshold;
+    if (humidityWarn) {
+      const txt = getTranslation(h, "high_humidity");
+      ch.innerHTML += `<div class="chip humidity"><ha-icon icon="mdi:water-alert" style="--mdc-icon-size:14px"></ha-icon> ${txt}</div>`;
+    }
     (Array.isArray(effectiveWindowSensors) ? effectiveWindowSensors : []).forEach(s => {
       const st = h.states[s];
       if (st?.state === "on") ch.innerHTML += `<div class="chip"><ha-icon icon="mdi:window-open-variant" style="--mdc-icon-size:14px"></ha-icon> ${st.attributes.friendly_name || getTranslation(h, "window")}</div>`;
     });
+
+    const cardEl = this.shadowRoot.querySelector("ha-card");
+    if (cardEl) {
+      cardEl.classList.toggle("warning-battery", batteryWarn);
+      cardEl.classList.toggle("warning-humidity", !batteryWarn && humidityWarn);
+    }
 
     const visibleCtrls = (c.controls || []).filter(ctrl => !ctrl.hide && (ctrl.entity || ctrl.type === "template"));
 
@@ -423,6 +585,14 @@ class OneLineRoomCard extends HTMLElement {
     const stateFirst = ctrl.state_first === true;
     const textHtml = stateFirst ? `${stateHtml}${labelHtml}` : `${labelHtml}${stateHtml}`;
 
+    const per = ctrl.label_position;
+    const globalPos = this.config?.global_label_position;
+    const pos = resolveLabelPosition(ctrl, this.config);
+    btn.dataset.lpPer = per ?? "";
+    btn.dataset.lpGlobal = globalPos ?? "";
+    btn.dataset.lpEff = pos ?? "";
+    applyLabelPosition(btn, pos);
+
     const iconHtml = showIcon
       ? `<div class="icon-box">
         <ha-icon icon="${(isTemplate ? (tpl?.icon || ctrl.icon) : ctrl.icon) || "mdi:circle"}" style="--mdc-icon-size:20px"></ha-icon>
@@ -515,11 +685,17 @@ class OneLineRoomCardEditor extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
+    this._batteryListOpen = false;
+    this._manualSensorsOpen = false;
+    this._imageSectionOpen = false;
+    this._controlIds = [];
+    this._nextControlId = 1;
   }
 
   setConfig(config) {
     this._config = config || {};
     if (!Array.isArray(this._config.controls)) this._config = { ...this._config, controls: [] };
+    this._syncControlIds();
     this.render();
   }
 
@@ -536,10 +712,75 @@ class OneLineRoomCardEditor extends HTMLElement {
 
   _fire(config) {
     this._config = config;
+    this._syncControlIds();
     clearTimeout(this._tm);
     this._tm = setTimeout(() => {
       this.dispatchEvent(new CustomEvent("config-changed", { detail: { config }, bubbles: true, composed: true }));
     }, 300);
+  }
+
+  _makeControlId() {
+    const id = `c${this._nextControlId}`;
+    this._nextControlId += 1;
+    return id;
+  }
+
+  _syncControlIds() {
+    const len = Array.isArray(this._config?.controls) ? this._config.controls.length : 0;
+    while (this._controlIds.length < len) this._controlIds.push(this._makeControlId());
+    if (this._controlIds.length > len) this._controlIds.length = len;
+  }
+
+  _getScrollParent() {
+    let el = this;
+    while (el && el.parentElement) {
+      const style = getComputedStyle(el);
+      const oy = style.overflowY;
+      if (oy === "auto" || oy === "scroll") return el;
+      el = el.parentElement;
+    }
+    return null;
+  }
+
+  _withScrollRestore(fn) {
+    const sc = this._getScrollParent();
+    const top = sc ? sc.scrollTop : 0;
+    fn();
+    if (sc) sc.scrollTop = top;
+  }
+
+  _areAllButtonsExpanded() {
+    const controls = Array.isArray(this._config?.controls) ? this._config.controls : [];
+    if (controls.length === 0) return false;
+    this._collapsedState = this._collapsedState || {};
+    return controls.every((ctrl, i) => {
+      const key = ctrl.entity || ctrl.name || ctrl.content || ctrl.device || String(i);
+      return this._collapsedState[key] !== true;
+    });
+  }
+
+  _toggleAllButtonsExpanded(expand) {
+    const controls = Array.isArray(this._config?.controls) ? this._config.controls : [];
+    this._collapsedState = this._collapsedState || {};
+    controls.forEach((ctrl, i) => {
+      const key = ctrl.entity || ctrl.name || ctrl.content || ctrl.device || String(i);
+      this._collapsedState[key] = !expand;
+    });
+    this.renBtn();
+    this._updateBulkToggleButton();
+  }
+
+  _updateBulkToggleButton() {
+    const btn = this.shadowRoot?.getElementById("bulk-toggle");
+    if (!btn) return;
+    const controls = Array.isArray(this._config?.controls) ? this._config.controls : [];
+    const allExpanded = controls.length > 0 && this._areAllButtonsExpanded();
+    const label = getTranslation(this._hass, allExpanded ? "collapse_all" : "expand_all");
+    const icon = allExpanded ? "mdi:unfold-less-vertical" : "mdi:unfold-more-vertical";
+    btn.disabled = controls.length === 0;
+    const ic = btn.querySelector("ha-icon");
+    if (ic) ic.setAttribute("icon", icon);
+    btn.setAttribute("title", label);
   }
 
   async _handleUpload(e) {
@@ -855,12 +1096,33 @@ class OneLineRoomCardEditor extends HTMLElement {
   render() {
     if (!this._config) return;
     const alreadyRendered = !!this.shadowRoot.innerHTML;
-    if (alreadyRendered) { this.updVal(); this.renBtn(); this._applyNavSelectorOptions(); this._ensureNavOptions(); return; }
+    if (alreadyRendered) { this.updVal(); this.renBtn(); this._applyNavSelectorOptions(); this._ensureNavOptions(); this._updateBatteryListUI(); this._updateManualSensorsUI(); this._updateImageSectionUI(); return; }
     const h = this._hass;
     this.shadowRoot.innerHTML = `
       <style>
         .sec { padding: 12px 0; border-bottom: 1px solid var(--divider-color); }
         .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 8px; }
+        .image-sec { border: 1px solid var(--divider-color); border-radius: 8px; background: var(--secondary-background-color); padding: 6px 10px; margin-bottom: 8px; }
+        .image-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer; user-select: none; padding: 4px 0; }
+        .image-title { font-size: 12px; font-weight: 600; opacity: 0.8; }
+        .image-chev { --mdc-icon-size: 18px; opacity: 0.7; transition: transform 0.15s ease; }
+        .image-sec.open .image-chev { transform: rotate(90deg); }
+        .image-content { margin-top: 6px; }
+        .image-content[hidden] { display: none; }
+        .manual-sec { border: 1px solid var(--divider-color); border-radius: 8px; background: var(--secondary-background-color); padding: 6px 10px; margin-bottom: 8px; }
+        .manual-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer; user-select: none; padding: 4px 0; }
+        .manual-title { font-size: 12px; font-weight: 600; opacity: 0.8; }
+        .manual-chev { --mdc-icon-size: 18px; opacity: 0.7; transition: transform 0.15s ease; }
+        .manual-sec.open .manual-chev { transform: rotate(90deg); }
+        .manual-content { margin-top: 6px; }
+        .manual-content[hidden] { display: none; }
+        .battery-sec { border: 1px solid var(--divider-color); border-radius: 8px; background: var(--secondary-background-color); padding: 6px 10px; margin-bottom: 8px; }
+        .battery-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer; user-select: none; padding: 4px 0; }
+        .battery-title { font-size: 12px; font-weight: 600; opacity: 0.8; }
+        .battery-chev { --mdc-icon-size: 18px; opacity: 0.7; transition: transform 0.15s ease; }
+        .battery-sec.open .battery-chev { transform: rotate(90deg); }
+        .battery-content { margin-top: 6px; }
+        .battery-content[hidden] { display: none; }
         .tmpl-label-row { margin-bottom: 4px; }
         .tmpl-label { font-size: 12px; font-weight: 600; opacity: 0.8; }
         .tmpl-row { align-items: start; margin-bottom: 12px; }
@@ -868,6 +1130,30 @@ class OneLineRoomCardEditor extends HTMLElement {
         .tmpl-row ha-selector,
         .tmpl-row ha-entity-picker,
         .tmpl-row ha-icon-picker { margin-bottom: 0; }
+        .qa { border: 1px solid var(--divider-color); border-radius: 8px; background: var(--secondary-background-color); padding: 6px 10px; }
+        .sec-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+        .sec-head h3 { margin: 0; }
+        .section-action { background: none; border: 0; cursor: pointer; padding: 4px; display: inline-flex; align-items: center; }
+        .section-action[disabled] { opacity: 0.4; cursor: default; }
+        .section-action ha-icon { --mdc-icon-size: 20px; }
+        .qa summary { list-style: none; cursor: pointer; }
+        .qa summary::-webkit-details-marker { display: none; }
+        .qa-summary { display: flex; flex-direction: column; gap: 4px; }
+        .qa-title { font-weight: 700; }
+        .qa-desc { font-size: 12px; opacity: 0.8; }
+        .qa-body { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--divider-color); }
+        .quick-add-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+        .quick-add-col { display: flex; flex-direction: column; }
+        .quick-add-label { font-size: 12px; font-weight: 600; opacity: 0.8; margin-bottom: 6px; }
+        .quick-add-field { min-height: 56px; display: flex; align-items: stretch; }
+        .quick-add-field > ha-selector,
+        .quick-add-field > ha-entity-picker { min-height: 56px; }
+        .quick-add-field > ha-selector::part(form-field),
+        .quick-add-field > ha-entity-picker::part(form-field) { min-height: 56px; }
+        .quick-add-helper { font-size: 12px; opacity: 0.7; margin-top: 4px; }
+        .qa-empty { font-size: 12px; color: var(--error-color, #db4437); margin-top: 4px; }
+        .qa-caption { font-size: 12px; font-weight: 600; opacity: 0.8; margin: 6px 0 8px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+        .qa-sep { height: 12px; }
         .add-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
         .add-prefix { font-size: 12px; font-weight: 600; opacity: 0.8; }
         .tmpl-preview { margin-top: 6px; font-size: 12px; opacity: 0.8; display: flex; align-items: center; gap: 6px; }
@@ -875,6 +1161,8 @@ class OneLineRoomCardEditor extends HTMLElement {
         .tmpl-details summary { cursor: pointer; font-weight: 600; font-size: 12px; opacity: 0.8; list-style: none; }
         .tmpl-details summary::-webkit-details-marker { display: none; }
         .box { border: 1px solid var(--divider-color); padding: 12px; border-radius: 8px; background: var(--secondary-background-color); margin-bottom: 12px; }
+        .box.dragging { opacity: 0.6; }
+        .box.drag-over { outline: 2px dashed var(--divider-color); outline-offset: 2px; }
         .head { display: flex; justify-content: space-between; align-items: center; font-weight: bold; cursor: pointer; }
         .head::-webkit-details-marker { display: none; }
         .head-left { display: flex; align-items: center; gap: 6px; min-width: 0; }
@@ -902,40 +1190,92 @@ class OneLineRoomCardEditor extends HTMLElement {
             <input type="color" class="cp i-cp" cfg="color">
           </div>
         </div>
-        <label style="display:block;margin-bottom:4px;font-weight:bold">${getTranslation(h, "img_url")}</label>
-        <img id="prev-img" class="preview">
-        <ha-textfield id="img-url-field" cfg="image" class="i" icon="mdi:image"></ha-textfield>
-        <div class="upload-row">
-          <input type="file" id="file-upload" class="upload-hidden" accept="image/*">
-          <mwc-button id="upload-btn" raised label="${getTranslation(h, "upload_btn")}">
-            <ha-icon icon="mdi:upload" slot="icon"></ha-icon>
-          </mwc-button>
+        <div id="image-sec" class="image-sec">
+          <div id="image-head" class="image-head">
+            <span id="image-title" class="image-title"></span>
+            <ha-icon id="image-chev" class="image-chev" icon="mdi:chevron-right"></ha-icon>
+          </div>
+          <div id="image-content" class="image-content" hidden>
+            <img id="prev-img" class="preview">
+            <ha-textfield id="img-url-field" cfg="image" class="i" icon="mdi:image"></ha-textfield>
+            <div class="upload-row">
+              <input type="file" id="file-upload" class="upload-hidden" accept="image/*">
+              <mwc-button id="upload-btn" raised label="${getTranslation(h, "upload_btn")}">
+                <ha-icon icon="mdi:upload" slot="icon"></ha-icon>
+              </mwc-button>
+            </div>
+          </div>
         </div>
         <ha-selector id="nav-path" label="${getTranslation(h, "path")}" style="margin-top:12px"></ha-selector>
       </div>
       <div class="sec">
-        <h3>${getTranslation(h, "sensors_manual")}</h3>
-        <ha-entity-picker label="${getTranslation(h, "temp_label")}" cfg="temp_sensor" class="i" allow-custom-entity></ha-entity-picker>
-        <ha-entity-picker label="${getTranslation(h, "target_temp_label")}" cfg="target_temp_sensor" class="i" allow-custom-entity></ha-entity-picker>
-        <ha-entity-picker label="${getTranslation(h, "humid_label")}" cfg="humid_sensor" class="i" allow-custom-entity></ha-entity-picker>
-        <ha-selector cfg="window_sensors" class="i" label="${getTranslation(h, "window_label")}"></ha-selector>
-        <ha-selector cfg="battery_sensors" class="i" label="${getTranslation(h, "battery_label")}"></ha-selector>
+        <div id="manual-sec" class="manual-sec">
+          <div id="manual-head" class="manual-head">
+            <span id="manual-title" class="manual-title"></span>
+            <ha-icon id="manual-chev" class="manual-chev" icon="mdi:chevron-right"></ha-icon>
+          </div>
+          <div id="manual-content" class="manual-content" hidden>
+            <ha-entity-picker label="${getTranslation(h, "temp_label")}" cfg="temp_sensor" class="i" allow-custom-entity></ha-entity-picker>
+            <ha-entity-picker label="${getTranslation(h, "target_temp_label")}" cfg="target_temp_sensor" class="i" allow-custom-entity></ha-entity-picker>
+            <ha-entity-picker label="${getTranslation(h, "humid_label")}" cfg="humid_sensor" class="i" allow-custom-entity></ha-entity-picker>
+            <ha-textfield label="${getTranslation(h, "humid_warn_threshold")}" cfg="humidity_warning_threshold" class="i" type="number"></ha-textfield>
+            <ha-selector cfg="window_sensors" class="i" label="${getTranslation(h, "window_label")}"></ha-selector>
+          </div>
+        </div>
+        <div id="battery-sec" class="battery-sec">
+          <div id="battery-head" class="battery-head">
+            <span id="battery-title" class="battery-title"></span>
+            <ha-icon id="battery-chev" class="battery-chev" icon="mdi:chevron-right"></ha-icon>
+          </div>
+          <div id="battery-content" class="battery-content" hidden>
+            <ha-selector cfg="battery_sensors" class="i" label="${getTranslation(h, "battery_label")}"></ha-selector>
+          </div>
+        </div>
       </div>
       <div class="sec">
-        <h3>${getTranslation(h, "buttons")}</h3>
-        <div class="row tmpl-label-row">
-          <div class="tmpl-label">${getTranslation(h, "template")}</div>
-          <div class="tmpl-label">${getTranslation(h, "entity")}</div>
+        <div class="sec-head">
+          <h3>${getTranslation(h, "buttons")}</h3>
         </div>
-        <div class="row tmpl-row">
-          <ha-selector id="tmpl-select" aria-label="${getTranslation(h, "template")}"></ha-selector>
-          <ha-entity-picker id="tmpl-entity" aria-label="${getTranslation(h, "entity")}"></ha-entity-picker>
+        <div class="row">
+          <ha-selector id="global-label-pos" label="${getTranslation(h, "label_position_all")}"></ha-selector>
         </div>
-        <div class="add-row">
-          <span class="add-prefix">${getTranslation(h, "add_prefix")}</span>
-          <mwc-button id="add-template" raised label="${getTranslation(h, "add_template")}">
-            <ha-icon icon="mdi:playlist-plus" slot="icon"></ha-icon>
-          </mwc-button>
+        <details id="quick-add" class="qa" ${this._quickAddOpen ? "open" : ""}>
+          <summary class="qa-summary">
+            <div class="qa-title">${getTranslation(h, "quick_add_title")}</div>
+            <div class="qa-desc">${getTranslation(h, "quick_add_desc")}</div>
+          </summary>
+          <div class="qa-body">
+            <div class="quick-add-grid">
+              <div class="quick-add-col">
+                <div class="quick-add-label">${getTranslation(h, "quick_add_entity_type_label")}</div>
+                <div class="quick-add-field">
+                  <ha-selector id="tmpl-select" aria-label="${getTranslation(h, "quick_add_entity_type_label")}"></ha-selector>
+                </div>
+                <div class="quick-add-helper">${getTranslation(h, "quick_add_entity_type_help")}</div>
+              </div>
+              <div class="quick-add-col">
+                <div class="quick-add-label">${getTranslation(h, "quick_add_entity_label")}</div>
+                <div class="quick-add-field">
+                  <ha-entity-picker id="tmpl-entity" aria-label="${getTranslation(h, "quick_add_entity_label")}"></ha-entity-picker>
+                </div>
+                <div id="qa-empty-hint" class="qa-empty hidden">${getTranslation(h, "quick_add_empty_hint")}</div>
+                <div class="quick-add-helper">${getTranslation(h, "quick_add_entity_help")}</div>
+              </div>
+            </div>
+            <div class="add-row">
+              <span class="add-prefix">${getTranslation(h, "add_prefix")}</span>
+              <mwc-button id="add-template" raised label="${getTranslation(h, "add_template")}">
+                <ha-icon icon="mdi:playlist-plus" slot="icon"></ha-icon>
+              </mwc-button>
+            </div>
+          </div>
+        </details>
+        <div class="qa-sep"></div>
+        <div class="qa-caption">
+          <span>${getTranslation(h, "quick_add_settings_caption")}</span>
+          <button id="bulk-toggle" class="section-action" type="button">
+            <ha-icon></ha-icon>
+          </button>
         </div>
         <div id="b"></div>
         <mwc-button id="add" raised label="${getTranslation(h, "add_button")}">
@@ -949,6 +1289,13 @@ class OneLineRoomCardEditor extends HTMLElement {
       uploadBtn.addEventListener("click", () => fileInput.click());
       fileInput.addEventListener("change", (e) => this._handleUpload(e));
     }
+    const imageHead = this.shadowRoot.getElementById("image-head");
+    if (imageHead) {
+      imageHead.addEventListener("click", () => {
+        this._imageSectionOpen = !this._imageSectionOpen;
+        this._updateImageSectionUI();
+      });
+    }
 
     this.shadowRoot.querySelectorAll(".i").forEach(e => {
       const k = e.getAttribute("cfg");
@@ -960,12 +1307,33 @@ class OneLineRoomCardEditor extends HTMLElement {
         ev.stopPropagation();
         const v = ev.detail?.value !== undefined ? ev.detail.value : ev.target.value;
         const c = { ...this._config };
-        c[k] = v;
+        if (k === "humidity_warning_threshold") {
+          const raw = v ?? "";
+          const num = raw === "" ? 60 : Number(raw);
+          c[k] = Number.isFinite(num) ? num : 60;
+          if (e.value !== String(c[k])) e.value = String(c[k]);
+        } else {
+          c[k] = v;
+        }
         this._fire(c);
         if (k === "color") this.updCp();
         if (k === "image") this.updPreview();
       });
     });
+    const manualHead = this.shadowRoot.getElementById("manual-head");
+    if (manualHead) {
+      manualHead.addEventListener("click", () => {
+        this._manualSensorsOpen = !this._manualSensorsOpen;
+        this._updateManualSensorsUI();
+      });
+    }
+    const batteryHead = this.shadowRoot.getElementById("battery-head");
+    if (batteryHead) {
+      batteryHead.addEventListener("click", () => {
+        this._batteryListOpen = !this._batteryListOpen;
+        this._updateBatteryListUI();
+      });
+    }
     const navSelect = this.shadowRoot.getElementById("nav-path");
     if (navSelect) {
       navSelect.addEventListener("value-changed", (ev) => {
@@ -982,6 +1350,43 @@ class OneLineRoomCardEditor extends HTMLElement {
 
     const tmplSelect = this.shadowRoot.getElementById("tmpl-select");
     const tmplEntity = this.shadowRoot.getElementById("tmpl-entity");
+    const globalLabelPos = this.shadowRoot.getElementById("global-label-pos");
+    const quickAdd = this.shadowRoot.getElementById("quick-add");
+    if (quickAdd) {
+      quickAdd.open = this._quickAddOpen === true;
+      quickAdd.addEventListener("toggle", () => { this._quickAddOpen = quickAdd.open; });
+    }
+    if (globalLabelPos) {
+      globalLabelPos.hass = h;
+      globalLabelPos.selector = { select: { mode: "dropdown", options: [
+        { value: "right", label: getTranslation(h, "pos_right") },
+        { value: "bottom", label: getTranslation(h, "pos_bottom") },
+        { value: "top", label: getTranslation(h, "pos_top") },
+        { value: "left", label: getTranslation(h, "pos_left") }
+      ] } };
+      globalLabelPos.value = this._config?.global_label_position ?? this._config?.buttons_label_position ?? "right";
+      globalLabelPos.addEventListener("value-changed", (ev) => {
+        ev.stopPropagation();
+        const v = ev.detail?.value ?? "right";
+        this._fire({ ...this._config, global_label_position: v });
+        this.renBtn();
+      });
+    }
+    const updateQuickAddHints = () => {
+      if (!tmplSelect || !tmplEntity) return;
+      const template = this._getTemplateById(tmplSelect.value || "light");
+      const label = template?.label || "";
+      const placeholder = getTranslation(h, "quick_add_entity_placeholder").replace("{type}", label || "");
+      tmplEntity.placeholder = placeholder;
+      tmplEntity.setAttribute("placeholder", placeholder);
+      const domains = template?.domains || [];
+      let hasMatch = true;
+      if (domains.length > 0 && this._hass?.states) {
+        hasMatch = Object.keys(this._hass.states).some((id) => domains.includes(id.split(".")[0]));
+      }
+      const emptyHint = this.shadowRoot.getElementById("qa-empty-hint");
+      if (emptyHint) emptyHint.classList.toggle("hidden", hasMatch);
+    };
     if (tmplSelect) {
       tmplSelect.selector = {
         select: {
@@ -997,6 +1402,8 @@ class OneLineRoomCardEditor extends HTMLElement {
         const template = this._getTemplateById(tid);
         const domains = template?.domains || [];
         if (tmplEntity && domains.length > 0) tmplEntity.setAttribute("include-domains", JSON.stringify(domains));
+        if (tmplEntity) tmplEntity.value = "";
+        updateQuickAddHints();
       });
     }
     if (tmplEntity && this._hass) tmplEntity.hass = this._hass;
@@ -1004,6 +1411,7 @@ class OneLineRoomCardEditor extends HTMLElement {
       const template = this._getTemplateById(tmplSelect.value || "light");
       const domains = template?.domains || [];
       if (domains.length > 0) tmplEntity.setAttribute("include-domains", JSON.stringify(domains));
+      updateQuickAddHints();
     }
     const addTemplateBtn = this.shadowRoot.getElementById("add-template");
     if (addTemplateBtn) {
@@ -1016,6 +1424,7 @@ class OneLineRoomCardEditor extends HTMLElement {
         const c = [...(this._config.controls || []), next];
         this._fire({ ...this._config, controls: c });
         this.renBtn();
+        this._updateBulkToggleButton();
       });
     }
 
@@ -1041,8 +1450,61 @@ class OneLineRoomCardEditor extends HTMLElement {
       c.push({ entity: ent, name: n, icon: ic, width: w, height: 60 });
       this._fire({ ...this._config, controls: c });
       this.renBtn();
+      this._updateBulkToggleButton();
     });
+    const bulkToggle = this.shadowRoot.getElementById("bulk-toggle");
+    if (bulkToggle) {
+      bulkToggle.addEventListener("click", () => {
+        const allExpanded = this._areAllButtonsExpanded();
+        this._toggleAllButtonsExpanded(!allExpanded);
+      });
+    }
+    this._updateBulkToggleButton();
     this.updVal(); this.updCp(); this.renBtn(); this.updPreview();
+    this._updateBatteryListUI();
+    this._updateManualSensorsUI();
+    this._updateImageSectionUI();
+  }
+
+  _updateImageSectionUI() {
+    const sec = this.shadowRoot?.getElementById("image-sec");
+    const content = this.shadowRoot?.getElementById("image-content");
+    const title = this.shadowRoot?.getElementById("image-title");
+    if (!sec || !content || !title) return;
+    title.textContent = getTranslation(this._hass, "image");
+    sec.classList.toggle("open", this._imageSectionOpen);
+    content.hidden = !this._imageSectionOpen;
+  }
+
+  _updateManualSensorsUI() {
+    const sec = this.shadowRoot?.getElementById("manual-sec");
+    const content = this.shadowRoot?.getElementById("manual-content");
+    const title = this.shadowRoot?.getElementById("manual-title");
+    if (!sec || !content || !title) return;
+    const c = this._config || {};
+    const count = [
+      c.temp_sensor,
+      c.target_temp_sensor,
+      c.humid_sensor,
+      ...(Array.isArray(c.window_sensors) ? c.window_sensors : [])
+    ].filter((v) => v && String(v).trim() !== "").length;
+    const label = getTranslation(this._hass, "sensors_manual");
+    title.textContent = count > 0 ? `${label} (${count})` : label;
+    sec.classList.toggle("open", this._manualSensorsOpen);
+    content.hidden = !this._manualSensorsOpen;
+  }
+
+  _updateBatteryListUI() {
+    const sec = this.shadowRoot?.getElementById("battery-sec");
+    const content = this.shadowRoot?.getElementById("battery-content");
+    const title = this.shadowRoot?.getElementById("battery-title");
+    if (!sec || !content || !title) return;
+    const items = Array.isArray(this._config?.battery_sensors) ? this._config.battery_sensors : [];
+    const count = items.length;
+    const label = getTranslation(this._hass, "battery_label");
+    title.textContent = count > 0 ? `${label} (${count})` : label;
+    sec.classList.toggle("open", this._batteryListOpen);
+    content.hidden = !this._batteryListOpen;
   }
 
   updPreview() {
@@ -1057,7 +1519,10 @@ class OneLineRoomCardEditor extends HTMLElement {
   renBtn() {
     if (!this._config?.controls) return;
     const div = this.shadowRoot.getElementById("b"); if (!div) return;
-    const h = this._hass; div.replaceChildren();
+    const h = this._hass;
+    this._syncControlIds();
+    this._withScrollRestore(() => {
+      div.replaceChildren();
     const actOpts = [
       { value: "more-info", label: getTranslation(h, "act_more") },
       { value: "toggle", label: getTranslation(h, "act_toggle") },
@@ -1070,10 +1535,12 @@ class OneLineRoomCardEditor extends HTMLElement {
       const showTemplate = isTemplate ? "" : "hidden";
       const hideColor = !ctrl.force_color ? "hidden" : "";
       const showNav = ctrl.tap_action?.action === "navigate" ? "" : "hidden";
-      const key = ctrl.entity || ctrl.name || ctrl.content || ctrl.device || String(i);
+      const key = this._controlIds[i] || this._makeControlId();
+      this._controlIds[i] = key;
       this._collapsedState = this._collapsedState || {};
+      if (this._collapsedState[key] === undefined) this._collapsedState[key] = true;
       box.open = this._collapsedState[key] !== true;
-      box.addEventListener("toggle", () => { this._collapsedState[key] = !box.open; });
+      box.addEventListener("toggle", () => { this._collapsedState[key] = !box.open; this._updateBulkToggleButton(); });
       const summaryText = ctrl.name || ctrl.entity || (isTemplate ? (ctrl.content || "Template") : "Button");
       box.innerHTML = `
         <summary class="head">
@@ -1099,15 +1566,91 @@ class OneLineRoomCardEditor extends HTMLElement {
           <ha-textfield class="ts" label="${getTranslation(h, "tmpl_state")}"></ha-textfield>
           <div class="tmpl-preview"><span>${getTranslation(h, "tmpl_preview")}:</span> <ha-icon class="tp-ic"></ha-icon> <span class="tp-tx"></span></div>
         </details>
-        <div class="row" style="margin-top:8px; align-items:center"><ha-selector class="al" label="${getTranslation(h, "align")}"></ha-selector><ha-selector class="tl" label="${getTranslation(h, "text_layout")}"></ha-selector><ha-formfield label="${getTranslation(h, "show_state")}"><ha-switch class="ss" checked></ha-switch></ha-formfield><ha-formfield label="${getTranslation(h, "show_label")}"><ha-switch class="sl" checked></ha-switch></ha-formfield><ha-formfield label="${getTranslation(h, "show_icon")}"><ha-switch class="si" checked></ha-switch></ha-formfield><ha-formfield label="${getTranslation(h, "visible")}"><ha-switch class="hd" checked></ha-switch></ha-formfield></div>
+        <div class="row" style="margin-top:8px; align-items:center"><ha-selector class="al" label="${getTranslation(h, "align")}"></ha-selector><ha-selector class="lp" label="${getTranslation(h, "label_position")}"></ha-selector><ha-selector class="tl" label="${getTranslation(h, "text_layout")}"></ha-selector><ha-formfield label="${getTranslation(h, "show_state")}"><ha-switch class="ss" checked></ha-switch></ha-formfield><ha-formfield label="${getTranslation(h, "show_label")}"><ha-switch class="sl" checked></ha-switch></ha-formfield><ha-formfield label="${getTranslation(h, "show_icon")}"><ha-switch class="si" checked></ha-switch></ha-formfield><ha-formfield label="${getTranslation(h, "visible")}"><ha-switch class="hd" checked></ha-switch></ha-formfield></div>
         <div class="entity-only ${hideEntity}" style="margin-top:12px; border-top:1px solid var(--divider-color); padding-top:12px"><ha-selector class="tap" label="${getTranslation(h, "tap_action")}"></ha-selector><ha-textfield class="tap-nav ${showNav}" label="Nav Pfad"></ha-textfield><ha-selector class="hold" label="${getTranslation(h, "hold_action")}"></ha-selector><ha-selector class="dbl" label="${getTranslation(h, "double_tap_action")}"></ha-selector></div>
         </div>`;
 
-      const upd = (k, v) => { const c = [...this._config.controls]; c[i] = { ...c[i], [k]: v }; this._fire({ ...this._config, controls: c }); };
-      const updAct = (type, val) => { const c = [...this._config.controls]; const old = c[i][type] || {}; c[i] = { ...c[i], [type]: { ...old, action: val } }; this._fire({ ...this._config, controls: c }); this.renBtn(); };
+      const head = box.querySelector(".head");
+      if (head) {
+        head.setAttribute("draggable", "true");
+        head.addEventListener("dragstart", (e) => {
+          this._dragIndex = i;
+          box.classList.add("dragging");
+          if (e.dataTransfer) {
+            e.dataTransfer.effectAllowed = "move";
+            e.dataTransfer.setData("text/plain", String(i));
+          }
+        });
+        head.addEventListener("dragend", () => {
+          this._dragIndex = null;
+          box.classList.remove("dragging");
+          div.querySelectorAll(".box.drag-over").forEach((el) => el.classList.remove("drag-over"));
+        });
+      }
+      box.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        if (this._dragIndex === i) return;
+        box.classList.add("drag-over");
+        if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+      });
+      box.addEventListener("dragleave", () => {
+        box.classList.remove("drag-over");
+      });
+      box.addEventListener("drop", (e) => {
+        e.preventDefault();
+        box.classList.remove("drag-over");
+        const from = Number.isInteger(this._dragIndex) ? this._dragIndex : parseInt(e.dataTransfer?.getData("text/plain") || "", 10);
+        const to = i;
+        if (!Number.isInteger(from) || from === to) return;
+        const c = [...this._config.controls];
+        const [moved] = c.splice(from, 1);
+        c.splice(to, 0, moved);
+        const ids = [...this._controlIds];
+        const [movedId] = ids.splice(from, 1);
+        ids.splice(to, 0, movedId);
+        this._controlIds = ids;
+        this._fire({ ...this._config, controls: c });
+        this.renBtn();
+      });
+
+      const keepOpen = () => { this._collapsedState[key] = false; };
+      const upd = (k, v) => { keepOpen(); const c = [...this._config.controls]; c[i] = { ...c[i], [k]: v }; this._fire({ ...this._config, controls: c }); };
+      const updAct = (type, val) => { keepOpen(); const c = [...this._config.controls]; const old = c[i][type] || {}; c[i] = { ...c[i], [type]: { ...old, action: val } }; this._fire({ ...this._config, controls: c }); this.renBtn(); };
       box.querySelector(".u").onclick = (e) => { e.preventDefault(); e.stopPropagation(); if (i > 0) { const c = [...this._config.controls];[c[i], c[i - 1]] = [c[i - 1], c[i]]; this._fire({ ...this._config, controls: c }); this.renBtn(); } };
       box.querySelector(".d").onclick = (e) => { e.preventDefault(); e.stopPropagation(); if (i < this._config.controls.length - 1) { const c = [...this._config.controls];[c[i], c[i + 1]] = [c[i + 1], c[i]]; this._fire({ ...this._config, controls: c }); this.renBtn(); } };
-      box.querySelector(".del").onclick = (e) => { e.preventDefault(); e.stopPropagation(); const c = [...this._config.controls]; c.splice(i, 1); this._fire({ ...this._config, controls: c }); this.renBtn(); };
+      box.querySelector(".u").onclick = (e) => {
+        e.preventDefault(); e.stopPropagation();
+        if (i > 0) {
+          const c = [...this._config.controls];
+          [c[i], c[i - 1]] = [c[i - 1], c[i]];
+          const ids = [...this._controlIds];
+          [ids[i], ids[i - 1]] = [ids[i - 1], ids[i]];
+          this._controlIds = ids;
+          this._fire({ ...this._config, controls: c });
+          this.renBtn();
+        }
+      };
+      box.querySelector(".d").onclick = (e) => {
+        e.preventDefault(); e.stopPropagation();
+        if (i < this._config.controls.length - 1) {
+          const c = [...this._config.controls];
+          [c[i], c[i + 1]] = [c[i + 1], c[i]];
+          const ids = [...this._controlIds];
+          [ids[i], ids[i + 1]] = [ids[i + 1], ids[i]];
+          this._controlIds = ids;
+          this._fire({ ...this._config, controls: c });
+          this.renBtn();
+        }
+      };
+      box.querySelector(".del").onclick = (e) => {
+        e.preventDefault(); e.stopPropagation();
+        const c = [...this._config.controls];
+        c.splice(i, 1);
+        this._controlIds.splice(i, 1);
+        this._fire({ ...this._config, controls: c });
+        this.renBtn();
+        this._updateBulkToggleButton();
+      };
       const rt = box.querySelector(".rt");
       if (rt) {
         rt.hass = h;
@@ -1136,7 +1679,7 @@ class OneLineRoomCardEditor extends HTMLElement {
         const val = e.detail.value; const st = h.states[val]; const c = [...this._config.controls]; let changes = { entity: val };
         if (st?.attributes?.icon) changes.icon = st.attributes.icon; else changes.icon = this._iconForEntity(val);
         if (st?.attributes?.friendly_name) changes.name = st.attributes.friendly_name;
-        c[i] = { ...c[i], ...changes }; this._fire({ ...this._config, controls: c }); this.renBtn();
+        keepOpen(); c[i] = { ...c[i], ...changes }; this._fire({ ...this._config, controls: c }); this.renBtn();
       }); }
       const dvWrap = box.querySelector(".dv-wrap");
       if (dvWrap) {
@@ -1160,7 +1703,7 @@ class OneLineRoomCardEditor extends HTMLElement {
               if (st?.attributes?.friendly_name) next.name = st.attributes.friendly_name;
             }
           }
-          c[i] = next; this._fire({ ...this._config, controls: c }); this.renBtn();
+          keepOpen(); c[i] = next; this._fire({ ...this._config, controls: c }); this.renBtn();
         });
         dvWrap.appendChild(dv);
       }
@@ -1179,6 +1722,18 @@ class OneLineRoomCardEditor extends HTMLElement {
       wd.value = String(ctrl.width || 15); wd.addEventListener("value-changed", e => { e.stopPropagation(); upd("width", parseInt(e.detail.value)); });
       const al = box.querySelector(".al"); al.hass = h; al.selector = { select: { mode: "dropdown", options: [{ value: "left", label: getTranslation(h, "left") }, { value: "center", label: getTranslation(h, "center") }, { value: "right", label: getTranslation(h, "right") }] } };
       al.value = ctrl.align || "center"; al.addEventListener("value-changed", e => { e.stopPropagation(); upd("align", e.detail.value); });
+      const lp = box.querySelector(".lp"); if (lp) {
+        lp.hass = h;
+        lp.selector = { select: { mode: "dropdown", options: [
+          { value: "global", label: getTranslation(h, "use_global") },
+          { value: "right", label: getTranslation(h, "pos_right") },
+          { value: "bottom", label: getTranslation(h, "pos_bottom") },
+          { value: "top", label: getTranslation(h, "pos_top") },
+          { value: "left", label: getTranslation(h, "pos_left") }
+        ] } };
+        lp.value = ctrl.label_position || "global";
+        lp.addEventListener("value-changed", e => { e.stopPropagation(); upd("label_position", e.detail.value || "global"); this.renBtn(); });
+      }
       const tl = box.querySelector(".tl"); if (tl) {
         tl.hass = h;
         tl.selector = { select: { mode: "dropdown", options: [
@@ -1217,13 +1772,15 @@ class OneLineRoomCardEditor extends HTMLElement {
       }
       div.appendChild(box);
     });
+    });
   }
 
   updVal() {
     if (!this._config) return;
     this.shadowRoot.querySelectorAll(".i").forEach(e => {
       const k = e.getAttribute("cfg");
-      const v = k === "nav_path" ? this._config.tap_action?.navigation_path || "" : this._config[k] ?? "";
+      let v = k === "nav_path" ? this._config.tap_action?.navigation_path || "" : this._config[k] ?? "";
+      if (k === "humidity_warning_threshold") v = this._config[k] ?? 60;
       if (e.value !== v) e.value = v;
     });
     const nav = this.shadowRoot.getElementById("nav-path");
