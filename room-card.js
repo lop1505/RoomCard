@@ -529,7 +529,12 @@ class OneLineRoomCard extends HTMLElement {
     this.shadowRoot.getElementById("name").innerText = c.name || "Room";
     const ico = this.shadowRoot.getElementById("icon");
     ico.icon = c.icon || "mdi:home";
-    ico.style.setProperty("--icon-color", c.color || "white");
+    const headerColors = this._resolveEntityIconColors(effectiveEntity, h, {
+      defaultColor: c.color || "white",
+      defaultBg: "transparent",
+      forceColor: c.color
+    });
+    ico.style.setProperty("--icon-color", headerColors.color);
 
     let t = null, hm = null, tar = null;
     if (effectiveTempSensor && h.states[effectiveTempSensor]) t = h.states[effectiveTempSensor].state;
@@ -653,6 +658,45 @@ class OneLineRoomCard extends HTMLElement {
     return { content, icon, color, state };
   }
 
+  _resolveEntityIconColors(entityId, hass, opts = {}) {
+    const defaultColor = opts.defaultColor ?? "grey";
+    const defaultBg = opts.defaultBg ?? "rgba(128,128,128,0.1)";
+    const forceColor = trimStr(opts.forceColor);
+    const st = entityId ? hass?.states?.[entityId] : null;
+    const domain = getEntityDomain(entityId);
+    const isUnavailable = isEntityOffline(st);
+    if (forceColor) {
+      const isHex = /^#[0-9A-F]{6}$/i.test(forceColor);
+      return {
+        color: forceColor,
+        bg: isHex ? forceColor + "33" : `color-mix(in srgb, ${forceColor} 20%, transparent)`,
+        isUnavailable
+      };
+    }
+
+    let color = defaultColor;
+    let bg = defaultBg;
+
+    if (st && isEntityActive(st, entityId)) {
+      if (st.attributes.rgb_color) {
+        const rgb = st.attributes.rgb_color.join(",");
+        color = `rgb(${rgb})`;
+        bg = `rgba(${rgb}, 0.2)`;
+      } else if (domain === "climate" && st.attributes.hvac_action) {
+        const act = st.attributes.hvac_action;
+        if (act === "heating") { color = "#FF5722"; bg = "rgba(255,87,34,0.2)"; }
+        else if (act === "cooling") { color = "#2196F3"; bg = "rgba(33,150,243,0.2)"; }
+        else { color = "#4CAF50"; bg = "rgba(76,175,80,0.2)"; }
+      } else {
+        const themeVar = `var(--state-${domain}-active-color, var(--state-active-color, #ff9800))`;
+        color = themeVar;
+        bg = `color-mix(in srgb, ${themeVar} 20%, transparent)`;
+      }
+    }
+
+    return { color, bg, isUnavailable };
+  }
+
   _updateBtnState(btn, ctrl, h) {
     const unit = h.config.unit_system.temperature || "°C"; // --- NEW: DYNAMIC UNIT ---
     const st = ctrl.entity ? h.states[ctrl.entity] : null;
@@ -667,7 +711,7 @@ class OneLineRoomCard extends HTMLElement {
     else if (domain === "light") typ = "light";
 
     let col = "grey", bg = "rgba(128,128,128,0.1)";
-    const isUnavail = !isTemplate && this._isEntityUnavailable(ctrl.entity, h);
+    let isUnavail = false;
 
     let tpl = null;
     if (isTemplate) {
@@ -677,26 +721,15 @@ class OneLineRoomCard extends HTMLElement {
         const isHex = /^#[0-9A-F]{6}$/i.test(tpl.color);
         bg = isHex ? tpl.color + "33" : `color-mix(in srgb, ${tpl.color} 20%, transparent)`;
       }
-    } else if (ctrl.force_color && ctrl.color) {
-      col = ctrl.color;
-      const isHex = /^#[0-9A-F]{6}$/i.test(ctrl.color);
-      bg = isHex ? ctrl.color + "33" : `color-mix(in srgb, ${ctrl.color} 20%, transparent)`;
     } else {
-      const isActive = isEntityActive(st, ctrl.entity);
-      if (st && isActive) {
-        if (st.attributes.rgb_color) {
-          const rgb = st.attributes.rgb_color.join(",");
-          col = `rgb(${rgb})`; bg = `rgba(${rgb}, 0.2)`;
-        } else if (typ === "climate" && st.attributes.hvac_action) {
-          const act = st.attributes.hvac_action;
-          if (act === "heating") { col = "#FF5722"; bg = "rgba(255,87,34,0.2)"; }
-          else if (act === "cooling") { col = "#2196F3"; bg = "rgba(33,150,243,0.2)"; }
-          else { col = "#4CAF50"; bg = "rgba(76,175,80,0.2)"; }
-        } else {
-          const themeVar = `var(--state-${domain}-active-color, var(--state-active-color, #ff9800))`;
-          col = themeVar; bg = `color-mix(in srgb, ${themeVar} 20%, transparent)`;
-        }
-      }
+      const resolved = this._resolveEntityIconColors(ctrl.entity, h, {
+        defaultColor: "grey",
+        defaultBg: "rgba(128,128,128,0.1)",
+        forceColor: ctrl.force_color ? ctrl.color : ""
+      });
+      col = resolved.color;
+      bg = resolved.bg;
+      isUnavail = resolved.isUnavailable;
     }
 
     const nameTxt = isTemplate
