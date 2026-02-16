@@ -1,4 +1,4 @@
-const VERSION = "1.0.9";
+const VERSION = "1.1.0";
 const LOG_FLAG = `customCards_RoomCard_Logged_${VERSION}`;
 
 if (!window[LOG_FLAG]) {
