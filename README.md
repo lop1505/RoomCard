@@ -41,8 +41,27 @@ If you are updating from an older version, please update your YAML configuration
 * ↕️ **Text Order:** Choose which text comes first (State/Value or Name) per button.
 * 🎯 **Button Visibility:** Hide/show individual buttons without deleting them.
 * 🎛️ **Manual Color Override:** Force a custom color for a button icon even when the entity is inactive.
+* 🎨 **Dynamic Header Icon Coloring:** Header icon now follows the same state-based color logic as buttons.
+* 📴 **Offline/Unavailable Handling:** `unavailable` / `unknown` entities are clearly indicated and safely non-interactive.
 * 🧭 **Device Picker:** Select a device and let the editor auto-pick a suitable entity.
 * 🧩 **Template Presets:** Add buttons using type presets (Light/Switch/Climate/Cover/Media).
+
+### Header Icon Color Priority
+Header icon color now follows this order:
+1. **Force Color** (manual override)
+2. **Dynamic state-based color** (same logic as buttons, including climate `hvac_action`)
+3. **Default theme color**
+
+No scripting is required, and existing dashboards remain backward compatible.
+
+## 🆕 What’s new in 1.1.0
+
+* Runtime: Improved handling for `unavailable` / `unknown` entities (dimmed controls, offline indicator, blocked actions).
+* Runtime: Header icon uses the same dynamic state-based color logic as buttons.
+* Runtime: Header icon supports Force Color override with safe fallback to dynamic/theme color.
+* Editor UX: New **Live preview** toggle (enabled by default).
+* Performance: Internal state-signature caching reduces unnecessary DOM/UI updates.
+* Internal: Centralized state definitions for active/offline checks (maintainability improvement, no user config change).
 
 ## 🆕 What’s new in 1.0.9
 
@@ -80,6 +99,7 @@ Simply add the card via "Add Card" in your dashboard and select **"OneLine Room 
 The visual editor guides you through all settings:
 
 * **General:** Name, Icon, Colors, Background Image, and optional **Tap → Navigate** path.
+* **Header Icon Color:** Uses the same behavior as buttons with **Force Color** support in the editor.
 * **Sensors:** Select your temperature (current & target), humidity, window, and battery sensors. Optional humidity warning threshold.
 * **Buttons:** Add devices/entities, set width/height, alignment, and actions (Tap/Hold/Double Tap).
 * **Cleaner Buttons:** Toggle **Show State**, **Show Label**, **Show Icon**, and **Visible** per button.
@@ -88,6 +108,15 @@ The visual editor guides you through all settings:
 * **Manual Color:** Force a custom icon color (always visible).
 * **Template Presets:** Add buttons from type presets, or switch a row to **Template**.
 * **Editor UX:** Button entries are collapsible for better overview.
+* **Live preview:** Enabled by default. Disable it to update preview only after saving (helpful on slower devices / large dashboards).
+
+### Unavailable / Offline behavior
+When an entity is `unavailable` or `unknown`:
+* its control is visually dimmed/disabled,
+* an offline indicator (icon/tooltip) is shown,
+* toggle/actions are ignored until the entity is available again.
+
+This improves feedback and prevents accidental actions, while keeping layout and behavior stable.
 
 ### New in 1.0.9 (YAML options)
 ```
@@ -98,6 +127,18 @@ controls:
   - entity: light.living_room
     label_position: bottom      # global | right | left | top | bottom
 ```
+
+### Technical improvements (internal)
+* Room Card now tracks relevant entity state signatures and updates UI only when relevant values change.
+* Active/offline state checks are now centrally defined, making maintenance and future extensions safer.
+* No additional configuration is required for these optimizations.
+
+## ⚠️ Migration 1.0.9 → 1.1.0
+
+No breaking changes.
+
+* Existing YAML configs continue to work.
+* Existing header `color` values keep their visual behavior through conservative backward-compat handling.
 
 ## ⚠️ Migration 1.0.8 → 1.0.9
 
