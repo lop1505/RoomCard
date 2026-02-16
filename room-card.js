@@ -18,7 +18,7 @@ const TRANSLATIONS = {
     main_climate: "Main Climate Device (Optional)", climate_info: "Fills Temp/Humidity automatically if empty below.",
     temp_label: "Temperature (overrides climate)", target_temp_label: "Target Temperature", humid_label: "Humidity (overrides climate)",
     window_label: "Windows (List)", battery_label: "Batteries (List)", name: "Name", icon: "Icon", color: "Icon Color",
-    humid_warn_threshold: "Humidity Warning Threshold (%)", high_humidity: "High humidity",
+    humid_warn_threshold: "Humidity Warning Threshold (%)", high_humidity: "High humidity", device_unavailable: "Device unavailable",
     force_color: "Force Manual Color (Always visible)", img_url: "Image URL", image: "Image", path: "Path (Tap Action)", entity: "Entity", device: "Device (Optional)",
     template: "Type Filter", add_template: "with Filter", add_prefix: "Add",
     quick_add_title: "Quick Add",
@@ -46,6 +46,7 @@ const TRANSLATIONS = {
     height: "Height", width: "Width", align: "Align", visible: "Visible", left: "Left", center: "Center", right: "Right",
     tap_action: "Tap Action", hold_action: "Hold Action", double_tap_action: "Double Tap Action",
     act_more: "Details (Default)", act_toggle: "Toggle", act_none: "None",
+    live_preview: "Live preview",
     upload_btn: "Upload Image", uploading: "Uploading...", upload_success: "Done!",
     migration_title: "Action Required", 
     migration_text: "Card renamed to <b>oneline-room-card</b> to avoid conflicts.<br>Please change <code>type: custom:room-card</code> to <code>type: custom:oneline-room-card</code> in your YAML."
@@ -56,7 +57,7 @@ const TRANSLATIONS = {
     main_climate: "Haupt-Klima-Gerät (Optional)", climate_info: "Füllt Temp/Feuchtigkeit automatisch, wenn unten leer.",
     temp_label: "Temperatur (überschreibt Klima)", target_temp_label: "Soll-Temperatur", humid_label: "Luftfeuchtigkeit (überschreibt Klima)",
     window_label: "Fenster (Liste)", battery_label: "Batterien (Liste)", name: "Name", icon: "Icon", color: "Iconfarbe",
-    humid_warn_threshold: "Feuchte-Warnschwelle (%)", high_humidity: "Hohe Luftfeuchtigkeit",
+    humid_warn_threshold: "Feuchte-Warnschwelle (%)", high_humidity: "Hohe Luftfeuchtigkeit", device_unavailable: "Gerät nicht verfügbar",
     force_color: "Manuelle Farbe erzwingen (Immer sichtbar)", img_url: "Bild URL", image: "Bild", path: "Pfad (Tap Action)", entity: "Entität", device: "Gerät (Optional)",
     template: "Typ-Filter", add_template: "mit Filter", add_prefix: "Add",
     quick_add_title: "Schnellerfassung",
@@ -84,6 +85,7 @@ const TRANSLATIONS = {
     height: "Höhe", width: "Breite", align: "Ausrichtung", visible: "Sichtbar", left: "Links", center: "Mitte", right: "Rechts",
     tap_action: "Antippen", hold_action: "Gedrückt halten", double_tap_action: "Doppelklick",
     act_more: "Details (Standard)", act_toggle: "Umschalten", act_none: "Nichts",
+    live_preview: "Live-Vorschau",
     upload_btn: "Bild hochladen", uploading: "Wird hochgeladen...", upload_success: "Fertig!",
     migration_title: "Handlung erforderlich", 
     migration_text: "Karte wurde in <b>oneline-room-card</b> umbenannt.<br>Bitte ändere <code>type: custom:room-card</code> zu <code>type: custom:oneline-room-card</code> in deiner YAML-Konfiguration."
@@ -94,7 +96,7 @@ const TRANSLATIONS = {
     main_climate: "Appareil climatique principal (Optionnel)", climate_info: "Remplit automatiquement Temp/Humidité si vide ci-dessous.",
     temp_label: "Température (remplace climat)", target_temp_label: "Température cible", humid_label: "Humidité (remplace climat)",
     window_label: "Fenêtres (Liste)", battery_label: "Batteries (Liste)", name: "Nom", icon: "Icône", color: "Couleur",
-    humid_warn_threshold: "Seuil d'alerte d'humidité (%)", high_humidity: "Humidité élevée",
+    humid_warn_threshold: "Seuil d'alerte d'humidité (%)", high_humidity: "Humidité élevée", device_unavailable: "Appareil indisponible",
     force_color: "Forcer la couleur", img_url: "URL de l'image", image: "Image", path: "Chemin (Tap Action)", entity: "Entité", device: "Appareil (Optionnel)",
     template: "Filtre de type", add_template: "avec filtre", add_prefix: "Ajouter",
     quick_add_title: "Ajout rapide",
@@ -122,6 +124,7 @@ const TRANSLATIONS = {
     height: "Hauteur", width: "Largeur", align: "Alignement", visible: "Visible", left: "Gauche", center: "Centre", right: "Droite",
     tap_action: "Appui court", hold_action: "Appui long", double_tap_action: "Double appui",
     act_more: "Détails (Défaut)", act_toggle: "Basculer", act_none: "Rien",
+    live_preview: "Aperçu en direct",
     upload_btn: "Télécharger une image", uploading: "Téléchargement...", upload_success: "Terminé!",
     migration_title: "Action requise", 
     migration_text: "Carte renommée en <b>oneline-room-card</b> pour éviter les conflits.<br>Veuillez changer <code>type: custom:room-card</code> en <code>type: custom:oneline-room-card</code>."
@@ -203,6 +206,44 @@ const replaceTemplateExpressions = (str, evalExpr) => {
 
 const trimStr = (v) => (typeof v === "string" ? v.trim() : v);
 
+const STATE_DEFINITIONS = Object.freeze({
+  OFFLINE_STATES: new Set(["unavailable", "unknown"]),
+  ACTIVE_STATES: {
+    default: new Set(["on", "open", "playing", "heat", "cool", "auto", "drying", "fan_only", "cleaning", "manual", "boost", "unlocked", "home"]),
+    climate: new Set(["heat", "cool", "auto", "drying", "fan_only"]),
+    media_player: new Set(["playing"])
+  },
+  INACTIVE_STATES: Object.freeze({
+    off: "off",
+    closed: "closed"
+  }),
+  ON_STATE: "on"
+});
+
+const getEntityDomain = (entityId) => (typeof entityId === "string" && entityId.includes(".") ? entityId.split(".")[0] : "");
+
+const getEntityStateValue = (stateObj) => stateObj?.state;
+
+const isOfflineStateValue = (stateValue) => STATE_DEFINITIONS.OFFLINE_STATES.has(stateValue);
+
+const isEntityOffline = (stateObj) => isOfflineStateValue(getEntityStateValue(stateObj));
+
+const isEntityOn = (stateObj) => getEntityStateValue(stateObj) === STATE_DEFINITIONS.ON_STATE;
+
+const isEntityOff = (stateObj) => getEntityStateValue(stateObj) === STATE_DEFINITIONS.INACTIVE_STATES.off;
+
+const isEntityActive = (stateObj, entityId) => {
+  const stateValue = getEntityStateValue(stateObj);
+  if (stateValue === undefined || stateValue === null) return false;
+  const domain = getEntityDomain(entityId);
+  const domainActive = STATE_DEFINITIONS.ACTIVE_STATES[domain];
+  if (domainActive?.has(stateValue)) return true;
+  if (STATE_DEFINITIONS.ACTIVE_STATES.default.has(stateValue)) return true;
+  if (domain === "cover") return stateValue !== STATE_DEFINITIONS.INACTIVE_STATES.closed;
+  if (domain === "climate") return stateValue !== STATE_DEFINITIONS.INACTIVE_STATES.off && !isOfflineStateValue(stateValue);
+  return false;
+};
+
 const resolveLabelPosition = (btn, config) => {
   const globalPos = config?.global_label_position ?? config?.buttons_label_position ?? "right";
   const per = btn?.label_position;
@@ -280,17 +321,23 @@ class OneLineRoomCard extends HTMLElement {
     super();
     this.attachShadow({ mode: "open" });
     this._quickAddOpen = false;
+    this._lastStates = new Map();
+    this._lastRenderMetaSig = "";
   }
 
   set hass(hass) {
     this._hass = hass;
     if (!this.content) this.render();
+    if (!this._shouldUpdateFromHass(hass)) return;
     this._updateContentState();
+    this._captureStateSnapshot(hass);
   }
 
   setConfig(config) {
     this.config = config;
     this._configChanged = true;
+    this._lastStates = new Map();
+    this._lastRenderMetaSig = "";
     if (!this.content) this.render();
     this.updateContent();
   }
@@ -345,12 +392,19 @@ class OneLineRoomCard extends HTMLElement {
         .btn.label-bottom .btn-state { font-size: 10px; line-height: 10px; margin-top: 0; }
         .btn:hover { background: rgba(128,128,128,0.1); border-color: rgba(128,128,128,0.2); }
         .btn:active { background: rgba(128,128,128,0.15); }
+        .btn.state-unavailable { opacity: 0.56; }
+        .btn.state-unavailable:hover,
+        .btn.state-unavailable:active { background: var(--btn-bg, var(--card-background-color, rgba(128,128,128,0.05))); border-color: transparent; }
+        .btn.state-unavailable .btn-name,
+        .btn.state-unavailable .btn-state,
+        .btn.state-unavailable ha-icon { color: var(--disabled-text-color, var(--secondary-text-color)); }
         .icon-box { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0; background: var(--icon-bg, transparent); }
         .btn-txt { display: flex; flex-direction: column; text-align: left; overflow: hidden; min-width: 0; flex: initial; max-width: 100%; }
         .btn ha-icon { color: var(--icon-color, grey); --mdc-icon-size: 20px; }
         .btn-name { font-size: 13px; font-weight: 600; color: var(--primary-text-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
         .btn-state { font-size: 11px; color: var(--secondary-text-color); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
         .warn { position: absolute; top: 4px; right: 4px; color: #d32f2f; --mdc-icon-size: 16px; background: rgba(255,255,255,0.8); border-radius: 50%; padding: 1px; }
+        .warn.warn-offline { color: var(--warning-color, var(--secondary-text-color)); background: var(--card-background-color, rgba(255,255,255,0.85)); }
       </style>
       <ha-card>
         <div class="container">
@@ -382,6 +436,82 @@ class OneLineRoomCard extends HTMLElement {
   updateContent() {
     if (!this.config || !this._hass || !this.content) return;
     this._updateContentState();
+    this._captureStateSnapshot(this._hass);
+  }
+
+  _hasVisibleTemplateControl() {
+    const controls = Array.isArray(this.config?.controls) ? this.config.controls : [];
+    return controls.some((ctrl) => !ctrl?.hide && ctrl?.type === "template");
+  }
+
+  _getRelevantEntityIds() {
+    const cfg = this.config || {};
+    const ids = new Set();
+    const add = (id) => {
+      if (typeof id === "string" && id.trim()) ids.add(id.trim());
+    };
+    add(cfg.entity);
+    add(cfg.temp_sensor);
+    add(cfg.target_temp_sensor);
+    add(cfg.humid_sensor);
+    (Array.isArray(cfg.window_sensors) ? cfg.window_sensors : []).forEach(add);
+    (Array.isArray(cfg.battery_sensors) ? cfg.battery_sensors : []).forEach(add);
+    (Array.isArray(cfg.controls) ? cfg.controls : []).forEach((ctrl) => add(ctrl?.entity));
+    return Array.from(ids);
+  }
+
+  _getStateSignature(stateObj) {
+    if (!stateObj) return "__missing__";
+    const attrs = stateObj.attributes || {};
+    const rgb = Array.isArray(attrs.rgb_color) ? attrs.rgb_color.join(",") : "";
+    return [
+      stateObj.state ?? "",
+      attrs.current_temperature ?? "",
+      attrs.temperature ?? "",
+      attrs.current_humidity ?? "",
+      attrs.friendly_name ?? "",
+      attrs.hvac_action ?? "",
+      attrs.icon ?? "",
+      rgb
+    ].join("|");
+  }
+
+  _getRenderMetaSignature(hass) {
+    const lang = hass?.language || "";
+    const tempUnit = hass?.config?.unit_system?.temperature || "";
+    return `${lang}|${tempUnit}`;
+  }
+
+  _buildStateSnapshot(hass) {
+    const states = hass?.states || {};
+    const ids = this._getRelevantEntityIds();
+    const next = new Map();
+    ids.forEach((id) => next.set(id, this._getStateSignature(states[id])));
+    return next;
+  }
+
+  _isSameSnapshot(nextStates, nextMetaSig) {
+    if (this._lastRenderMetaSig !== nextMetaSig) return false;
+    if (!this._lastStates || this._lastStates.size !== nextStates.size) return false;
+    for (const [id, sig] of nextStates.entries()) {
+      if (this._lastStates.get(id) !== sig) return false;
+    }
+    return true;
+  }
+
+  _shouldUpdateFromHass(hass) {
+    if (!this.config || !this.content) return false;
+    if (this._configChanged) return true;
+    if (this._hasVisibleTemplateControl()) return true;
+    const nextMetaSig = this._getRenderMetaSignature(hass);
+    const nextStates = this._buildStateSnapshot(hass);
+    return !this._isSameSnapshot(nextStates, nextMetaSig);
+  }
+
+  _captureStateSnapshot(hass) {
+    if (!this.config || !hass) return;
+    this._lastRenderMetaSig = this._getRenderMetaSignature(hass);
+    this._lastStates = this._buildStateSnapshot(hass);
   }
 
   _updateContentState() {
@@ -427,7 +557,7 @@ class OneLineRoomCard extends HTMLElement {
     let al = null;
     (Array.isArray(effectiveBatterySensors) ? effectiveBatterySensors : []).forEach(s => {
       const st = h.states[s]; if (!st) return;
-      if (st.state === "on") al = getTranslation(h, "empty");
+      if (isEntityOn(st)) al = getTranslation(h, "empty");
       else if (!isNaN(parseFloat(st.state))) {
         if (st.state <= 5) al = getTranslation(h, "critical");
         else if (st.state <= 15 && !al) al = getTranslation(h, "low");
@@ -447,7 +577,7 @@ class OneLineRoomCard extends HTMLElement {
     }
     (Array.isArray(effectiveWindowSensors) ? effectiveWindowSensors : []).forEach(s => {
       const st = h.states[s];
-      if (st?.state === "on") ch.innerHTML += `<div class="chip"><ha-icon icon="mdi:window-open-variant" style="--mdc-icon-size:14px"></ha-icon> ${st.attributes.friendly_name || getTranslation(h, "window")}</div>`;
+      if (isEntityOn(st)) ch.innerHTML += `<div class="chip"><ha-icon icon="mdi:window-open-variant" style="--mdc-icon-size:14px"></ha-icon> ${st.attributes.friendly_name || getTranslation(h, "window")}</div>`;
     });
 
     const cardEl = this.shadowRoot.querySelector("ha-card");
@@ -485,6 +615,11 @@ class OneLineRoomCard extends HTMLElement {
     btn.style.setProperty("--btn-justify", justify);
     this._attachActions(btn, ctrl);
     return btn;
+  }
+
+  _isEntityUnavailable(entityId, hass = this._hass) {
+    if (!entityId || !hass?.states) return false;
+    return isEntityOffline(hass.states[entityId]);
   }
 
   _evalTemplateString(tpl, h, ctrl) {
@@ -532,7 +667,7 @@ class OneLineRoomCard extends HTMLElement {
     else if (domain === "light") typ = "light";
 
     let col = "grey", bg = "rgba(128,128,128,0.1)";
-    const isUnavail = s === "unavailable" || s === "unknown";
+    const isUnavail = !isTemplate && this._isEntityUnavailable(ctrl.entity, h);
 
     let tpl = null;
     if (isTemplate) {
@@ -547,8 +682,7 @@ class OneLineRoomCard extends HTMLElement {
       const isHex = /^#[0-9A-F]{6}$/i.test(ctrl.color);
       bg = isHex ? ctrl.color + "33" : `color-mix(in srgb, ${ctrl.color} 20%, transparent)`;
     } else {
-      const activeStates = ["on", "open", "playing", "heat", "cool", "auto", "drying", "fan_only", "cleaning", "manual", "boost", "unlocked", "home"];
-      const isActive = activeStates.includes(s) || (typ === "shutter" && s !== "closed") || (typ === "climate" && s !== "off" && !isUnavail);
+      const isActive = isEntityActive(st, ctrl.entity);
       if (st && isActive) {
         if (st.attributes.rgb_color) {
           const rgb = st.attributes.rgb_color.join(",");
@@ -568,8 +702,9 @@ class OneLineRoomCard extends HTMLElement {
     const nameTxt = isTemplate
       ? (tpl?.content || ctrl.name || "")
       : (ctrl.name !== undefined ? ctrl.name : "Dev");
+    const unavailableText = getTranslation(h, "device_unavailable");
     let badge = "";
-    if (isUnavail) badge = `<ha-icon class="warn" icon="mdi:alert-circle"></ha-icon>`;
+    if (isUnavail) badge = `<ha-icon class="warn warn-offline" icon="mdi:lan-disconnect" title="${unavailableText}"></ha-icon>`;
 
     // --- NEW: USE DYNAMIC UNIT IN TEMPLATE ---
     const stateText = isTemplate
@@ -604,6 +739,14 @@ class OneLineRoomCard extends HTMLElement {
         ${textHtml}
       </div>
       ${badge}`;
+
+    btn.classList.toggle("state-unavailable", isUnavail);
+    if (!isTemplate) {
+      btn.style.cursor = isUnavail ? "default" : "pointer";
+    }
+    btn.setAttribute("aria-disabled", isUnavail ? "true" : "false");
+    if (isUnavail) btn.title = unavailableText;
+    else btn.removeAttribute("title");
     
     // Apply dynamic colors via CSS custom properties
     btn.style.setProperty("--icon-color", col);
@@ -625,6 +768,7 @@ class OneLineRoomCard extends HTMLElement {
     };
     let timer = null, held = false, holdTimer = null;
     node.addEventListener("pointerdown", () => {
+      if (this._isEntityUnavailable(ctrl.entity)) return;
       held = false;
       holdTimer = setTimeout(() => { held = true; this._fireAction("hold", config); }, 500);
     });
@@ -634,6 +778,7 @@ class OneLineRoomCard extends HTMLElement {
     node.addEventListener("pointercancel", cancel);
     node.addEventListener("click", (e) => {
       e.stopPropagation();
+      if (this._isEntityUnavailable(ctrl.entity)) return;
       if (held) return;
       if (config.double_tap_action.action !== "none") {
         if (timer) { clearTimeout(timer); timer = null; this._fireAction("double_tap", config); }
@@ -643,6 +788,7 @@ class OneLineRoomCard extends HTMLElement {
   }
 
   _fireAction(type, config) {
+    if (config.entity && this._isEntityUnavailable(config.entity)) return;
     const actionKey = `${type}_action`;
     let actionConfig = config[actionKey] || {};
     if (!actionConfig || typeof actionConfig !== 'object') actionConfig = { action: 'none' };
@@ -652,8 +798,8 @@ class OneLineRoomCard extends HTMLElement {
       if (domain === "climate" && this._hass) {
         const state = this._hass.states[config.entity];
         if (state) {
-          actionConfig = state.state !== "off"
-            ? { action: "call-service", service: "climate.set_hvac_mode", data: { hvac_mode: "off" }, target: { entity_id: config.entity } }
+          actionConfig = !isEntityOff(state)
+            ? { action: "call-service", service: "climate.set_hvac_mode", data: { hvac_mode: STATE_DEFINITIONS.INACTIVE_STATES.off }, target: { entity_id: config.entity } }
             : { action: "call-service", service: "climate.turn_on", target: { entity_id: config.entity } };
         }
       }
@@ -690,9 +836,27 @@ class OneLineRoomCardEditor extends HTMLElement {
     this._imageSectionOpen = false;
     this._controlIds = [];
     this._nextControlId = 1;
+    this._livePreview = true;
+    this._pendingConfig = null;
+    this._boundHandlePrimarySave = (ev) => this._handlePrimarySave(ev);
+  }
+
+  connectedCallback() {
+    document.addEventListener("click", this._boundHandlePrimarySave, true);
+  }
+
+  disconnectedCallback() {
+    document.removeEventListener("click", this._boundHandlePrimarySave, true);
+    clearTimeout(this._tm);
+  }
+
+  _ensureEditorState() {
+    if (typeof this._livePreview !== "boolean") this._livePreview = true;
+    if (this._pendingConfig === undefined) this._pendingConfig = null;
   }
 
   setConfig(config) {
+    this._ensureEditorState();
     this._config = config || {};
     if (!Array.isArray(this._config.controls)) this._config = { ...this._config, controls: [] };
     this._syncControlIds();
@@ -711,12 +875,40 @@ class OneLineRoomCardEditor extends HTMLElement {
   }
 
   _fire(config) {
+    this._ensureEditorState();
     this._config = config;
     this._syncControlIds();
+    if (!this._livePreview) {
+      this._pendingConfig = config;
+      return;
+    }
     clearTimeout(this._tm);
     this._tm = setTimeout(() => {
       this.dispatchEvent(new CustomEvent("config-changed", { detail: { config }, bubbles: true, composed: true }));
     }, 300);
+  }
+
+  _emitConfigNow(config) {
+    clearTimeout(this._tm);
+    this.dispatchEvent(new CustomEvent("config-changed", { detail: { config }, bubbles: true, composed: true }));
+  }
+
+  _flushPendingConfig() {
+    this._ensureEditorState();
+    if (!this._pendingConfig) return;
+    const cfg = this._pendingConfig;
+    this._pendingConfig = null;
+    this._emitConfigNow(cfg);
+  }
+
+  _handlePrimarySave(ev) {
+    if (this._livePreview) return;
+    const path = typeof ev.composedPath === "function" ? ev.composedPath() : [ev.target];
+    const dialogHost = this.closest("hui-dialog-edit-card");
+    if (dialogHost && !path.includes(dialogHost)) return;
+    const saveBtn = path.find((el) => el && typeof el.getAttribute === "function" && el.getAttribute("slot") === "primaryAction");
+    if (!saveBtn || saveBtn.disabled) return;
+    this._flushPendingConfig();
   }
 
   _makeControlId() {
@@ -1094,6 +1286,7 @@ class OneLineRoomCardEditor extends HTMLElement {
   }
 
   render() {
+    this._ensureEditorState();
     if (!this._config) return;
     const alreadyRendered = !!this.shadowRoot.innerHTML;
     if (alreadyRendered) { this.updVal(); this.renBtn(); this._applyNavSelectorOptions(); this._ensureNavOptions(); this._updateBatteryListUI(); this._updateManualSensorsUI(); this._updateImageSectionUI(); return; }
@@ -1207,6 +1400,11 @@ class OneLineRoomCardEditor extends HTMLElement {
           </div>
         </div>
         <ha-selector id="nav-path" label="${getTranslation(h, "path")}" style="margin-top:12px"></ha-selector>
+        <div class="row" style="margin-top:8px; align-items:center">
+          <ha-formfield label="${getTranslation(h, "live_preview")}">
+            <ha-switch id="live-preview-toggle" checked></ha-switch>
+          </ha-formfield>
+        </div>
       </div>
       <div class="sec">
         <div id="manual-sec" class="manual-sec">
@@ -1343,6 +1541,17 @@ class OneLineRoomCardEditor extends HTMLElement {
         if (v?.trim()) c.tap_action = { action: "navigate", navigation_path: v };
         else delete c.tap_action;
         this._fire(c);
+      });
+    }
+    const livePreviewToggle = this.shadowRoot.getElementById("live-preview-toggle");
+    if (livePreviewToggle) {
+      livePreviewToggle.checked = this._livePreview !== false;
+      livePreviewToggle.addEventListener("change", (ev) => {
+        ev.stopPropagation();
+        const enabled = ev.target.checked !== false;
+        const wasEnabled = this._livePreview !== false;
+        this._livePreview = enabled;
+        if (enabled && !wasEnabled) this._flushPendingConfig();
       });
     }
     this._applyNavSelectorOptions();
@@ -1787,6 +1996,10 @@ class OneLineRoomCardEditor extends HTMLElement {
     if (nav && nav.value !== (this._config.tap_action?.navigation_path || "")) {
       nav.value = this._config.tap_action?.navigation_path || "";
     }
+    const livePreviewToggle = this.shadowRoot.getElementById("live-preview-toggle");
+    if (livePreviewToggle && livePreviewToggle.checked !== (this._livePreview !== false)) {
+      livePreviewToggle.checked = this._livePreview !== false;
+    }
   }
 
   updCp() {
@@ -1804,7 +2017,7 @@ class OneLineRoomCardEditor extends HTMLElement {
 // =============================================================================
 
 const patchExistingEditor = (ExistingEditor, NewEditor) => {
-  const methods = ["render", "updVal", "updCp", "renBtn", "setConfig", "_fire", "_handleUpload", "updPreview"];
+  const methods = ["render", "updVal", "updCp", "renBtn", "setConfig", "_fire", "_handleUpload", "updPreview", "connectedCallback", "disconnectedCallback", "_ensureEditorState", "_emitConfigNow", "_flushPendingConfig", "_handlePrimarySave"];
   methods.forEach((name) => {
     if (typeof NewEditor.prototype[name] === "function") {
       ExistingEditor.prototype[name] = NewEditor.prototype[name];
