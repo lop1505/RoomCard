@@ -244,6 +244,12 @@ const isEntityActive = (stateObj, entityId) => {
   return false;
 };
 
+const isHeaderForceColorEnabled = (config) => {
+  if (typeof config?.header_force_color === "boolean") return config.header_force_color;
+  // Backward-compat: legacy header color behaved as always-forced.
+  return !!trimStr(config?.color);
+};
+
 const resolveLabelPosition = (btn, config) => {
   const globalPos = config?.global_label_position ?? config?.buttons_label_position ?? "right";
   const per = btn?.label_position;
@@ -529,12 +535,15 @@ class OneLineRoomCard extends HTMLElement {
     this.shadowRoot.getElementById("name").innerText = c.name || "Room";
     const ico = this.shadowRoot.getElementById("icon");
     ico.icon = c.icon || "mdi:home";
+    // Priority: force/manual > dynamic state color > default/theme fallback.
+    const headerForceColor = isHeaderForceColorEnabled(c);
     const headerColors = this._resolveEntityIconColors(effectiveEntity, h, {
-      defaultColor: c.color || "white",
+      defaultColor: "",
       defaultBg: "transparent",
-      forceColor: c.color
+      forceColor: headerForceColor ? c.color : ""
     });
-    ico.style.setProperty("--icon-color", headerColors.color);
+    if (headerColors.color) ico.style.setProperty("--icon-color", headerColors.color);
+    else ico.style.removeProperty("--icon-color");
 
     let t = null, hm = null, tar = null;
     if (effectiveTempSensor && h.states[effectiveTempSensor]) t = h.states[effectiveTempSensor].state;
@@ -1407,11 +1416,21 @@ class OneLineRoomCardEditor extends HTMLElement {
       </style>
       <div class="sec">
         <h3>${getTranslation(h, "general")}</h3>
+        <div class="row" style="margin-top:8px; align-items:center">
+          <ha-formfield label="${getTranslation(h, "live_preview")}">
+            <ha-switch id="live-preview-toggle" checked></ha-switch>
+          </ha-formfield>
+        </div>
         <ha-textfield label="${getTranslation(h, "name")}" cfg="name" class="i"></ha-textfield>
         <ha-entity-picker label="${getTranslation(h, "main_climate")}" cfg="entity" class="i" include-domains='["climate"]'></ha-entity-picker>
+        <div class="row" style="margin-top:8px; align-items:center">
+          <ha-formfield label="${getTranslation(h, "force_color")}">
+            <ha-switch id="header-force-color"></ha-switch>
+          </ha-formfield>
+        </div>
         <div class="row">
           <ha-icon-picker label="${getTranslation(h, "icon")}" cfg="icon" class="i"></ha-icon-picker>
-          <div class="cl-row">
+          <div id="header-color-row" class="cl-row">
             <ha-textfield label="${getTranslation(h, "color")}" cfg="color" class="i"></ha-textfield>
             <input type="color" class="cp i-cp" cfg="color">
           </div>
@@ -1433,11 +1452,6 @@ class OneLineRoomCardEditor extends HTMLElement {
           </div>
         </div>
         <ha-selector id="nav-path" label="${getTranslation(h, "path")}" style="margin-top:12px"></ha-selector>
-        <div class="row" style="margin-top:8px; align-items:center">
-          <ha-formfield label="${getTranslation(h, "live_preview")}">
-            <ha-switch id="live-preview-toggle" checked></ha-switch>
-          </ha-formfield>
-        </div>
       </div>
       <div class="sec">
         <div id="manual-sec" class="manual-sec">
@@ -1585,6 +1599,23 @@ class OneLineRoomCardEditor extends HTMLElement {
         const wasEnabled = this._livePreview !== false;
         this._livePreview = enabled;
         if (enabled && !wasEnabled) this._flushPendingConfig();
+      });
+    }
+    const headerForceToggle = this.shadowRoot.getElementById("header-force-color");
+    const headerColorRow = this.shadowRoot.getElementById("header-color-row");
+    const updateHeaderColorUi = () => {
+      if (!headerForceToggle) return;
+      const enabled = headerForceToggle.checked === true;
+      if (headerColorRow) headerColorRow.classList.toggle("hidden", !enabled);
+    };
+    if (headerForceToggle) {
+      headerForceToggle.checked = isHeaderForceColorEnabled(this._config);
+      updateHeaderColorUi();
+      headerForceToggle.addEventListener("change", (ev) => {
+        ev.stopPropagation();
+        const enabled = ev.target.checked === true;
+        this._fire({ ...this._config, header_force_color: enabled });
+        updateHeaderColorUi();
       });
     }
     this._applyNavSelectorOptions();
@@ -2032,6 +2063,15 @@ class OneLineRoomCardEditor extends HTMLElement {
     const livePreviewToggle = this.shadowRoot.getElementById("live-preview-toggle");
     if (livePreviewToggle && livePreviewToggle.checked !== (this._livePreview !== false)) {
       livePreviewToggle.checked = this._livePreview !== false;
+    }
+    const headerForceToggle = this.shadowRoot.getElementById("header-force-color");
+    const headerColorRow = this.shadowRoot.getElementById("header-color-row");
+    const headerForceEnabled = isHeaderForceColorEnabled(this._config);
+    if (headerForceToggle && headerForceToggle.checked !== headerForceEnabled) {
+      headerForceToggle.checked = headerForceEnabled;
+    }
+    if (headerColorRow) {
+      headerColorRow.classList.toggle("hidden", !headerForceEnabled);
     }
   }
 
