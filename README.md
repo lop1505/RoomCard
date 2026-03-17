@@ -9,13 +9,6 @@ Developed with a focus on stability, simple design, and maximum flexibility.
 ![Preview](preview.png)
 ![Preview](preview_dark.png)
 
-## ⚠️ Important: Renaming / Migration
-To ensure compatibility and avoid conflicts with other cards, this card has been renamed.
-* **Old Type:** `custom:room-card`
-* **New Type:** `custom:oneline-room-card`
-
-If you are updating from an older version, please update your YAML configuration. The old type will show a migration warning.
-
 ## ✨ Features
 
 * 🖱️ **Full Visual Editor:** No YAML required. The optimized editor ensures smooth configuration without focus loss.
@@ -54,7 +47,11 @@ Header icon color now follows this order:
 
 No scripting is required, and existing dashboards remain backward compatible.
 
-## 🆕 What’s new in 1.1.0
+## 🆕 What's new in 1.1.1
+
+* Fix: Removed `MigrationWarningCard` / `room-card` alias to prevent conflicts with other custom cards that use the same element name (e.g. thomasloven's or benct's room-card). Previously, if oneline-room-card loaded first, it would block other `room-card` implementations from registering, breaking those dashboards.
+
+## 🆕 What's new in 1.1.0
 
 * Runtime: Improved handling for `unavailable` / `unknown` entities (dimmed controls, offline indicator, blocked actions).
 * Runtime: Header icon uses the same dynamic state-based color logic as buttons.
@@ -63,7 +60,7 @@ No scripting is required, and existing dashboards remain backward compatible.
 * Performance: Internal state-signature caching reduces unnecessary DOM/UI updates.
 * Internal: Centralized state definitions for active/offline checks (maintainability improvement, no user config change).
 
-## 🆕 What’s new in 1.0.9
+## 🆕 What's new in 1.0.9
 
 * Runtime: High-humidity warning chip and blue outline with configurable threshold (`humidity_warning_threshold`, default `60`).
 * Runtime: Label/status position modes (**right/left/top/bottom**) with per-button `label_position` and global `global_label_position`.
@@ -118,8 +115,8 @@ When an entity is `unavailable` or `unknown`:
 
 This improves feedback and prevents accidental actions, while keeping layout and behavior stable.
 
-### New in 1.0.9 (YAML options)
-```
+### YAML options
+```yaml
 type: custom:oneline-room-card
 humidity_warning_threshold: 60
 global_label_position: bottom  # right | left | top | bottom
@@ -132,6 +129,10 @@ controls:
 * Room Card now tracks relevant entity state signatures and updates UI only when relevant values change.
 * Active/offline state checks are now centrally defined, making maintenance and future extensions safer.
 * No additional configuration is required for these optimizations.
+
+## ⚠️ Migration 1.1.0 → 1.1.1
+
+No breaking changes.
 
 ## ⚠️ Migration 1.0.9 → 1.1.0
 

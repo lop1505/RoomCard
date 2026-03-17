@@ -1,4 +1,4 @@
-const VERSION = "1.1.0";
+const VERSION = "1.1.1";
 const LOG_FLAG = `customCards_RoomCard_Logged_${VERSION}`;
 
 if (!window[LOG_FLAG]) {
@@ -47,9 +47,7 @@ const TRANSLATIONS = {
     tap_action: "Tap Action", hold_action: "Hold Action", double_tap_action: "Double Tap Action",
     act_more: "Details (Default)", act_toggle: "Toggle", act_none: "None",
     live_preview: "Live preview",
-    upload_btn: "Upload Image", uploading: "Uploading...", upload_success: "Done!",
-    migration_title: "Action Required", 
-    migration_text: "Card renamed to <b>oneline-room-card</b> to avoid conflicts.<br>Please change <code>type: custom:room-card</code> to <code>type: custom:oneline-room-card</code> in your YAML."
+    upload_btn: "Upload Image", uploading: "Uploading...", upload_success: "Done!"
   },
   de: {
     empty: "Leer", low: "Niedrig", critical: "Kritisch", window: "Fenster", general: "Allgemein",
@@ -86,9 +84,7 @@ const TRANSLATIONS = {
     tap_action: "Antippen", hold_action: "Gedrückt halten", double_tap_action: "Doppelklick",
     act_more: "Details (Standard)", act_toggle: "Umschalten", act_none: "Nichts",
     live_preview: "Live-Vorschau",
-    upload_btn: "Bild hochladen", uploading: "Wird hochgeladen...", upload_success: "Fertig!",
-    migration_title: "Handlung erforderlich", 
-    migration_text: "Karte wurde in <b>oneline-room-card</b> umbenannt.<br>Bitte ändere <code>type: custom:room-card</code> zu <code>type: custom:oneline-room-card</code> in deiner YAML-Konfiguration."
+    upload_btn: "Bild hochladen", uploading: "Wird hochgeladen...", upload_success: "Fertig!"
   },
   fr: {
     empty: "Vide", low: "Faible", critical: "Critique", window: "Fenêtre", general: "Général",
@@ -125,9 +121,7 @@ const TRANSLATIONS = {
     tap_action: "Appui court", hold_action: "Appui long", double_tap_action: "Double appui",
     act_more: "Détails (Défaut)", act_toggle: "Basculer", act_none: "Rien",
     live_preview: "Aperçu en direct",
-    upload_btn: "Télécharger une image", uploading: "Téléchargement...", upload_success: "Terminé!",
-    migration_title: "Action requise", 
-    migration_text: "Carte renommée en <b>oneline-room-card</b> pour éviter les conflits.<br>Veuillez changer <code>type: custom:room-card</code> en <code>type: custom:oneline-room-card</code>."
+    upload_btn: "Télécharger une image", uploading: "Téléchargement...", upload_success: "Terminé!"
   }
 };
 
@@ -2111,46 +2105,6 @@ if (!existingEditor) {
 // 2. Neue Karte registrieren (wenn noch nicht da)
 if (!customElements.get("oneline-room-card")) {
   customElements.define("oneline-room-card", OneLineRoomCard);
-}
-
-// 3. MIGRATION WARNING (wenn "room-card" noch frei ist)
-if (!customElements.get("room-card")) {
-  class MigrationWarningCard extends HTMLElement {
-    constructor() {
-      super();
-      this.attachShadow({ mode: "open" });
-    }
-
-    setConfig(config) {
-      this._config = config;
-    }
-
-    set hass(hass) {
-      const title = getTranslation(hass, "migration_title");
-      const text = getTranslation(hass, "migration_text");
-
-      this.shadowRoot.innerHTML = `
-        <style>
-          ha-card { background: var(--ha-card-background, var(--card-background-color, white)); border-radius: var(--ha-card-border-radius, 12px); box-shadow: var(--ha-card-box-shadow, none); }
-          .warn { padding: 16px; color: var(--error-color, #db4437); background: rgba(255, 0, 0, 0.1); border: 1px solid var(--error-color, #db4437); border-radius: 8px; }
-        </style>
-        <ha-card>
-          <div class="warn">
-            <h3 style="margin:0 0 8px 0; display:flex; align-items:center; gap:8px">
-              <ha-icon icon="mdi:alert-circle"></ha-icon> ${title}
-            </h3>
-            <div>${text}</div>
-          </div>
-        </ha-card>
-      `;
-    }
-
-    getCardSize() {
-      return 2;
-    }
-  }
-
-  customElements.define("room-card", MigrationWarningCard);
 }
 
 window.customCards = window.customCards || [];
