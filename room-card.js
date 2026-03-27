@@ -319,6 +319,37 @@ const applyLabelPosition = (layoutEl, pos) => {
   setAlignmentClass(layoutEl, pos);
 };
 
+const evalTemplateString = (tpl, h, ctrl) => {
+  if (tpl === undefined || tpl === null) return "";
+  const str = String(tpl);
+  if (!str.includes("${")) return str;
+  try {
+    const states = h?.states || {};
+    const entity = (id) => states[id];
+    const attr = (id, name) => states[id]?.attributes?.[name];
+    return replaceTemplateExpressions(str, (expr) => {
+      try {
+        // eslint-disable-next-line no-new-func
+        const fn = new Function("hass", "states", "entity", "attr", "ctrl", `return (${expr});`);
+        const res = fn(h, states, entity, attr, ctrl);
+        return res === undefined || res === null ? "" : String(res);
+      } catch (err) {
+        return "";
+      }
+    });
+  } catch (err) {
+    return "";
+  }
+};
+
+const resolveTemplateCtrl = (ctrl, h) => {
+  const content = evalTemplateString(ctrl.content, h, ctrl);
+  const icon = trimStr(evalTemplateString(ctrl.icon, h, ctrl));
+  const color = trimStr(evalTemplateString(ctrl.color, h, ctrl));
+  const state = evalTemplateString(ctrl.state, h, ctrl);
+  return { content, icon, color, state };
+};
+
 // =============================================================================
 // MAIN CARD CLASS
 // =============================================================================
@@ -329,6 +360,13 @@ class OneLineRoomCard extends HTMLElement {
     this._quickAddOpen = false;
     this._lastStates = new Map();
     this._lastRenderMetaSig = "";
+    this._cachedEntityIds = null;
+    this._activeTimers = new Set();
+  }
+
+  disconnectedCallback() {
+    this._activeTimers.forEach(clearTimeout);
+    this._activeTimers.clear();
   }
 
   set hass(hass) {
@@ -344,6 +382,7 @@ class OneLineRoomCard extends HTMLElement {
     this._configChanged = true;
     this._lastStates = new Map();
     this._lastRenderMetaSig = "";
+    this._cachedEntityIds = null;
     if (!this.content) this.render();
     this.updateContent();
   }
@@ -490,9 +529,9 @@ class OneLineRoomCard extends HTMLElement {
 
   _buildStateSnapshot(hass) {
     const states = hass?.states || {};
-    const ids = this._getRelevantEntityIds();
+    if (!this._cachedEntityIds) this._cachedEntityIds = this._getRelevantEntityIds();
     const next = new Map();
-    ids.forEach((id) => next.set(id, this._getStateSignature(states[id])));
+    this._cachedEntityIds.forEach((id) => next.set(id, this._getStateSignature(states[id])));
     return next;
   }
 
@@ -636,37 +675,6 @@ class OneLineRoomCard extends HTMLElement {
     return isEntityOffline(hass.states[entityId]);
   }
 
-  _evalTemplateString(tpl, h, ctrl) {
-    if (tpl === undefined || tpl === null) return "";
-    const str = String(tpl);
-    if (!str.includes("${")) return str;
-    try {
-      const states = h?.states || {};
-      const entity = (id) => states[id];
-      const attr = (id, name) => states[id]?.attributes?.[name];
-      return replaceTemplateExpressions(str, (expr) => {
-        try {
-          // eslint-disable-next-line no-new-func
-          const fn = new Function("hass", "states", "entity", "attr", "ctrl", `return (${expr});`);
-          const res = fn(h, states, entity, attr, ctrl);
-          return res === undefined || res === null ? "" : String(res);
-        } catch (err) {
-          return "";
-        }
-      });
-    } catch (err) {
-      return "";
-    }
-  }
-
-  _resolveTemplateCtrl(ctrl, h) {
-    const content = this._evalTemplateString(ctrl.content, h, ctrl);
-    const icon = trimStr(this._evalTemplateString(ctrl.icon, h, ctrl));
-    const color = trimStr(this._evalTemplateString(ctrl.color, h, ctrl));
-    const state = this._evalTemplateString(ctrl.state, h, ctrl);
-    return { content, icon, color, state };
-  }
-
   _resolveEntityIconColors(entityId, hass, opts = {}) {
     const defaultColor = opts.defaultColor ?? "grey";
     const defaultBg = opts.defaultBg ?? "rgba(128,128,128,0.1)";
@@ -724,7 +732,7 @@ class OneLineRoomCard extends HTMLElement {
 
     let tpl = null;
     if (isTemplate) {
-      tpl = this._resolveTemplateCtrl(ctrl, h);
+      tpl = resolveTemplateCtrl(ctrl, h);
       if (tpl.color) {
         col = tpl.color;
         const isHex = /^#[0-9A-F]{6}$/i.test(tpl.color);
@@ -809,12 +817,18 @@ class OneLineRoomCard extends HTMLElement {
       double_tap_action: ctrl.double_tap_action || { action: "none" }
     };
     let timer = null, held = false, holdTimer = null;
+    const trackTimeout = (fn, ms) => {
+      const id = setTimeout(() => { this._activeTimers.delete(id); fn(); }, ms);
+      this._activeTimers.add(id);
+      return id;
+    };
+    const cancelTimeout = (id) => { clearTimeout(id); this._activeTimers.delete(id); };
     node.addEventListener("pointerdown", () => {
       if (this._isEntityUnavailable(ctrl.entity)) return;
       held = false;
-      holdTimer = setTimeout(() => { held = true; this._fireAction("hold", config); }, 500);
+      holdTimer = trackTimeout(() => { held = true; this._fireAction("hold", config); }, 500);
     });
-    const cancel = () => { if (holdTimer) clearTimeout(holdTimer); };
+    const cancel = () => { if (holdTimer) { cancelTimeout(holdTimer); holdTimer = null; } };
     node.addEventListener("pointerup", cancel);
     node.addEventListener("pointerleave", cancel);
     node.addEventListener("pointercancel", cancel);
@@ -823,8 +837,8 @@ class OneLineRoomCard extends HTMLElement {
       if (this._isEntityUnavailable(ctrl.entity)) return;
       if (held) return;
       if (config.double_tap_action.action !== "none") {
-        if (timer) { clearTimeout(timer); timer = null; this._fireAction("double_tap", config); }
-        else { timer = setTimeout(() => { timer = null; this._fireAction("tap", config); }, 250); }
+        if (timer) { cancelTimeout(timer); timer = null; this._fireAction("double_tap", config); }
+        else { timer = trackTimeout(() => { timer = null; this._fireAction("tap", config); }, 250); }
       } else { this._fireAction("tap", config); }
     });
   }
@@ -880,6 +894,7 @@ class OneLineRoomCardEditor extends HTMLElement {
     this._nextControlId = 1;
     this._livePreview = true;
     this._pendingConfig = null;
+    this._controlTemplatesCache = null;
     this._boundHandlePrimarySave = (ev) => this._handlePrimarySave(ev);
   }
 
@@ -908,7 +923,7 @@ class OneLineRoomCardEditor extends HTMLElement {
   set hass(hass) {
     const upd = this._hass?.language !== hass?.language;
     this._hass = hass;
-    if (upd) this.render();
+    if (upd) { this._controlTemplatesCache = null; this.render(); }
     if (this.shadowRoot) {
       this.shadowRoot.querySelectorAll("ha-selector,ha-entity-picker,ha-icon-picker,ha-textfield,ha-switch").forEach(e => {
         if (e.hass !== hass) e.hass = hass;
@@ -1069,40 +1084,11 @@ class OneLineRoomCardEditor extends HTMLElement {
     return map[domain] || "mdi:help-circle-outline";
   }
 
-  _evalTemplateString(tpl, h, ctrl) {
-    if (tpl === undefined || tpl === null) return "";
-    const str = String(tpl);
-    if (!str.includes("${")) return str;
-    try {
-      const states = h?.states || {};
-      const entity = (id) => states[id];
-      const attr = (id, name) => states[id]?.attributes?.[name];
-      return replaceTemplateExpressions(str, (expr) => {
-        try {
-          // eslint-disable-next-line no-new-func
-          const fn = new Function("hass", "states", "entity", "attr", "ctrl", `return (${expr});`);
-          const res = fn(h, states, entity, attr, ctrl);
-          return res === undefined || res === null ? "" : String(res);
-        } catch (err) {
-          return "";
-        }
-      });
-    } catch (err) {
-      return "";
-    }
-  }
-
-  _resolveTemplateCtrl(ctrl, h) {
-    const content = this._evalTemplateString(ctrl.content, h, ctrl);
-    const icon = trimStr(this._evalTemplateString(ctrl.icon, h, ctrl));
-    const color = trimStr(this._evalTemplateString(ctrl.color, h, ctrl));
-    const state = this._evalTemplateString(ctrl.state, h, ctrl);
-    return { content, icon, color, state };
-  }
-
   _getControlTemplates() {
+    const lang = this._hass?.language?.split("-")[0] || "en";
+    if (this._controlTemplatesCache?.lang === lang) return this._controlTemplatesCache.templates;
     const h = this._hass;
-    return [
+    const templates = [
       {
         id: "light",
         label: getTranslation(h, "tmpl_light"),
@@ -1189,6 +1175,8 @@ class OneLineRoomCardEditor extends HTMLElement {
         }
       }
     ];
+    this._controlTemplatesCache = { lang, templates };
+    return templates;
   }
 
   _getTemplateById(templateId) {
@@ -1889,8 +1877,6 @@ class OneLineRoomCardEditor extends HTMLElement {
       const keepOpen = () => { this._collapsedState[key] = false; };
       const upd = (k, v) => { keepOpen(); const c = [...this._config.controls]; c[i] = { ...c[i], [k]: v }; this._fire({ ...this._config, controls: c }); };
       const updAct = (type, val) => { keepOpen(); const c = [...this._config.controls]; const old = c[i][type] || {}; c[i] = { ...c[i], [type]: { ...old, action: val } }; this._fire({ ...this._config, controls: c }); this.renBtn(); };
-      box.querySelector(".u").onclick = (e) => { e.preventDefault(); e.stopPropagation(); if (i > 0) { const c = [...this._config.controls];[c[i], c[i - 1]] = [c[i - 1], c[i]]; this._fire({ ...this._config, controls: c }); this.renBtn(); } };
-      box.querySelector(".d").onclick = (e) => { e.preventDefault(); e.stopPropagation(); if (i < this._config.controls.length - 1) { const c = [...this._config.controls];[c[i], c[i + 1]] = [c[i + 1], c[i]]; this._fire({ ...this._config, controls: c }); this.renBtn(); } };
       box.querySelector(".u").onclick = (e) => {
         e.preventDefault(); e.stopPropagation();
         if (i > 0) {
@@ -2037,7 +2023,7 @@ class OneLineRoomCardEditor extends HTMLElement {
       const tpIcon = box.querySelector(".tp-ic");
       const tpText = box.querySelector(".tp-tx");
       if (tpIcon && tpText && isTemplate) {
-        const prev = this._resolveTemplateCtrl(ctrl, h);
+        const prev = resolveTemplateCtrl(ctrl, h);
         tpIcon.icon = prev.icon || "mdi:circle";
         if (prev.color) tpIcon.style.setProperty("--icon-color", prev.color);
         const previewText = [prev.content || "—", prev.state || ""].filter(Boolean).join(" | ");
