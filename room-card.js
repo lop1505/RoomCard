@@ -895,6 +895,7 @@ class OneLineRoomCardEditor extends HTMLElement {
     this._livePreview = true;
     this._pendingConfig = null;
     this._controlTemplatesCache = null;
+    this._quickAddType = "light";
     this._boundHandlePrimarySave = (ev) => this._handlePrimarySave(ev);
   }
 
@@ -1655,11 +1656,14 @@ class OneLineRoomCardEditor extends HTMLElement {
           options: this._getControlTemplates().map((t) => ({ value: t.id, label: t.label }))
         }
       };
-      tmplSelect.value = tmplSelect.value || "light";
       if (this._hass) tmplSelect.hass = this._hass;
+      // Defer value assignment – ha-selector renders asynchronously after .selector is set
+      requestAnimationFrame(() => { tmplSelect.value = this._quickAddType; });
       tmplSelect.addEventListener("value-changed", (ev) => {
         ev.stopPropagation();
         const tid = ev.detail?.value;
+        if (!tid) return;
+        this._quickAddType = tid;
         const template = this._getTemplateById(tid);
         const domains = template?.domains || [];
         if (tmplEntity && domains.length > 0) tmplEntity.setAttribute("include-domains", JSON.stringify(domains));
@@ -1668,8 +1672,8 @@ class OneLineRoomCardEditor extends HTMLElement {
       });
     }
     if (tmplEntity && this._hass) tmplEntity.hass = this._hass;
-    if (tmplEntity && tmplSelect) {
-      const template = this._getTemplateById(tmplSelect.value || "light");
+    if (tmplEntity) {
+      const template = this._getTemplateById(this._quickAddType);
       const domains = template?.domains || [];
       if (domains.length > 0) tmplEntity.setAttribute("include-domains", JSON.stringify(domains));
       updateQuickAddHints();
