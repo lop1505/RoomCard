@@ -896,6 +896,8 @@ class OneLineRoomCardEditor extends HTMLElement {
     this._pendingConfig = null;
     this._controlTemplatesCache = null;
     this._quickAddType = "light";
+    this._quickAddEntity = "";
+    this._quickAddSelectReady = false;
     this._boundHandlePrimarySave = (ev) => this._handlePrimarySave(ev);
   }
 
@@ -1402,6 +1404,9 @@ class OneLineRoomCardEditor extends HTMLElement {
         .cl-row { display: flex; gap: 8px; align-items: center; }
         .cp { width: 50px; height: 40px; border: 1px solid var(--divider-color); background: none; padding: 2px; border-radius: 4px; cursor: pointer; flex-shrink: 0; }
         .hidden { display: none !important; }
+        .qa-native-select { width: 100%; height: 56px; padding: 0 36px 0 16px; border: 1px solid var(--divider-color, rgba(0,0,0,0.38)); border-radius: 4px; background: transparent; color: var(--primary-text-color); font-size: 16px; font-family: var(--mdc-typography-body1-font-family, var(--mdc-typography-font-family, Roboto, sans-serif)); cursor: pointer; box-sizing: border-box; appearance: auto; -webkit-appearance: auto; outline: none; transition: border-color 0.15s ease; }
+        .qa-native-select:hover { border-color: var(--primary-text-color, rgba(0,0,0,0.87)); }
+        .qa-native-select:focus { border: 2px solid var(--mdc-theme-primary, var(--primary-color)); padding: 0 35px 0 15px; }
       </style>
       <div class="sec">
         <h3>${getTranslation(h, "general")}</h3>
@@ -1483,14 +1488,14 @@ class OneLineRoomCardEditor extends HTMLElement {
               <div class="quick-add-col">
                 <div class="quick-add-label">${getTranslation(h, "quick_add_entity_type_label")}</div>
                 <div class="quick-add-field">
-                  <ha-selector id="tmpl-select" aria-label="${getTranslation(h, "quick_add_entity_type_label")}"></ha-selector>
+                  <select id="tmpl-select" class="qa-native-select" aria-label="${getTranslation(h, "quick_add_entity_type_label")}"></select>
                 </div>
                 <div class="quick-add-helper">${getTranslation(h, "quick_add_entity_type_help")}</div>
               </div>
               <div class="quick-add-col">
                 <div class="quick-add-label">${getTranslation(h, "quick_add_entity_label")}</div>
                 <div class="quick-add-field">
-                  <ha-entity-picker id="tmpl-entity" aria-label="${getTranslation(h, "quick_add_entity_label")}"></ha-entity-picker>
+                  <ha-selector id="tmpl-entity" aria-label="${getTranslation(h, "quick_add_entity_label")}"></ha-selector>
                 </div>
                 <div id="qa-empty-hint" class="qa-empty hidden">${getTranslation(h, "quick_add_empty_hint")}</div>
                 <div class="quick-add-helper">${getTranslation(h, "quick_add_entity_help")}</div>
@@ -1650,24 +1655,20 @@ class OneLineRoomCardEditor extends HTMLElement {
       if (emptyHint) emptyHint.classList.toggle("hidden", hasMatch);
     };
     if (tmplSelect) {
-      tmplSelect.selector = {
-        select: {
-          mode: "dropdown",
-          options: this._getControlTemplates().map((t) => ({ value: t.id, label: t.label }))
-        }
-      };
-      if (this._hass) tmplSelect.hass = this._hass;
-      // Defer value assignment – ha-selector renders asynchronously after .selector is set
-      requestAnimationFrame(() => { tmplSelect.value = this._quickAddType; });
-      tmplSelect.addEventListener("value-changed", (ev) => {
+      // Native <select>: immune to ha-selector/hass-update resets
+      tmplSelect.innerHTML = this._getControlTemplates()
+        .map((t) => `<option value="${t.id}">${t.label}</option>`)
+        .join("");
+      tmplSelect.value = this._quickAddType;
+      tmplSelect.addEventListener("change", (ev) => {
         ev.stopPropagation();
-        const tid = ev.detail?.value;
+        const tid = ev.target.value;
         if (!tid) return;
         this._quickAddType = tid;
         const template = this._getTemplateById(tid);
         const domains = template?.domains || [];
-        if (tmplEntity && domains.length > 0) tmplEntity.setAttribute("include-domains", JSON.stringify(domains));
-        if (tmplEntity) tmplEntity.value = "";
+        this._quickAddEntity = "";
+        if (tmplEntity) { tmplEntity.selector = domains.length > 0 ? { entity: { domain: domains } } : { entity: {} }; }
         updateQuickAddHints();
       });
     }
@@ -1675,14 +1676,19 @@ class OneLineRoomCardEditor extends HTMLElement {
     if (tmplEntity) {
       const template = this._getTemplateById(this._quickAddType);
       const domains = template?.domains || [];
-      if (domains.length > 0) tmplEntity.setAttribute("include-domains", JSON.stringify(domains));
+      tmplEntity.selector = domains.length > 0 ? { entity: { domain: domains } } : { entity: {} };
+      tmplEntity.addEventListener("value-changed", (ev) => {
+        ev.stopPropagation();
+        this._quickAddEntity = ev.detail?.value ?? "";
+        updateQuickAddHints();
+      });
       updateQuickAddHints();
     }
     const addTemplateBtn = this.shadowRoot.getElementById("add-template");
     if (addTemplateBtn) {
       addTemplateBtn.addEventListener("click", () => {
-        const tid = tmplSelect?.value || "light";
-        const ent = tmplEntity?.value || "";
+        const tid = this._quickAddType || "light";
+        const ent = this._quickAddEntity || "";
         if (!ent) return;
         const template = this._getTemplateById(tid);
         const next = this._buildControlFromTemplate(template, ent);
