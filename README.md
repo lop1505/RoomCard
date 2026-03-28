@@ -46,6 +46,8 @@ If you are updating from an older version, please update your YAML configuration
 * 🧭 **Device Picker:** Select a device and let the editor auto-pick a suitable entity.
 * 🧩 **Template Presets:** Add buttons using type presets (Light/Switch/Climate/Cover/Media).
 * 💡 **Dynamic State Icons:** Button icons automatically change based on entity state — no configuration required for common domains (Light, Switch, Fan, Lock, Cover, Media Player). Override with `icon_map` for custom per-state icons.
+* 🏷️ **Custom Header Badges:** Add extra header info entries for any entity with optional custom label, name toggle, and configurable `rgba(...)` background.
+* 🌡️ **Main Climate Header Badge Styling:** The built-in main climate header info (temperature / humidity) can use its own optional `rgba(...)` badge background.
 
 ### Header Icon Color Priority
 Header icon color now follows this order:
@@ -55,10 +57,15 @@ Header icon color now follows this order:
 
 No scripting is required, and existing dashboards remain backward compatible.
 
-## 🆕 What’s new in 1.1.0
-
+## 🆕 What’s new in 1.1.1
 * Runtime: **Dynamic state icons** — buttons automatically show state-dependent icons for common domains (Light: `mdi:lightbulb` / `mdi:lightbulb-outline`, Switch, Fan, Lock, Cover, Media Player). No configuration needed for new buttons; existing buttons with a manually set icon are unaffected.
 * Runtime: Custom `icon_map` per button for explicit per-state icon overrides (highest priority, supports YAML `on`/`off` boolean keys automatically).
+* Runtime: **Custom header badges** in the info line with per-badge label toggle and optional `rgba(...)` background.
+* Runtime: Built-in main climate header info supports optional `rgba(...)` badge background.
+* Editor UX: Quick Add type selector no longer resets visually on HA state updates (closes #32).
+
+## 🆕 What’s new in 1.1.0
+
 * Runtime: Improved handling for `unavailable` / `unknown` entities (dimmed controls, offline indicator, blocked actions).
 * Runtime: Header icon uses the same dynamic state-based color logic as buttons.
 * Runtime: Header icon supports Force Color override with safe fallback to dynamic/theme color.
@@ -103,8 +110,10 @@ Simply add the card via "Add Card" in your dashboard and select **"OneLine Room 
 The visual editor guides you through all settings:
 
 * **General:** Name, Icon, Colors, Background Image, and optional **Tap → Navigate** path.
+* **Main Climate Header Badge:** Optional `rgba(...)` background for the built-in temperature / humidity info line.
 * **Header Icon Color:** Uses the same behavior as buttons with **Force Color** support in the editor.
 * **Sensors:** Select your temperature (current & target), humidity, window, and battery sensors. Optional humidity warning threshold.
+* **Header Badges:** Add extra header info entries for any entity, with optional custom label, name visibility, and `rgba(...)` background.
 * **Buttons:** Add devices/entities, set width/height, alignment, and actions (Tap/Hold/Double Tap).
 * **Cleaner Buttons:** Toggle **Show State**, **Show Label**, **Show Icon**, and **Visible** per button.
 * **Text Order:** Choose whether **State/Value** or **Name** appears first.
@@ -149,6 +158,37 @@ controls:
 **Static icon override:** Set the `icon` field in the editor to pin a single icon regardless of state.
 
 **Priority:** `icon_map[state]` → `icon` (static) → built-in domain default → `attributes.icon` → `mdi:circle`
+
+### Custom Header Badges (new in 1.1.1)
+
+Add extra header info entries for any entity using `header_badges`:
+
+```yaml
+header_info_background: rgba(255,255,255,0.18)
+header_badges:
+  - entity: binary_sensor.door_front
+    label: Front door
+    show_name: true
+    background: rgba(255,0,0,0.22)
+  - entity: sensor.living_room_co2
+    label: CO₂
+    show_name: false
+    background: rgba(33,150,243,0.22)
+```
+
+| Option | Values | Default |
+|---|---|---|
+| `entity` | Any HA entity ID | *(required)* |
+| `label` | Display text | `friendly_name` |
+| `show_name` | `true` · `false` | `true` |
+| `background` | Any CSS color, recommended `rgba(...)` | none |
+| `header_info_background` | Any CSS color, recommended `rgba(...)` | none |
+
+Behavior:
+* Built-in main climate info uses `header_info_background` when set.
+* Custom `header_badges` are appended to the same header info line.
+* If `show_name: false`, only the entity value is shown.
+* `background` applies only to the corresponding custom header badge.
 
 ### New in 1.0.9 (YAML options)
 ```yaml

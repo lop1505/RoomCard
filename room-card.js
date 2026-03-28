@@ -1,4 +1,4 @@
-const VERSION = "1.1.0";
+const VERSION = "1.1.1";
 const LOG_FLAG = `customCards_RoomCard_Logged_${VERSION}`;
 
 if (!window[LOG_FLAG]) {
@@ -48,7 +48,8 @@ const TRANSLATIONS = {
     act_more: "Details (Default)", act_toggle: "Toggle", act_none: "None",
     live_preview: "Live preview",
     upload_btn: "Upload Image", uploading: "Uploading...", upload_success: "Done!",
-    migration_title: "Action Required", 
+    show_name: "Show Title", header_badges: "Extra Header Info", badge_add: "Add Info Entry", badge_label: "Label (optional)", badge_background: "Background (rgba)", standard_badge_background: "Main Climate Badge Background (rgba)",
+    migration_title: "Action Required",
     migration_text: "Card renamed to <b>oneline-room-card</b> to avoid conflicts.<br>Please change <code>type: custom:room-card</code> to <code>type: custom:oneline-room-card</code> in your YAML."
   },
   de: {
@@ -87,7 +88,8 @@ const TRANSLATIONS = {
     act_more: "Details (Standard)", act_toggle: "Umschalten", act_none: "Nichts",
     live_preview: "Live-Vorschau",
     upload_btn: "Bild hochladen", uploading: "Wird hochgeladen...", upload_success: "Fertig!",
-    migration_title: "Handlung erforderlich", 
+    show_name: "Titel anzeigen", header_badges: "Zusätzliche Header-Info", badge_add: "Info-Eintrag hinzufügen", badge_label: "Bezeichnung (optional)", badge_background: "Hintergrund (rgba)", standard_badge_background: "Hauptklima-Badge-Hintergrund (rgba)",
+    migration_title: "Handlung erforderlich",
     migration_text: "Karte wurde in <b>oneline-room-card</b> umbenannt.<br>Bitte ändere <code>type: custom:room-card</code> zu <code>type: custom:oneline-room-card</code> in deiner YAML-Konfiguration."
   },
   fr: {
@@ -126,7 +128,8 @@ const TRANSLATIONS = {
     act_more: "Détails (Défaut)", act_toggle: "Basculer", act_none: "Rien",
     live_preview: "Aperçu en direct",
     upload_btn: "Télécharger une image", uploading: "Téléchargement...", upload_success: "Terminé!",
-    migration_title: "Action requise", 
+    show_name: "Afficher le titre", header_badges: "Infos d'en-tête supplémentaires", badge_add: "Ajouter une entrée", badge_label: "Libellé (optionnel)", badge_background: "Arrière-plan (rgba)", standard_badge_background: "Fond du badge climat principal (rgba)",
+    migration_title: "Action requise",
     migration_text: "Carte renommée en <b>oneline-room-card</b> pour éviter les conflits.<br>Veuillez changer <code>type: custom:room-card</code> en <code>type: custom:oneline-room-card</code>."
   }
 };
@@ -205,6 +208,26 @@ const replaceTemplateExpressions = (str, evalExpr) => {
 };
 
 const trimStr = (v) => (typeof v === "string" ? v.trim() : v);
+
+const hexToRgba = (hex, alpha = 0.35) => {
+  const m = /^#?([0-9a-f]{6})$/i.exec(trimStr(hex) || "");
+  if (!m) return "";
+  const raw = m[1];
+  const r = parseInt(raw.slice(0, 2), 16);
+  const g = parseInt(raw.slice(2, 4), 16);
+  const b = parseInt(raw.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
+
+const parseColorToPickerHex = (color) => {
+  const value = trimStr(color) || "";
+  const hex = /^#([0-9a-f]{6})$/i.exec(value);
+  if (hex) return `#${hex[1]}`;
+  const rgba = /^rgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})(?:\s*,\s*(?:\d*\.?\d+))?\s*\)$/i.exec(value);
+  if (!rgba) return "#000000";
+  const clamp = (n) => Math.max(0, Math.min(255, Number(n) || 0)).toString(16).padStart(2, "0");
+  return `#${clamp(rgba[1])}${clamp(rgba[2])}${clamp(rgba[3])}`;
+};
 
 const STATE_DEFINITIONS = Object.freeze({
   OFFLINE_STATES: new Set(["unavailable", "unknown"]),
@@ -424,11 +447,15 @@ class OneLineRoomCard extends HTMLElement {
         .text { display: flex; flex-direction: column; color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
         ha-icon { color: var(--icon-color, white); }
         .primary { font-weight: bold; font-size: 14px; }
-        .secondary { font-size: 12px; opacity: 0.9; }
+        .secondary { font-size: 12px; opacity: 0.9; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+        .info-item { display: inline-flex; align-items: center; min-width: 0; }
+        .info-item.badge { padding: 2px 6px; border-radius: 999px; }
         .chips { position: absolute; bottom: 8px; left: 8px; display: flex; gap: 6px; flex-wrap: wrap; z-index: 2; }
         .chip { display: flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 8px; font-size: 11px; font-weight: bold; background: #FFF8E1; color: #FFA000; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
         .chip.alert { background: #FFEBEE; color: #D32F2F; }
         .chip.humidity { background: #E3F2FD; color: #1976D2; }
+        .chip.info { background: #E3F2FD; color: #1976D2; }
+        .chip.custom { background: var(--chip-bg); color: var(--chip-color); }
         .controls { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px; }
         .btn { position: relative; display: flex; align-items: center; gap: 10px; padding: 0 10px; border-radius: 12px; cursor: pointer; background: var(--btn-bg, var(--card-background-color, rgba(128,128,128,0.05))); border: 1px solid transparent; flex-grow: 1; flex-shrink: 1; min-width: 0; overflow: hidden; box-sizing: border-box; transition: background 0.2s; user-select: none; -webkit-user-select: none; flex-basis: var(--btn-flex-basis, auto); height: var(--btn-height, 60px); justify-content: var(--btn-justify, center); }
         .btn.label-right { flex-direction: row; align-items: center; justify-content: var(--btn-justify, center); gap: 10px; padding: 0 10px; }
@@ -516,6 +543,7 @@ class OneLineRoomCard extends HTMLElement {
     (Array.isArray(cfg.window_sensors) ? cfg.window_sensors : []).forEach(add);
     (Array.isArray(cfg.battery_sensors) ? cfg.battery_sensors : []).forEach(add);
     (Array.isArray(cfg.controls) ? cfg.controls : []).forEach((ctrl) => add(ctrl?.entity));
+    (Array.isArray(cfg.header_badges) ? cfg.header_badges : []).forEach((b) => add(b?.entity));
     return Array.from(ids);
   }
 
@@ -585,7 +613,9 @@ class OneLineRoomCard extends HTMLElement {
     const unit = h.config.unit_system.temperature || "°C";
 
     this.shadowRoot.getElementById("bg").src = c.image || "/static/images/card_media/cover.png";
-    this.shadowRoot.getElementById("name").innerText = c.name || "Room";
+    const nameEl = this.shadowRoot.getElementById("name");
+    nameEl.innerText = c.name || "Room";
+    nameEl.style.display = c.show_name === false ? "none" : "";
     const ico = this.shadowRoot.getElementById("icon");
     ico.icon = c.icon || "mdi:home";
     // Priority: force/manual > dynamic state color > default/theme fallback.
@@ -608,16 +638,47 @@ class OneLineRoomCard extends HTMLElement {
     if (effectiveHumidSensor && h.states[effectiveHumidSensor]) hm = h.states[effectiveHumidSensor].state;
     else if (effectiveEntity && h.states[effectiveEntity]?.attributes?.current_humidity !== undefined) hm = h.states[effectiveEntity].attributes.current_humidity;
 
+    const infoEl = this.shadowRoot.getElementById("info");
     const infoParts = [];
+    const standardHeaderBadgeBackground = trimStr(c.header_info_background);
     if (t != null && t !== "-" && !isNaN(parseFloat(t))) {
       // --- NEW: USE DYNAMIC UNIT ---
       let tStr = t + unit;
       if (tar != null && tar !== "-") tStr += " (" + tar + unit + ")";
-      infoParts.push(tStr);
+      infoParts.push({ text: tStr, background: standardHeaderBadgeBackground });
     }
-    if (hm != null && hm !== "-" && !isNaN(parseFloat(hm))) infoParts.push(hm + "%");
+    if (hm != null && hm !== "-" && !isNaN(parseFloat(hm))) infoParts.push({ text: hm + "%", background: standardHeaderBadgeBackground });
 
-    this.shadowRoot.getElementById("info").innerText = infoParts.join(" | ");
+    (Array.isArray(c.header_badges) ? c.header_badges : []).forEach(badge => {
+      if (!badge?.entity) return;
+      const st = h.states[badge.entity];
+      if (!st) return;
+      const val = st.state;
+      if (val === "unavailable" || val === "unknown") return;
+      const unit = st.attributes.unit_of_measurement || "";
+      const showBadgeName = badge.show_name !== false;
+      const displayLabel = badge.label || st.attributes.friendly_name || badge.entity;
+      infoParts.push({
+        text: showBadgeName
+          ? `${displayLabel}: ${val}${unit ? " " + unit : ""}`
+          : `${val}${unit ? " " + unit : ""}`,
+        background: trimStr(badge.background)
+      });
+    });
+    infoEl.replaceChildren();
+    infoParts.forEach((part, idx) => {
+      const span = document.createElement("span");
+      span.className = `info-item${part.background ? " badge" : ""}`;
+      span.textContent = part.text;
+      if (part.background) span.style.background = part.background;
+      infoEl.appendChild(span);
+      if (idx < infoParts.length - 1) {
+        const sep = document.createElement("span");
+        sep.className = "info-item";
+        sep.textContent = "|";
+        infoEl.appendChild(sep);
+      }
+    });
 
     const ch = this.shadowRoot.getElementById("chips");
     ch.innerHTML = "";
@@ -899,6 +960,12 @@ class OneLineRoomCard extends HTMLElement {
     this.dispatchEvent(new CustomEvent("hass-action", { bubbles: true, composed: true, detail: eventDetail }));
   }
 
+  _iconForBadgeDomain(entityId) {
+    const domain = entityId?.split(".")[0] || "";
+    const defaults = { light: "mdi:lightbulb", switch: "mdi:toggle-switch", binary_sensor: "mdi:checkbox-marked-circle-outline", motion: "mdi:motion-sensor", door: "mdi:door", window: "mdi:window-open-variant", sensor: "mdi:gauge", lock: "mdi:lock", cover: "mdi:window-shutter" };
+    return defaults[domain] || "mdi:information-outline";
+  }
+
   _nav() {
     if (this.config.tap_action?.action === "navigate" && this.config.tap_action?.navigation_path) {
       history.pushState(null, "", this.config.tap_action.navigation_path);
@@ -919,6 +986,7 @@ class OneLineRoomCardEditor extends HTMLElement {
     this._batteryListOpen = false;
     this._manualSensorsOpen = false;
     this._imageSectionOpen = false;
+    this._badgesSectionOpen = false;
     this._controlIds = [];
     this._nextControlId = 1;
     this._livePreview = true;
@@ -955,11 +1023,18 @@ class OneLineRoomCardEditor extends HTMLElement {
   set hass(hass) {
     const upd = this._hass?.language !== hass?.language;
     this._hass = hass;
-    if (upd) { this._controlTemplatesCache = null; this.render(); }
+    if (upd) { this._controlTemplatesCache = null; this.render(); return; }
     if (this.shadowRoot) {
       this.shadowRoot.querySelectorAll("ha-selector,ha-entity-picker,ha-icon-picker,ha-textfield,ha-switch").forEach(e => {
         if (e.hass !== hass) e.hass = hass;
       });
+      // After a hot-reload patch, new DOM elements may be missing from the old shadow DOM.
+      // Force a full re-render once so the new static HTML (including any new toggles) is applied.
+      if (this._config && !this.shadowRoot.getElementById("show-name-toggle")) {
+        this.shadowRoot.innerHTML = "";
+        this.render();
+        return;
+      }
     }
   }
 
@@ -1355,7 +1430,7 @@ class OneLineRoomCardEditor extends HTMLElement {
     this._ensureEditorState();
     if (!this._config) return;
     const alreadyRendered = !!this.shadowRoot.innerHTML;
-    if (alreadyRendered) { this.updVal(); this.renBtn(); this._applyNavSelectorOptions(); this._ensureNavOptions(); this._updateBatteryListUI(); this._updateManualSensorsUI(); this._updateImageSectionUI(); return; }
+    if (alreadyRendered) { this.updVal(); this.renBtn(); this._applyNavSelectorOptions(); this._ensureNavOptions(); this._updateBatteryListUI(); this._updateManualSensorsUI(); this._updateImageSectionUI(); this._updateBadgesUI(); return; }
     const h = this._hass;
     this.shadowRoot.innerHTML = `
       <style>
@@ -1382,6 +1457,17 @@ class OneLineRoomCardEditor extends HTMLElement {
         .battery-sec.open .battery-chev { transform: rotate(90deg); }
         .battery-content { margin-top: 6px; }
         .battery-content[hidden] { display: none; }
+        .badges-sec { border: 1px solid var(--divider-color); border-radius: 8px; background: var(--secondary-background-color); padding: 6px 10px; margin-bottom: 8px; }
+        .badges-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer; user-select: none; padding: 4px 0; }
+        .badges-title { font-size: 12px; font-weight: 600; opacity: 0.8; }
+        .badges-chev { --mdc-icon-size: 18px; opacity: 0.7; transition: transform 0.15s ease; }
+        .badges-sec.open .badges-chev { transform: rotate(90deg); }
+        .badges-content { margin-top: 6px; }
+        .badges-content[hidden] { display: none; }
+        .badge-box { border: 1px solid var(--divider-color); border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; background: var(--card-background-color, var(--primary-background-color)); }
+        .badge-head-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+        .badge-entity-label { font-size: 12px; font-weight: 600; opacity: 0.7; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .badge-del-btn { background: none; border: 0; cursor: pointer; padding: 2px; display: inline-flex; color: #d32f2f; --mdc-icon-size: 18px; }
         .tmpl-label-row { margin-bottom: 4px; }
         .tmpl-label { font-size: 12px; font-weight: 600; opacity: 0.8; }
         .tmpl-row { align-items: start; margin-bottom: 12px; }
@@ -1449,7 +1535,16 @@ class OneLineRoomCardEditor extends HTMLElement {
           </ha-formfield>
         </div>
         <ha-textfield label="${getTranslation(h, "name")}" cfg="name" class="i"></ha-textfield>
+        <div class="row" style="margin-top:4px; align-items:center; margin-bottom:8px">
+          <ha-formfield label="${getTranslation(h, "show_name")}">
+            <ha-switch id="show-name-toggle" checked></ha-switch>
+          </ha-formfield>
+        </div>
         <ha-entity-picker label="${getTranslation(h, "main_climate")}" cfg="entity" class="i" include-domains='["climate"]'></ha-entity-picker>
+        <div class="cl-row">
+          <ha-textfield id="standard-badge-bg" label="${getTranslation(h, "standard_badge_background")}"></ha-textfield>
+          <input type="color" id="standard-badge-bg-picker" class="cp">
+        </div>
         <div class="row" style="margin-top:8px; align-items:center">
           <ha-formfield label="${getTranslation(h, "force_color")}">
             <ha-switch id="header-force-color"></ha-switch>
@@ -1460,6 +1555,18 @@ class OneLineRoomCardEditor extends HTMLElement {
           <div id="header-color-row" class="cl-row">
             <ha-textfield label="${getTranslation(h, "color")}" cfg="color" class="i"></ha-textfield>
             <input type="color" class="cp i-cp" cfg="color">
+          </div>
+        </div>
+        <div id="badges-sec" class="badges-sec">
+          <div id="badges-head" class="badges-head">
+            <span id="badges-title" class="badges-title"></span>
+            <ha-icon id="badges-chev" class="badges-chev" icon="mdi:chevron-right"></ha-icon>
+          </div>
+          <div id="badges-content" class="badges-content" hidden>
+            <div id="badges-list"></div>
+            <mwc-button id="add-badge" raised>
+              <ha-icon icon="mdi:plus" slot="icon"></ha-icon>
+            </mwc-button>
           </div>
         </div>
         <div id="image-sec" class="image-sec">
@@ -1606,6 +1713,13 @@ class OneLineRoomCardEditor extends HTMLElement {
         this._updateBatteryListUI();
       });
     }
+    const badgesHead = this.shadowRoot.getElementById("badges-head");
+    if (badgesHead) {
+      badgesHead.addEventListener("click", () => {
+        this._badgesSectionOpen = !this._badgesSectionOpen;
+        this._updateBadgesUI();
+      });
+    }
     const navSelect = this.shadowRoot.getElementById("nav-path");
     if (navSelect) {
       navSelect.addEventListener("value-changed", (ev) => {
@@ -1626,6 +1740,39 @@ class OneLineRoomCardEditor extends HTMLElement {
         const wasEnabled = this._livePreview !== false;
         this._livePreview = enabled;
         if (enabled && !wasEnabled) this._flushPendingConfig();
+      });
+    }
+    const showNameToggleEl = this.shadowRoot.getElementById("show-name-toggle");
+    if (showNameToggleEl) {
+      showNameToggleEl.checked = this._config?.show_name !== false;
+      showNameToggleEl.addEventListener("change", (ev) => {
+        ev.stopPropagation();
+        this._fire({ ...this._config, show_name: ev.target.checked !== false });
+      });
+    }
+    const standardBadgeBg = this.shadowRoot.getElementById("standard-badge-bg");
+    const standardBadgeBgPicker = this.shadowRoot.getElementById("standard-badge-bg-picker");
+    if (standardBadgeBg) {
+      standardBadgeBg.value = this._config?.header_info_background || "";
+      if (this._hass) standardBadgeBg.hass = this._hass;
+      standardBadgeBg.addEventListener("change", (ev) => {
+        ev.stopPropagation();
+        const next = { ...this._config };
+        const value = trimStr(ev.target.value || "");
+        if (value) next.header_info_background = value;
+        else delete next.header_info_background;
+        this._fire(next);
+        if (standardBadgeBgPicker) standardBadgeBgPicker.value = parseColorToPickerHex(value);
+      });
+    }
+    if (standardBadgeBgPicker) {
+      standardBadgeBgPicker.value = parseColorToPickerHex(this._config?.header_info_background);
+      standardBadgeBgPicker.addEventListener("change", (ev) => {
+        ev.stopPropagation();
+        const value = hexToRgba(ev.target.value, 0.35);
+        const next = { ...this._config, header_info_background: value };
+        this._fire(next);
+        if (standardBadgeBg) standardBadgeBg.value = value;
       });
     }
     const headerForceToggle = this.shadowRoot.getElementById("header-force-color");
@@ -1772,6 +1919,7 @@ class OneLineRoomCardEditor extends HTMLElement {
     this._updateBatteryListUI();
     this._updateManualSensorsUI();
     this._updateImageSectionUI();
+    this._updateBadgesUI();
   }
 
   _updateImageSectionUI() {
@@ -1813,6 +1961,150 @@ class OneLineRoomCardEditor extends HTMLElement {
     title.textContent = count > 0 ? `${label} (${count})` : label;
     sec.classList.toggle("open", this._batteryListOpen);
     content.hidden = !this._batteryListOpen;
+  }
+
+  _updateBadgesUI() {
+    const sec = this.shadowRoot?.getElementById("badges-sec");
+    const content = this.shadowRoot?.getElementById("badges-content");
+    const title = this.shadowRoot?.getElementById("badges-title");
+    if (!sec || !content || !title) return;
+
+    const h = this._hass;
+    const badges = Array.isArray(this._config?.header_badges) ? this._config.header_badges : [];
+    const sectionLabel = getTranslation(h, "header_badges");
+    title.textContent = badges.length > 0 ? `${sectionLabel} (${badges.length})` : sectionLabel;
+    sec.classList.toggle("open", this._badgesSectionOpen);
+    content.hidden = !this._badgesSectionOpen;
+
+    const addBtn = content.querySelector("#add-badge");
+    if (addBtn) addBtn.label = getTranslation(h, "badge_add");
+
+    if (!this._badgesSectionOpen) return;
+
+    const list = content.querySelector("#badges-list");
+    if (!list) return;
+
+    const updBadge = (idx, key, val) => {
+      const arr = [...(this._config?.header_badges || [])];
+      arr[idx] = { ...arr[idx], [key]: val };
+      this._fire({ ...this._config, header_badges: arr });
+      this._updateBadgesUI();
+    };
+    const delBadge = (idx) => {
+      const arr = [...(this._config?.header_badges || [])];
+      arr.splice(idx, 1);
+      const next = { ...this._config };
+      if (arr.length > 0) next.header_badges = arr; else delete next.header_badges;
+      this._fire(next);
+      this._updateBadgesUI();
+    };
+
+    list.replaceChildren();
+
+    badges.forEach((badge, idx) => {
+      const box = document.createElement("div");
+      box.className = "badge-box";
+
+      const headRow = document.createElement("div");
+      headRow.className = "badge-head-row";
+      const entityLabel = document.createElement("span");
+      entityLabel.className = "badge-entity-label";
+      entityLabel.textContent = badge.entity || `Info ${idx + 1}`;
+      const delBtn = document.createElement("button");
+      delBtn.className = "badge-del-btn";
+      delBtn.type = "button";
+      delBtn.innerHTML = `<ha-icon icon="mdi:delete-outline"></ha-icon>`;
+      delBtn.addEventListener("click", () => delBadge(idx));
+      headRow.appendChild(entityLabel);
+      headRow.appendChild(delBtn);
+      box.appendChild(headRow);
+
+      const ep = document.createElement("ha-entity-picker");
+      ep.label = getTranslation(h, "entity");
+      ep.value = badge.entity || "";
+      if (h) ep.hass = h;
+      ep.style.cssText = "width:100%;display:block;margin-bottom:8px;";
+      ep.addEventListener("value-changed", (ev) => {
+        ev.stopPropagation();
+        updBadge(idx, "entity", ev.detail?.value ?? "");
+      });
+      box.appendChild(ep);
+
+      const lf = document.createElement("ha-textfield");
+      lf.label = getTranslation(h, "badge_label");
+      lf.placeholder = h?.states[badge.entity]?.attributes?.friendly_name || "";
+      lf.value = badge.label || "";
+      lf.style.cssText = "width:100%;display:block;margin-bottom:8px;";
+      lf.addEventListener("change", (ev) => {
+        ev.stopPropagation();
+        const v = ev.target.value || "";
+        const arr = [...(this._config?.header_badges || [])];
+        const next = { ...arr[idx] };
+        if (v) next.label = v; else delete next.label;
+        arr[idx] = next;
+        this._fire({ ...this._config, header_badges: arr });
+      });
+      box.appendChild(lf);
+
+      const bgRow = document.createElement("div");
+      bgRow.className = "cl-row";
+      bgRow.style.marginBottom = "8px";
+
+      const bgField = document.createElement("ha-textfield");
+      bgField.label = getTranslation(h, "badge_background");
+      bgField.placeholder = "rgba(255,255,255,0.25)";
+      bgField.value = badge.background || "";
+      bgField.style.flex = "1";
+      bgField.addEventListener("change", (ev) => {
+        ev.stopPropagation();
+        const v = trimStr(ev.target.value || "");
+        const arr = [...(this._config?.header_badges || [])];
+        const next = { ...arr[idx] };
+        if (v) next.background = v; else delete next.background;
+        arr[idx] = next;
+        this._fire({ ...this._config, header_badges: arr });
+      });
+      bgRow.appendChild(bgField);
+
+      const bgPicker = document.createElement("input");
+      bgPicker.type = "color";
+      bgPicker.className = "cp";
+      bgPicker.value = parseColorToPickerHex(badge.background);
+      bgPicker.addEventListener("change", (ev) => {
+        ev.stopPropagation();
+        updBadge(idx, "background", hexToRgba(ev.target.value, 0.35));
+      });
+      bgRow.appendChild(bgPicker);
+
+      box.appendChild(bgRow);
+
+      const showNameWrap = document.createElement("div");
+      showNameWrap.style.cssText = "margin-top:4px;";
+      const showNameField = document.createElement("ha-formfield");
+      showNameField.label = getTranslation(h, "show_name");
+      const showNameToggle = document.createElement("ha-switch");
+      showNameToggle.checked = badge.show_name !== false;
+      showNameToggle.addEventListener("change", (ev) => {
+        ev.stopPropagation();
+        updBadge(idx, "show_name", ev.target.checked !== false);
+      });
+      showNameField.appendChild(showNameToggle);
+      showNameWrap.appendChild(showNameField);
+      box.appendChild(showNameWrap);
+
+      list.appendChild(box);
+    });
+
+    // Wire up add-badge button using onclick to avoid listener accumulation
+    if (addBtn) {
+      addBtn.onclick = () => {
+        const arr = [...(this._config?.header_badges || [])];
+        arr.push({ entity: "", show_name: true });
+        this._badgesSectionOpen = true;
+        this._fire({ ...this._config, header_badges: arr });
+        this._updateBadgesUI();
+      };
+    }
   }
 
   updPreview() {
@@ -2103,6 +2395,21 @@ class OneLineRoomCardEditor extends HTMLElement {
     if (livePreviewToggle && livePreviewToggle.checked !== (this._livePreview !== false)) {
       livePreviewToggle.checked = this._livePreview !== false;
     }
+    const showNameToggle = this.shadowRoot.getElementById("show-name-toggle");
+    if (showNameToggle) {
+      const v = this._config?.show_name !== false;
+      if (showNameToggle.checked !== v) showNameToggle.checked = v;
+    }
+    const standardBadgeBg = this.shadowRoot.getElementById("standard-badge-bg");
+    if (standardBadgeBg) {
+      const v = this._config?.header_info_background || "";
+      if (standardBadgeBg.value !== v) standardBadgeBg.value = v;
+    }
+    const standardBadgeBgPicker = this.shadowRoot.getElementById("standard-badge-bg-picker");
+    if (standardBadgeBgPicker) {
+      const v = parseColorToPickerHex(this._config?.header_info_background);
+      if (standardBadgeBgPicker.value !== v) standardBadgeBgPicker.value = v;
+    }
     const headerForceToggle = this.shadowRoot.getElementById("header-force-color");
     const headerColorRow = this.shadowRoot.getElementById("header-color-row");
     const headerForceEnabled = isHeaderForceColorEnabled(this._config);
@@ -2129,7 +2436,7 @@ class OneLineRoomCardEditor extends HTMLElement {
 // =============================================================================
 
 const patchExistingEditor = (ExistingEditor, NewEditor) => {
-  const methods = ["render", "updVal", "updCp", "renBtn", "setConfig", "_fire", "_handleUpload", "updPreview", "connectedCallback", "disconnectedCallback", "_ensureEditorState", "_emitConfigNow", "_flushPendingConfig", "_handlePrimarySave"];
+  const methods = ["render", "updVal", "updCp", "renBtn", "setConfig", "_fire", "_handleUpload", "updPreview", "connectedCallback", "disconnectedCallback", "_ensureEditorState", "_emitConfigNow", "_flushPendingConfig", "_handlePrimarySave", "_updateBadgesUI"];
   methods.forEach((name) => {
     if (typeof NewEditor.prototype[name] === "function") {
       ExistingEditor.prototype[name] = NewEditor.prototype[name];
