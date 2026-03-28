@@ -45,6 +45,7 @@ If you are updating from an older version, please update your YAML configuration
 * 📴 **Offline/Unavailable Handling:** `unavailable` / `unknown` entities are clearly indicated and safely non-interactive.
 * 🧭 **Device Picker:** Select a device and let the editor auto-pick a suitable entity.
 * 🧩 **Template Presets:** Add buttons using type presets (Light/Switch/Climate/Cover/Media).
+* 💡 **Dynamic State Icons:** Button icons automatically change based on entity state — no configuration required for common domains (Light, Switch, Fan, Lock, Cover, Media Player). Override with `icon_map` for custom per-state icons.
 
 ### Header Icon Color Priority
 Header icon color now follows this order:
@@ -56,10 +57,13 @@ No scripting is required, and existing dashboards remain backward compatible.
 
 ## 🆕 What’s new in 1.1.0
 
+* Runtime: **Dynamic state icons** — buttons automatically show state-dependent icons for common domains (Light: `mdi:lightbulb` / `mdi:lightbulb-outline`, Switch, Fan, Lock, Cover, Media Player). No configuration needed for new buttons; existing buttons with a manually set icon are unaffected.
+* Runtime: Custom `icon_map` per button for explicit per-state icon overrides (highest priority, supports YAML `on`/`off` boolean keys automatically).
 * Runtime: Improved handling for `unavailable` / `unknown` entities (dimmed controls, offline indicator, blocked actions).
 * Runtime: Header icon uses the same dynamic state-based color logic as buttons.
 * Runtime: Header icon supports Force Color override with safe fallback to dynamic/theme color.
 * Editor UX: New **Live preview** toggle (enabled by default).
+* Editor UX: Quick Add type selector no longer resets visually on HA state updates.
 * Performance: Internal state-signature caching reduces unnecessary DOM/UI updates.
 * Internal: Centralized state definitions for active/offline checks (maintainability improvement, no user config change).
 
@@ -118,8 +122,36 @@ When an entity is `unavailable` or `unknown`:
 
 This improves feedback and prevents accidental actions, while keeping layout and behavior stable.
 
-### New in 1.0.9 (YAML options)
+### Dynamic State Icons (new in 1.1.0)
+
+Button icons automatically change based on entity state for common domains. No extra configuration needed when adding new buttons via the editor.
+
+Supported domains and their default icon maps:
+
+| Domain | State → Icon |
+|---|---|
+| `light` | `on` → `mdi:lightbulb` / `off` → `mdi:lightbulb-outline` |
+| `switch` | `on` → `mdi:toggle-switch` / `off` → `mdi:toggle-switch-off-outline` |
+| `fan` | `on` → `mdi:fan` / `off` → `mdi:fan-off` |
+| `lock` | `locked` → `mdi:lock` / `unlocked` → `mdi:lock-open-outline` |
+| `cover` | `open` → `mdi:window-shutter-open` / `closed` → `mdi:window-shutter` |
+| `media_player` | `playing` → `mdi:cast-connected` / `idle` → `mdi:cast` / `off` → `mdi:cast-off` |
+
+**Override with `icon_map`** for fully custom per-state icons:
+```yaml
+controls:
+  - entity: light.living_room
+    icon_map:
+      on: mdi:ceiling-light
+      off: mdi:ceiling-light-outline
 ```
+
+**Static icon override:** Set the `icon` field in the editor to pin a single icon regardless of state.
+
+**Priority:** `icon_map[state]` → `icon` (static) → built-in domain default → `attributes.icon` → `mdi:circle`
+
+### New in 1.0.9 (YAML options)
+```yaml
 type: custom:oneline-room-card
 humidity_warning_threshold: 60
 global_label_position: bottom  # right | left | top | bottom

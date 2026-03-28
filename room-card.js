@@ -220,6 +220,20 @@ const STATE_DEFINITIONS = Object.freeze({
   ON_STATE: "on"
 });
 
+// Built-in state-dependent icon maps per domain — used when no static icon is configured
+const DOMAIN_STATE_ICON_MAPS = Object.freeze({
+  light:         { on: "mdi:lightbulb",              off: "mdi:lightbulb-outline" },
+  switch:        { on: "mdi:toggle-switch",           off: "mdi:toggle-switch-off-outline" },
+  input_boolean: { on: "mdi:toggle-switch",           off: "mdi:toggle-switch-off-outline" },
+  fan:           { on: "mdi:fan",                     off: "mdi:fan-off" },
+  lock:          { locked: "mdi:lock",                unlocked: "mdi:lock-open-outline" },
+  cover: {
+    open: "mdi:window-shutter-open",    closed: "mdi:window-shutter",
+    opening: "mdi:window-shutter-open", closing: "mdi:window-shutter"
+  },
+  media_player:  { playing: "mdi:cast-connected", paused: "mdi:cast-connected", idle: "mdi:cast", off: "mdi:cast-off" },
+});
+
 const getEntityDomain = (entityId) => (typeof entityId === "string" && entityId.includes(".") ? entityId.split(".")[0] : "");
 
 const getEntityStateValue = (stateObj) => stateObj?.state;
@@ -778,9 +792,24 @@ class OneLineRoomCard extends HTMLElement {
     btn.dataset.lpEff = pos ?? "";
     applyLabelPosition(btn, pos);
 
+    const resolvedIcon = isTemplate
+      ? (tpl?.icon || ctrl.icon || "mdi:circle")
+      : (() => {
+          if (ctrl.icon_map) {
+            // YAML parses unquoted `on`/`off` as booleans — normalise keys to strings
+            const normMap = Object.fromEntries(
+              Object.entries(ctrl.icon_map).map(([k, v]) => [
+                k === true ? "on" : k === false ? "off" : String(k), v
+              ])
+            );
+            const mapped = normMap[s] ?? normMap.default;
+            if (mapped) return mapped;
+          }
+          return ctrl.icon || DOMAIN_STATE_ICON_MAPS[domain]?.[s] || st?.attributes?.icon || "mdi:circle";
+        })();
     const iconHtml = showIcon
       ? `<div class="icon-box">
-        <ha-icon icon="${(isTemplate ? (tpl?.icon || ctrl.icon) : ctrl.icon) || "mdi:circle"}" style="--mdc-icon-size:20px"></ha-icon>
+        <ha-icon icon="${resolvedIcon}" style="--mdc-icon-size:20px"></ha-icon>
       </div>`
       : "";
     btn.innerHTML = `
@@ -1190,12 +1219,16 @@ class OneLineRoomCardEditor extends HTMLElement {
   _buildControlFromTemplate(template, entityId) {
     const st = this._hass?.states?.[entityId];
     const name = st?.attributes?.friendly_name || "";
-    const icon = st?.attributes?.icon || template?.defaults?.icon || this._iconForEntity(entityId);
+    const domain = entityId?.split(".")[0] || "";
     const defaults = template?.defaults || {};
+    // Only store a static icon for domains without built-in state maps — otherwise _updateBtnState resolves dynamically
+    const iconField = DOMAIN_STATE_ICON_MAPS[domain]
+      ? {}
+      : { icon: st?.attributes?.icon || template?.defaults?.icon || this._iconForEntity(entityId) };
     return {
       entity: entityId || "",
       name,
-      icon,
+      ...iconField,
       width: defaults.width ?? 15,
       height: defaults.height ?? 60,
       align: defaults.align || "center",
@@ -1710,15 +1743,19 @@ class OneLineRoomCardEditor extends HTMLElement {
     this.shadowRoot.getElementById("add").addEventListener("click", () => {
       const c = [...(this._config.controls || [])];
       let w = 15; if (c.length > 0) w = c[c.length - 1].width || 15;
-      let ent = "", ic = "mdi:lightbulb", n = "";
+      let ent = "", n = "";
       if (c.length === 0 && this._config.entity) {
-        ent = this._config.entity; ic = "mdi:thermostat";
+        ent = this._config.entity;
         if (this._hass?.states[ent]) {
           n = this._hass.states[ent].attributes.friendly_name || "";
-          if (this._hass.states[ent].attributes.icon) ic = this._hass.states[ent].attributes.icon;
         }
       }
-      c.push({ entity: ent, name: n, icon: ic, width: w, height: 60 });
+      const addDomain = ent.split(".")[0];
+      const newCtrl = { entity: ent, name: n, width: w, height: 60 };
+      if (!DOMAIN_STATE_ICON_MAPS[addDomain]) {
+        newCtrl.icon = this._hass?.states[ent]?.attributes?.icon || this._iconForEntity(ent) || "mdi:lightbulb";
+      }
+      c.push(newCtrl);
       this._fire({ ...this._config, controls: c });
       this.renBtn();
       this._updateBulkToggleButton();
@@ -1945,10 +1982,16 @@ class OneLineRoomCardEditor extends HTMLElement {
         });
       }
       const ep = box.querySelector(".ep"); if (ep) { ep.hass = h; ep.value = ctrl.entity; ep.addEventListener("value-changed", e => {
-        const val = e.detail.value; const st = h.states[val]; const c = [...this._config.controls]; let changes = { entity: val };
-        if (st?.attributes?.icon) changes.icon = st.attributes.icon; else changes.icon = this._iconForEntity(val);
-        if (st?.attributes?.friendly_name) changes.name = st.attributes.friendly_name;
-        keepOpen(); c[i] = { ...c[i], ...changes }; this._fire({ ...this._config, controls: c }); this.renBtn();
+        const val = e.detail.value; const st = h.states[val]; const c = [...this._config.controls];
+        const epDomain = val?.split(".")[0] || "";
+        let next = { ...c[i], entity: val };
+        if (st?.attributes?.friendly_name) next.name = st.attributes.friendly_name;
+        if (DOMAIN_STATE_ICON_MAPS[epDomain]) {
+          delete next.icon; // clear static icon — let domain state map resolve dynamically
+        } else {
+          next.icon = st?.attributes?.icon || this._iconForEntity(val);
+        }
+        keepOpen(); c[i] = next; this._fire({ ...this._config, controls: c }); this.renBtn();
       }); }
       const dvWrap = box.querySelector(".dv-wrap");
       if (dvWrap) {
