@@ -1,4 +1,4 @@
-const VERSION = "1.1.1";
+const VERSION = "1.2.0";
 const LOG_FLAG = `customCards_RoomCard_Logged_${VERSION}`;
 
 if (!window[LOG_FLAG]) {
@@ -50,7 +50,8 @@ const TRANSLATIONS = {
     upload_btn: "Upload Image", uploading: "Uploading...", upload_success: "Done!",
     show_name: "Show Title", header_badges: "Extra Header Info", badge_add: "Add Info Entry", badge_label: "Label (optional)", badge_background: "Background (rgba)", standard_badge_background: "Main Climate Badge Background (rgba)",
     migration_title: "Action Required",
-    migration_text: "Card renamed to <b>oneline-room-card</b> to avoid conflicts.<br>Please change <code>type: custom:room-card</code> to <code>type: custom:oneline-room-card</code> in your YAML."
+    migration_text: "Card renamed to <b>oneline-room-card</b> to avoid conflicts.<br>Please change <code>type: custom:room-card</code> to <code>type: custom:oneline-room-card</code> in your YAML.",
+    control_mode: "Control Mode", ctrl_default: "Default", ctrl_slider: "Inline Slider", ctrl_buttons: "Inline Buttons (Cover)"
   },
   de: {
     empty: "Leer", low: "Niedrig", critical: "Kritisch", window: "Fenster", general: "Allgemein",
@@ -90,7 +91,8 @@ const TRANSLATIONS = {
     upload_btn: "Bild hochladen", uploading: "Wird hochgeladen...", upload_success: "Fertig!",
     show_name: "Titel anzeigen", header_badges: "Zusätzliche Header-Info", badge_add: "Info-Eintrag hinzufügen", badge_label: "Bezeichnung (optional)", badge_background: "Hintergrund (rgba)", standard_badge_background: "Hauptklima-Badge-Hintergrund (rgba)",
     migration_title: "Handlung erforderlich",
-    migration_text: "Karte wurde in <b>oneline-room-card</b> umbenannt.<br>Bitte ändere <code>type: custom:room-card</code> zu <code>type: custom:oneline-room-card</code> in deiner YAML-Konfiguration."
+    migration_text: "Karte wurde in <b>oneline-room-card</b> umbenannt.<br>Bitte ändere <code>type: custom:room-card</code> zu <code>type: custom:oneline-room-card</code> in deiner YAML-Konfiguration.",
+    control_mode: "Steuerungsmodus", ctrl_default: "Standard", ctrl_slider: "Inline-Slider", ctrl_buttons: "Inline-Buttons (Rollladen)"
   },
   fr: {
     empty: "Vide", low: "Faible", critical: "Critique", window: "Fenêtre", general: "Général",
@@ -130,7 +132,8 @@ const TRANSLATIONS = {
     upload_btn: "Télécharger une image", uploading: "Téléchargement...", upload_success: "Terminé!",
     show_name: "Afficher le titre", header_badges: "Infos d'en-tête supplémentaires", badge_add: "Ajouter une entrée", badge_label: "Libellé (optionnel)", badge_background: "Arrière-plan (rgba)", standard_badge_background: "Fond du badge climat principal (rgba)",
     migration_title: "Action requise",
-    migration_text: "Carte renommée en <b>oneline-room-card</b> pour éviter les conflits.<br>Veuillez changer <code>type: custom:room-card</code> en <code>type: custom:oneline-room-card</code>."
+    migration_text: "Carte renommée en <b>oneline-room-card</b> pour éviter les conflits.<br>Veuillez changer <code>type: custom:room-card</code> en <code>type: custom:oneline-room-card</code>.",
+    control_mode: "Mode de contrôle", ctrl_default: "Défaut", ctrl_slider: "Curseur intégré", ctrl_buttons: "Boutons intégrés (Volet)"
   }
 };
 
@@ -491,6 +494,17 @@ class OneLineRoomCard extends HTMLElement {
         .btn-state { font-size: 11px; color: var(--secondary-text-color); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
         .warn { position: absolute; top: 4px; right: 4px; color: #d32f2f; --mdc-icon-size: 16px; background: rgba(255,255,255,0.8); border-radius: 50%; padding: 1px; }
         .warn.warn-offline { color: var(--warning-color, var(--secondary-text-color)); background: var(--card-background-color, rgba(255,255,255,0.85)); }
+        .btn.has-inline-ctrl { flex-direction: column; align-items: stretch; padding: 6px 10px; gap: 4px; height: auto; min-height: var(--btn-height, 60px); }
+        .btn.has-inline-ctrl .btn-top { display: flex; align-items: center; gap: 10px; width: 100%; flex: 0 0 auto; }
+        .btn.has-inline-ctrl .btn-txt { flex: 1; min-width: 0; }
+        .btn-slider-wrap { width: 100%; flex: 0 0 auto; padding: 0 2px 4px; }
+        .btn-slider { -webkit-appearance: none; appearance: none; width: 100%; height: 4px; border-radius: 2px; outline: none; cursor: pointer; background: linear-gradient(to right, var(--icon-color, #ff9800) 0%, var(--icon-color, #ff9800) var(--slider-pct, 0%), rgba(128,128,128,0.3) var(--slider-pct, 0%), rgba(128,128,128,0.3) 100%); }
+        .btn-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--icon-color, #ff9800); cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+        .btn-slider::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: var(--icon-color, #ff9800); cursor: pointer; border: none; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+        .btn-cover-actions { display: flex; gap: 4px; width: 100%; flex: 0 0 auto; padding-bottom: 4px; }
+        .cover-action-btn { flex: 1; display: flex; align-items: center; justify-content: center; background: rgba(128,128,128,0.1); border-radius: 6px; padding: 4px 2px; cursor: pointer; transition: background 0.15s; }
+        .cover-action-btn:hover { background: rgba(128,128,128,0.22); }
+        .cover-action-btn ha-icon { --mdc-icon-size: 16px; color: var(--primary-text-color); }
       </style>
       <ha-card>
         <div class="container">
@@ -891,6 +905,73 @@ class OneLineRoomCard extends HTMLElement {
     // Apply dynamic colors via CSS custom properties
     btn.style.setProperty("--icon-color", col);
     btn.style.setProperty("--btn-bg", bg);
+
+    // Inline controls (slider / cover buttons)
+    const controlMode = ctrl.control_mode;
+    const hasSlider = controlMode === "slider" && !isUnavail && (domain === "light" || domain === "cover");
+    const hasCoverBtns = controlMode === "buttons" && !isUnavail && domain === "cover";
+
+    if (hasSlider || hasCoverBtns) {
+      btn.classList.add("has-inline-ctrl");
+      const topDiv = document.createElement("div");
+      topDiv.className = "btn-top";
+      while (btn.firstChild) topDiv.appendChild(btn.firstChild);
+      btn.appendChild(topDiv);
+
+      if (hasSlider) {
+        const pct = domain === "light"
+          ? (st?.attributes?.brightness != null ? Math.round((st.attributes.brightness / 255) * 100) : 0)
+          : (st?.attributes?.current_position != null ? st.attributes.current_position : 0);
+        const wrap = document.createElement("div");
+        wrap.className = "btn-slider-wrap";
+        const slider = document.createElement("input");
+        slider.type = "range";
+        slider.className = "btn-slider";
+        slider.min = 0; slider.max = 100; slider.value = pct;
+        slider.style.setProperty("--slider-pct", `${pct}%`);
+        slider.addEventListener("pointerdown", e => e.stopPropagation());
+        slider.addEventListener("click", e => e.stopPropagation());
+        slider.addEventListener("input", e => {
+          const v = +e.target.value;
+          e.target.style.setProperty("--slider-pct", `${v}%`);
+        });
+        slider.addEventListener("change", e => {
+          const v = +e.target.value;
+          if (domain === "light") {
+            this._hass.callService("light", "turn_on", { entity_id: ctrl.entity, brightness: Math.round(v * 2.55) });
+          } else {
+            this._hass.callService("cover", "set_cover_position", { entity_id: ctrl.entity, position: v });
+          }
+        });
+        wrap.appendChild(slider);
+        btn.appendChild(wrap);
+      }
+
+      if (hasCoverBtns) {
+        const actDiv = document.createElement("div");
+        actDiv.className = "btn-cover-actions";
+        [
+          { icon: "mdi:arrow-up-bold", svc: "open_cover" },
+          { icon: "mdi:stop", svc: "stop_cover" },
+          { icon: "mdi:arrow-down-bold", svc: "close_cover" }
+        ].forEach(({ icon, svc }) => {
+          const b = document.createElement("div");
+          b.className = "cover-action-btn";
+          b.innerHTML = `<ha-icon icon="${icon}"></ha-icon>`;
+          b.addEventListener("pointerdown", e => e.stopPropagation());
+          b.addEventListener("click", e => {
+            e.stopPropagation();
+            if (!this._isEntityUnavailable(ctrl.entity)) {
+              this._hass.callService("cover", svc, { entity_id: ctrl.entity });
+            }
+          });
+          actDiv.appendChild(b);
+        });
+        btn.appendChild(actDiv);
+      }
+    } else {
+      btn.classList.remove("has-inline-ctrl");
+    }
   }
 
   _attachActions(node, ctrl) {
@@ -2167,7 +2248,7 @@ class OneLineRoomCardEditor extends HTMLElement {
           <div class="tmpl-preview"><span>${getTranslation(h, "tmpl_preview")}:</span> <ha-icon class="tp-ic"></ha-icon> <span class="tp-tx"></span></div>
         </details>
         <div class="row" style="margin-top:8px; align-items:center"><ha-selector class="al" label="${getTranslation(h, "align")}"></ha-selector><ha-selector class="lp" label="${getTranslation(h, "label_position")}"></ha-selector><ha-selector class="tl" label="${getTranslation(h, "text_layout")}"></ha-selector><ha-formfield label="${getTranslation(h, "show_state")}"><ha-switch class="ss" checked></ha-switch></ha-formfield><ha-formfield label="${getTranslation(h, "show_label")}"><ha-switch class="sl" checked></ha-switch></ha-formfield><ha-formfield label="${getTranslation(h, "show_icon")}"><ha-switch class="si" checked></ha-switch></ha-formfield><ha-formfield label="${getTranslation(h, "visible")}"><ha-switch class="hd" checked></ha-switch></ha-formfield></div>
-        <div class="entity-only ${hideEntity}" style="margin-top:12px; border-top:1px solid var(--divider-color); padding-top:12px"><ha-selector class="tap" label="${getTranslation(h, "tap_action")}"></ha-selector><ha-textfield class="tap-nav ${showNav}" label="Nav Pfad"></ha-textfield><ha-selector class="hold" label="${getTranslation(h, "hold_action")}"></ha-selector><ha-selector class="dbl" label="${getTranslation(h, "double_tap_action")}"></ha-selector></div>
+        <div class="entity-only ${hideEntity}" style="margin-top:12px; border-top:1px solid var(--divider-color); padding-top:12px"><ha-selector class="cm" label="${getTranslation(h, "control_mode")}"></ha-selector><ha-selector class="tap" label="${getTranslation(h, "tap_action")}"></ha-selector><ha-textfield class="tap-nav ${showNav}" label="Nav Pfad"></ha-textfield><ha-selector class="hold" label="${getTranslation(h, "hold_action")}"></ha-selector><ha-selector class="dbl" label="${getTranslation(h, "double_tap_action")}"></ha-selector></div>
         </div>`;
 
       const head = box.querySelector(".head");
@@ -2365,6 +2446,12 @@ class OneLineRoomCardEditor extends HTMLElement {
       hold.value = ctrl.hold_action?.action || "toggle"; hold.addEventListener("value-changed", e => { e.stopPropagation(); updAct("hold_action", e.detail.value); }); }
       const dbl = box.querySelector(".dbl"); if (dbl) { dbl.hass = h; dbl.selector = { select: { mode: "dropdown", options: actOpts } };
       dbl.value = ctrl.double_tap_action?.action || "none"; dbl.addEventListener("value-changed", e => { e.stopPropagation(); updAct("double_tap_action", e.detail.value); }); }
+      const cm = box.querySelector(".cm"); if (cm) { cm.hass = h; cm.selector = { select: { mode: "dropdown", options: [
+        { value: "none", label: getTranslation(h, "ctrl_default") },
+        { value: "slider", label: getTranslation(h, "ctrl_slider") },
+        { value: "buttons", label: getTranslation(h, "ctrl_buttons") }
+      ] } };
+      cm.value = ctrl.control_mode || "none"; cm.addEventListener("value-changed", e => { e.stopPropagation(); const v = e.detail.value; const cc = [...this._config.controls]; const nn = { ...cc[i] }; if (v && v !== "none") nn.control_mode = v; else delete nn.control_mode; cc[i] = nn; keepOpen(); this._fire({ ...this._config, controls: cc }); }); }
       const tpIcon = box.querySelector(".tp-ic");
       const tpText = box.querySelector(".tp-tx");
       if (tpIcon && tpText && isTemplate) {

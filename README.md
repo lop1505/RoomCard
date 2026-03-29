@@ -57,6 +57,43 @@ Header icon color now follows this order:
 
 No scripting is required, and existing dashboards remain backward compatible.
 
+## 🆕 What’s new in 1.2.0
+
+* Runtime: **Inline Slider Controls** — add a brightness slider directly on light buttons, or a position slider on cover buttons (`control_mode: slider`).
+* Runtime: **Inline Cover Buttons** — add Open / Stop / Close buttons directly on cover tiles (`control_mode: buttons`).
+* Editor UX: New **Control Mode** dropdown per button (Default / Inline Slider / Inline Buttons).
+
+### Inline Controls (new in 1.2.0)
+
+Configure `control_mode` per button to add direct controls without opening a detail dialog:
+
+```yaml
+controls:
+  - entity: light.living_room
+    name: Ceiling Light
+    control_mode: slider       # Brightness slider (0–100%)
+
+  - entity: cover.blinds_kitchen
+    name: Blinds
+    control_mode: slider       # Position slider (0–100%)
+
+  - entity: cover.blinds_bedroom
+    name: Blinds
+    control_mode: buttons      # ↑ Stop ↓ action buttons
+```
+
+| Value | Effect |
+|---|---|
+| *(not set)* | Default tap/hold behaviour |
+| `slider` | Inline range slider — brightness for lights, position for covers |
+| `buttons` | Open / Stop / Close buttons — covers only |
+
+* The slider fill color follows the entity’s active state color.
+* Slider and cover buttons block tap/hold actions to avoid conflicts.
+* Unavailable entities fall back to normal (disabled) display.
+
+---
+
 ## 🆕 What’s new in 1.1.1
 * Runtime: **Dynamic state icons** — buttons automatically show state-dependent icons for common domains (Light: `mdi:lightbulb` / `mdi:lightbulb-outline`, Switch, Fan, Lock, Cover, Media Player). No configuration needed for new buttons; existing buttons with a manually set icon are unaffected.
 * Runtime: Custom `icon_map` per button for explicit per-state icon overrides (highest priority, supports YAML `on`/`off` boolean keys automatically).
