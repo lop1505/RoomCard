@@ -1,5 +1,4 @@
 const VERSION = "1.2.2";
-const VERSION = "1.1.1";
 const LOG_FLAG = `customCards_RoomCard_Logged_${VERSION}`;
 
 if (!window[LOG_FLAG]) {
@@ -55,7 +54,6 @@ const TRANSLATIONS = {
     control_mode: "Control Mode", ctrl_default: "Default", ctrl_slider: "Inline Slider", ctrl_buttons: "Inline Buttons (Cover)",
     collapsible: "Collapsible", default_state: "Default State", state_expanded: "Expanded", state_collapsed: "Collapsed",
     header_height: "Header Height (px)"
-    upload_btn: "Upload Image", uploading: "Uploading...", upload_success: "Done!"
   },
   de: {
     empty: "Leer", low: "Niedrig", critical: "Kritisch", window: "Fenster", general: "Allgemein",
@@ -99,7 +97,6 @@ const TRANSLATIONS = {
     control_mode: "Steuerungsmodus", ctrl_default: "Standard", ctrl_slider: "Inline-Slider", ctrl_buttons: "Inline-Buttons (Rollladen)",
     collapsible: "Einklappbar", default_state: "Standardzustand", state_expanded: "Ausgeklappt", state_collapsed: "Eingeklappt",
     header_height: "Kopfzeilenhöhe (px)"
-    upload_btn: "Bild hochladen", uploading: "Wird hochgeladen...", upload_success: "Fertig!"
   },
   fr: {
     empty: "Vide", low: "Faible", critical: "Critique", window: "Fenêtre", general: "Général",
@@ -143,7 +140,6 @@ const TRANSLATIONS = {
     control_mode: "Mode de contrôle", ctrl_default: "Défaut", ctrl_slider: "Curseur intégré", ctrl_buttons: "Boutons intégrés (Volet)",
     collapsible: "Rétractable", default_state: "État par défaut", state_expanded: "Déplié", state_collapsed: "Replié",
     header_height: "Hauteur de l'en-tête (px)"
-    upload_btn: "Télécharger une image", uploading: "Téléchargement...", upload_success: "Terminé!"
   }
 };
 
