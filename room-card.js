@@ -1,4 +1,5 @@
 const VERSION = "1.2.2";
+const VERSION = "1.1.1";
 const LOG_FLAG = `customCards_RoomCard_Logged_${VERSION}`;
 
 if (!window[LOG_FLAG]) {
@@ -54,6 +55,7 @@ const TRANSLATIONS = {
     control_mode: "Control Mode", ctrl_default: "Default", ctrl_slider: "Inline Slider", ctrl_buttons: "Inline Buttons (Cover)",
     collapsible: "Collapsible", default_state: "Default State", state_expanded: "Expanded", state_collapsed: "Collapsed",
     header_height: "Header Height (px)"
+    upload_btn: "Upload Image", uploading: "Uploading...", upload_success: "Done!"
   },
   de: {
     empty: "Leer", low: "Niedrig", critical: "Kritisch", window: "Fenster", general: "Allgemein",
@@ -97,6 +99,7 @@ const TRANSLATIONS = {
     control_mode: "Steuerungsmodus", ctrl_default: "Standard", ctrl_slider: "Inline-Slider", ctrl_buttons: "Inline-Buttons (Rollladen)",
     collapsible: "Einklappbar", default_state: "Standardzustand", state_expanded: "Ausgeklappt", state_collapsed: "Eingeklappt",
     header_height: "Kopfzeilenhöhe (px)"
+    upload_btn: "Bild hochladen", uploading: "Wird hochgeladen...", upload_success: "Fertig!"
   },
   fr: {
     empty: "Vide", low: "Faible", critical: "Critique", window: "Fenêtre", general: "Général",
@@ -140,6 +143,7 @@ const TRANSLATIONS = {
     control_mode: "Mode de contrôle", ctrl_default: "Défaut", ctrl_slider: "Curseur intégré", ctrl_buttons: "Boutons intégrés (Volet)",
     collapsible: "Rétractable", default_state: "État par défaut", state_expanded: "Déplié", state_collapsed: "Replié",
     header_height: "Hauteur de l'en-tête (px)"
+    upload_btn: "Télécharger une image", uploading: "Téléchargement...", upload_success: "Terminé!"
   }
 };
 
@@ -2642,46 +2646,6 @@ if (!existingEditor) {
 // 2. Neue Karte registrieren (wenn noch nicht da)
 if (!customElements.get("oneline-room-card")) {
   customElements.define("oneline-room-card", OneLineRoomCard);
-}
-
-// 3. MIGRATION WARNING (wenn "room-card" noch frei ist)
-if (!customElements.get("room-card")) {
-  class MigrationWarningCard extends HTMLElement {
-    constructor() {
-      super();
-      this.attachShadow({ mode: "open" });
-    }
-
-    setConfig(config) {
-      this._config = config;
-    }
-
-    set hass(hass) {
-      const title = getTranslation(hass, "migration_title");
-      const text = getTranslation(hass, "migration_text");
-
-      this.shadowRoot.innerHTML = `
-        <style>
-          ha-card { background: var(--ha-card-background, var(--card-background-color, white)); border-radius: var(--ha-card-border-radius, 12px); box-shadow: var(--ha-card-box-shadow, none); }
-          .warn { padding: 16px; color: var(--error-color, #db4437); background: rgba(255, 0, 0, 0.1); border: 1px solid var(--error-color, #db4437); border-radius: 8px; }
-        </style>
-        <ha-card>
-          <div class="warn">
-            <h3 style="margin:0 0 8px 0; display:flex; align-items:center; gap:8px">
-              <ha-icon icon="mdi:alert-circle"></ha-icon> ${title}
-            </h3>
-            <div>${text}</div>
-          </div>
-        </ha-card>
-      `;
-    }
-
-    getCardSize() {
-      return 2;
-    }
-  }
-
-  customElements.define("room-card", MigrationWarningCard);
 }
 
 window.customCards = window.customCards || [];
