@@ -48,6 +48,7 @@ If you are updating from an older version, please update your YAML configuration
 * 💡 **Dynamic State Icons:** Button icons automatically change based on entity state — no configuration required for common domains (Light, Switch, Fan, Lock, Cover, Media Player). Override with `icon_map` for custom per-state icons.
 * 🏷️ **Custom Header Badges:** Add extra header info entries for any entity with optional custom label, name toggle, and configurable `rgba(...)` background.
 * 🌡️ **Main Climate Header Badge Styling:** The built-in main climate header info (temperature / humidity) can use its own optional `rgba(...)` badge background.
+* 📐 **Configurable Header Height:** Set `header_height` (px) to reduce or fully hide the header image area.
 
 ### Header Icon Color Priority
 Header icon color now follows this order:
@@ -56,6 +57,52 @@ Header icon color now follows this order:
 3. **Default theme color**
 
 No scripting is required, and existing dashboards remain backward compatible.
+
+## 🆕 What’s new in 1.2.2
+
+* Config: `header_height` — set the header image area height in pixels (default: 120). Set to `0` to fully hide the header image.
+* Editor UX: New **Header Height (px)** number field in General settings.
+
+### Configurable Header Height (new in 1.2.2)
+
+```yaml
+type: custom:oneline-room-card
+name: Living Room
+header_height: 80   # default: 120, set to 0 to hide header
+```
+
+| Option | Values | Default |
+|---|---|---|
+| `header_height` | Integer ≥ 0 | `120` |
+
+---
+
+## 🆕 What’s new in 1.2.1
+
+* Runtime: **Collapsible card** — toggle the button grid by clicking the header image. State persists across reloads via `localStorage`.
+* Config: `collapsible: true` enables the feature; `default_state: collapsed` starts the card folded.
+* Editor UX: New **Collapsible** toggle and **Default State** dropdown in General settings.
+
+### Collapsible Card (new in 1.2.1)
+
+```yaml
+type: custom:oneline-room-card
+name: Living Room
+collapsible: true
+default_state: collapsed   # optional, default: expanded
+```
+
+| Option | Values | Default |
+|---|---|---|
+| `collapsible` | `true` · `false` | `false` |
+| `default_state` | `expanded` · `collapsed` | `expanded` |
+
+* Clicking the header image toggles the button section.
+* A chevron indicator (↓/↑) appears bottom-right of the header.
+* The last user state is remembered in `localStorage` per card (by name/entity).
+* Smooth 350 ms CSS height animation.
+
+---
 
 ## 🆕 What’s new in 1.2.0
 

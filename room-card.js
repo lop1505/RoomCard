@@ -1,4 +1,4 @@
-const VERSION = "1.2.0";
+const VERSION = "1.2.2";
 const LOG_FLAG = `customCards_RoomCard_Logged_${VERSION}`;
 
 if (!window[LOG_FLAG]) {
@@ -51,7 +51,9 @@ const TRANSLATIONS = {
     show_name: "Show Title", header_badges: "Extra Header Info", badge_add: "Add Info Entry", badge_label: "Label (optional)", badge_background: "Background (rgba)", standard_badge_background: "Main Climate Badge Background (rgba)",
     migration_title: "Action Required",
     migration_text: "Card renamed to <b>oneline-room-card</b> to avoid conflicts.<br>Please change <code>type: custom:room-card</code> to <code>type: custom:oneline-room-card</code> in your YAML.",
-    control_mode: "Control Mode", ctrl_default: "Default", ctrl_slider: "Inline Slider", ctrl_buttons: "Inline Buttons (Cover)"
+    control_mode: "Control Mode", ctrl_default: "Default", ctrl_slider: "Inline Slider", ctrl_buttons: "Inline Buttons (Cover)",
+    collapsible: "Collapsible", default_state: "Default State", state_expanded: "Expanded", state_collapsed: "Collapsed",
+    header_height: "Header Height (px)"
   },
   de: {
     empty: "Leer", low: "Niedrig", critical: "Kritisch", window: "Fenster", general: "Allgemein",
@@ -92,7 +94,9 @@ const TRANSLATIONS = {
     show_name: "Titel anzeigen", header_badges: "Zusätzliche Header-Info", badge_add: "Info-Eintrag hinzufügen", badge_label: "Bezeichnung (optional)", badge_background: "Hintergrund (rgba)", standard_badge_background: "Hauptklima-Badge-Hintergrund (rgba)",
     migration_title: "Handlung erforderlich",
     migration_text: "Karte wurde in <b>oneline-room-card</b> umbenannt.<br>Bitte ändere <code>type: custom:room-card</code> zu <code>type: custom:oneline-room-card</code> in deiner YAML-Konfiguration.",
-    control_mode: "Steuerungsmodus", ctrl_default: "Standard", ctrl_slider: "Inline-Slider", ctrl_buttons: "Inline-Buttons (Rollladen)"
+    control_mode: "Steuerungsmodus", ctrl_default: "Standard", ctrl_slider: "Inline-Slider", ctrl_buttons: "Inline-Buttons (Rollladen)",
+    collapsible: "Einklappbar", default_state: "Standardzustand", state_expanded: "Ausgeklappt", state_collapsed: "Eingeklappt",
+    header_height: "Kopfzeilenhöhe (px)"
   },
   fr: {
     empty: "Vide", low: "Faible", critical: "Critique", window: "Fenêtre", general: "Général",
@@ -133,7 +137,9 @@ const TRANSLATIONS = {
     show_name: "Afficher le titre", header_badges: "Infos d'en-tête supplémentaires", badge_add: "Ajouter une entrée", badge_label: "Libellé (optionnel)", badge_background: "Arrière-plan (rgba)", standard_badge_background: "Fond du badge climat principal (rgba)",
     migration_title: "Action requise",
     migration_text: "Carte renommée en <b>oneline-room-card</b> pour éviter les conflits.<br>Veuillez changer <code>type: custom:room-card</code> en <code>type: custom:oneline-room-card</code>.",
-    control_mode: "Mode de contrôle", ctrl_default: "Défaut", ctrl_slider: "Curseur intégré", ctrl_buttons: "Boutons intégrés (Volet)"
+    control_mode: "Mode de contrôle", ctrl_default: "Défaut", ctrl_slider: "Curseur intégré", ctrl_buttons: "Boutons intégrés (Volet)",
+    collapsible: "Rétractable", default_state: "État par défaut", state_expanded: "Déplié", state_collapsed: "Replié",
+    header_height: "Hauteur de l'en-tête (px)"
   }
 };
 
@@ -418,7 +424,13 @@ class OneLineRoomCard extends HTMLElement {
   }
 
   setConfig(config) {
+    const prevKey = this._collapseKey;
     this.config = config;
+    this._collapseKey = `oneline-room-card-collapsed:${config.name || config.entity || ""}`;
+    if (this._collapseKey !== prevKey) {
+      const stored = localStorage.getItem(this._collapseKey);
+      this._collapsed = stored !== null ? stored === "1" : config.default_state === "collapsed";
+    }
     this._configChanged = true;
     this._lastStates = new Map();
     this._lastRenderMetaSig = "";
@@ -505,6 +517,11 @@ class OneLineRoomCard extends HTMLElement {
         .cover-action-btn { flex: 1; display: flex; align-items: center; justify-content: center; background: rgba(128,128,128,0.1); border-radius: 6px; padding: 4px 2px; cursor: pointer; transition: background 0.15s; }
         .cover-action-btn:hover { background: rgba(128,128,128,0.22); }
         .cover-action-btn ha-icon { --mdc-icon-size: 16px; color: var(--primary-text-color); }
+        .controls { transition: max-height 0.35s ease, padding 0.35s ease; overflow: hidden; max-height: 2000px; }
+        .controls.collapsed { max-height: 0 !important; padding-top: 0 !important; padding-bottom: 0 !important; }
+        .collapse-btn { position: absolute; bottom: 8px; right: 8px; z-index: 3; width: 28px; height: 28px; border-radius: 50%; background: rgba(0,0,0,0.38); display: none; align-items: center; justify-content: center; cursor: pointer; }
+        .collapse-btn ha-icon { --mdc-icon-size: 18px; color: white; transition: transform 0.35s ease; }
+        .collapse-btn.open ha-icon { transform: rotate(180deg); }
       </style>
       <ha-card>
         <div class="container">
@@ -518,6 +535,7 @@ class OneLineRoomCard extends HTMLElement {
               </div>
             </div>
             <div id="chips" class="chips"></div>
+            <div id="collapse-btn" class="collapse-btn"><ha-icon icon="mdi:chevron-down"></ha-icon></div>
           </div>
           <div id="ctrls" class="controls"></div>
         </div>
@@ -525,7 +543,10 @@ class OneLineRoomCard extends HTMLElement {
 
     this.content = this.shadowRoot.querySelector(".container");
     this.controls = this.shadowRoot.getElementById("ctrls");
-    this.shadowRoot.querySelector(".img-box").addEventListener("click", () => this._nav());
+    this.shadowRoot.querySelector(".img-box").addEventListener("click", () => {
+      if (this.config?.collapsible === true) { this._toggleCollapse(); return; }
+      this._nav();
+    });
 
     if (this.config) {
       this._configChanged = true;
@@ -627,6 +648,11 @@ class OneLineRoomCard extends HTMLElement {
     const unit = h.config.unit_system.temperature || "°C";
 
     this.shadowRoot.getElementById("bg").src = c.image || "/static/images/card_media/cover.png";
+    const imgBox = this.shadowRoot.querySelector(".img-box");
+    if (imgBox) {
+      const hh = c.header_height !== undefined ? Number(c.header_height) : NaN;
+      imgBox.style.height = (Number.isFinite(hh) && hh >= 0) ? hh + "px" : "120px";
+    }
     const nameEl = this.shadowRoot.getElementById("name");
     nameEl.innerText = c.name || "Room";
     nameEl.style.display = c.show_name === false ? "none" : "";
@@ -726,6 +752,14 @@ class OneLineRoomCard extends HTMLElement {
     if (cardEl) {
       cardEl.classList.toggle("warning-battery", batteryWarn);
       cardEl.classList.toggle("warning-humidity", !batteryWarn && humidityWarn);
+    }
+
+    const collapseBtn = this.shadowRoot.getElementById("collapse-btn");
+    if (collapseBtn) {
+      const isCollapsible = c.collapsible === true;
+      collapseBtn.style.display = isCollapsible ? "flex" : "none";
+      collapseBtn.classList.toggle("open", !this._collapsed);
+      this.controls.classList.toggle("collapsed", isCollapsible && this._collapsed);
     }
 
     const visibleCtrls = (c.controls || []).filter(ctrl => !ctrl.hide && (ctrl.entity || ctrl.type === "template"));
@@ -1039,6 +1073,14 @@ class OneLineRoomCard extends HTMLElement {
       action: type
     };
     this.dispatchEvent(new CustomEvent("hass-action", { bubbles: true, composed: true, detail: eventDetail }));
+  }
+
+  _toggleCollapse() {
+    this._collapsed = !this._collapsed;
+    if (this._collapseKey) localStorage.setItem(this._collapseKey, this._collapsed ? "1" : "0");
+    const collapseBtn = this.shadowRoot.getElementById("collapse-btn");
+    if (collapseBtn) collapseBtn.classList.toggle("open", !this._collapsed);
+    this.controls.classList.toggle("collapsed", this._collapsed);
   }
 
   _iconForBadgeDomain(entityId) {
@@ -1620,7 +1662,14 @@ class OneLineRoomCardEditor extends HTMLElement {
           <ha-formfield label="${getTranslation(h, "show_name")}">
             <ha-switch id="show-name-toggle" checked></ha-switch>
           </ha-formfield>
+          <ha-formfield label="${getTranslation(h, "collapsible")}">
+            <ha-switch id="collapsible-toggle"></ha-switch>
+          </ha-formfield>
         </div>
+        <div id="default-state-row" class="row hidden">
+          <ha-selector id="default-state-sel" label="${getTranslation(h, "default_state")}"></ha-selector>
+        </div>
+        <ha-textfield label="${getTranslation(h, "header_height")}" cfg="header_height" class="i" type="number" min="0" max="400" style="width:100%;margin-top:4px" placeholder="120"></ha-textfield>
         <ha-entity-picker label="${getTranslation(h, "main_climate")}" cfg="entity" class="i" include-domains='["climate"]'></ha-entity-picker>
         <div class="cl-row">
           <ha-textfield id="standard-badge-bg" label="${getTranslation(h, "standard_badge_background")}"></ha-textfield>
@@ -1772,6 +1821,10 @@ class OneLineRoomCardEditor extends HTMLElement {
           const num = raw === "" ? 60 : Number(raw);
           c[k] = Number.isFinite(num) ? num : 60;
           if (e.value !== String(c[k])) e.value = String(c[k]);
+        } else if (k === "header_height") {
+          const raw = String(v ?? "").trim();
+          if (raw === "") { delete c[k]; }
+          else { const num = Number(raw); c[k] = Number.isFinite(num) && num >= 0 ? Math.round(num) : 120; }
         } else {
           c[k] = v;
         }
@@ -1829,6 +1882,39 @@ class OneLineRoomCardEditor extends HTMLElement {
       showNameToggleEl.addEventListener("change", (ev) => {
         ev.stopPropagation();
         this._fire({ ...this._config, show_name: ev.target.checked !== false });
+      });
+    }
+    const collapsibleToggle = this.shadowRoot.getElementById("collapsible-toggle");
+    const defaultStateRow = this.shadowRoot.getElementById("default-state-row");
+    const defaultStateSel = this.shadowRoot.getElementById("default-state-sel");
+    const updateDefaultStateVisibility = () => {
+      if (!defaultStateRow) return;
+      defaultStateRow.classList.toggle("hidden", !(this._config?.collapsible === true));
+    };
+    if (collapsibleToggle) {
+      collapsibleToggle.checked = this._config?.collapsible === true;
+      updateDefaultStateVisibility();
+      collapsibleToggle.addEventListener("change", (ev) => {
+        ev.stopPropagation();
+        const enabled = ev.target.checked === true;
+        this._fire({ ...this._config, collapsible: enabled || undefined });
+        updateDefaultStateVisibility();
+      });
+    }
+    if (defaultStateSel) {
+      defaultStateSel.hass = h;
+      defaultStateSel.selector = { select: { mode: "dropdown", options: [
+        { value: "expanded", label: getTranslation(h, "state_expanded") },
+        { value: "collapsed", label: getTranslation(h, "state_collapsed") }
+      ] } };
+      defaultStateSel.value = this._config?.default_state || "expanded";
+      defaultStateSel.addEventListener("value-changed", (ev) => {
+        ev.stopPropagation();
+        const v = ev.detail?.value || "expanded";
+        const next = { ...this._config };
+        if (v === "collapsed") next.default_state = "collapsed";
+        else delete next.default_state;
+        this._fire(next);
       });
     }
     const standardBadgeBg = this.shadowRoot.getElementById("standard-badge-bg");
@@ -2505,6 +2591,18 @@ class OneLineRoomCardEditor extends HTMLElement {
     }
     if (headerColorRow) {
       headerColorRow.classList.toggle("hidden", !headerForceEnabled);
+    }
+    const collapsibleToggle = this.shadowRoot.getElementById("collapsible-toggle");
+    if (collapsibleToggle) {
+      const v = this._config?.collapsible === true;
+      if (collapsibleToggle.checked !== v) collapsibleToggle.checked = v;
+    }
+    const defaultStateRow = this.shadowRoot.getElementById("default-state-row");
+    if (defaultStateRow) defaultStateRow.classList.toggle("hidden", !(this._config?.collapsible === true));
+    const defaultStateSel = this.shadowRoot.getElementById("default-state-sel");
+    if (defaultStateSel) {
+      const v = this._config?.default_state || "expanded";
+      if (defaultStateSel.value !== v) defaultStateSel.value = v;
     }
   }
 
