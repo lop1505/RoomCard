@@ -38,6 +38,118 @@ Developed with a focus on stability, simple design, and maximum flexibility.
 * 📴 **Offline/Unavailable Handling:** `unavailable` / `unknown` entities are clearly indicated and safely non-interactive.
 * 🧭 **Device Picker:** Select a device and let the editor auto-pick a suitable entity.
 * 🧩 **Template Presets:** Add buttons using type presets (Light/Switch/Climate/Cover/Media).
+* 💡 **Dynamic State Icons:** Button icons automatically change based on entity state — no configuration required for common domains (Light, Switch, Fan, Lock, Cover, Media Player). Override with `icon_map` for custom per-state icons.
+* 🏷️ **Custom Header Badges:** Add extra header info entries for any entity with optional custom label, name toggle, and configurable `rgba(...)` background.
+* 🌡️ **Main Climate Header Badge Styling:** The built-in main climate header info (temperature / humidity) can use its own optional `rgba(...)` badge background.
+* 📐 **Configurable Header Height:** Set `header_height` (px) to reduce or fully hide the header image area.
+
+### Header Icon Color Priority
+Header icon color now follows this order:
+1. **Force Color** (manual override)
+2. **Dynamic state-based color** (same logic as buttons, including climate `hvac_action`)
+3. **Default theme color**
+
+No scripting is required, and existing dashboards remain backward compatible.
+
+## 🆕 What’s new in 1.2.2
+
+* Config: `header_height` — set the header image area height in pixels (default: 120). Set to `0` to fully hide the header image.
+* Editor UX: New **Header Height (px)** number field in General settings.
+
+### Configurable Header Height (new in 1.2.2)
+
+```yaml
+type: custom:oneline-room-card
+name: Living Room
+header_height: 80   # default: 120, set to 0 to hide header
+```
+
+| Option | Values | Default |
+|---|---|---|
+| `header_height` | Integer ≥ 0 | `120` |
+
+---
+
+## 🆕 What’s new in 1.2.1
+
+* Runtime: **Collapsible card** — toggle the button grid by clicking the header image. State persists across reloads via `localStorage`.
+* Config: `collapsible: true` enables the feature; `default_state: collapsed` starts the card folded.
+* Editor UX: New **Collapsible** toggle and **Default State** dropdown in General settings.
+
+### Collapsible Card (new in 1.2.1)
+
+```yaml
+type: custom:oneline-room-card
+name: Living Room
+collapsible: true
+default_state: collapsed   # optional, default: expanded
+```
+
+| Option | Values | Default |
+|---|---|---|
+| `collapsible` | `true` · `false` | `false` |
+| `default_state` | `expanded` · `collapsed` | `expanded` |
+
+* Clicking the header image toggles the button section.
+* A chevron indicator (↓/↑) appears bottom-right of the header.
+* The last user state is remembered in `localStorage` per card (by name/entity).
+* Smooth 350 ms CSS height animation.
+
+---
+
+## 🆕 What’s new in 1.2.0
+
+* Runtime: **Inline Slider Controls** — add a brightness slider directly on light buttons, or a position slider on cover buttons (`control_mode: slider`).
+* Runtime: **Inline Cover Buttons** — add Open / Stop / Close buttons directly on cover tiles (`control_mode: buttons`).
+* Editor UX: New **Control Mode** dropdown per button (Default / Inline Slider / Inline Buttons).
+
+### Inline Controls (new in 1.2.0)
+
+Configure `control_mode` per button to add direct controls without opening a detail dialog:
+
+```yaml
+controls:
+  - entity: light.living_room
+    name: Ceiling Light
+    control_mode: slider       # Brightness slider (0–100%)
+
+  - entity: cover.blinds_kitchen
+    name: Blinds
+    control_mode: slider       # Position slider (0–100%)
+
+  - entity: cover.blinds_bedroom
+    name: Blinds
+    control_mode: buttons      # ↑ Stop ↓ action buttons
+```
+
+| Value | Effect |
+|---|---|
+| *(not set)* | Default tap/hold behaviour |
+| `slider` | Inline range slider — brightness for lights, position for covers |
+| `buttons` | Open / Stop / Close buttons — covers only |
+
+* The slider fill color follows the entity’s active state color.
+* Slider and cover buttons block tap/hold actions to avoid conflicts.
+* Unavailable entities fall back to normal (disabled) display.
+
+---
+
+## 🆕 What’s new in 1.1.1
+* Runtime: **Dynamic state icons** — buttons automatically show state-dependent icons for common domains (Light: `mdi:lightbulb` / `mdi:lightbulb-outline`, Switch, Fan, Lock, Cover, Media Player). No configuration needed for new buttons; existing buttons with a manually set icon are unaffected.
+* Runtime: Custom `icon_map` per button for explicit per-state icon overrides (highest priority, supports YAML `on`/`off` boolean keys automatically).
+* Runtime: **Custom header badges** in the info line with per-badge label toggle and optional `rgba(...)` background.
+* Runtime: Built-in main climate header info supports optional `rgba(...)` badge background.
+* Editor UX: Quick Add type selector no longer resets visually on HA state updates (closes #32).
+
+## 🆕 What’s new in 1.1.0
+
+* Runtime: Improved handling for `unavailable` / `unknown` entities (dimmed controls, offline indicator, blocked actions).
+* Runtime: Header icon uses the same dynamic state-based color logic as buttons.
+* Runtime: Header icon supports Force Color override with safe fallback to dynamic/theme color.
+* Editor UX: New **Live preview** toggle (enabled by default).
+* Editor UX: Quick Add type selector no longer resets visually on HA state updates.
+* Performance: Internal state-signature caching reduces unnecessary DOM/UI updates.
+* Internal: Centralized state definitions for active/offline checks (maintainability improvement, no user config change).
 
 ### Header Icon Color Priority
 Header icon color now follows this order:
@@ -96,8 +208,10 @@ Simply add the card via "Add Card" in your dashboard and select **"OneLine Room 
 The visual editor guides you through all settings:
 
 * **General:** Name, Icon, Colors, Background Image, and optional **Tap → Navigate** path.
+* **Main Climate Header Badge:** Optional `rgba(...)` background for the built-in temperature / humidity info line.
 * **Header Icon Color:** Uses the same behavior as buttons with **Force Color** support in the editor.
 * **Sensors:** Select your temperature (current & target), humidity, window, and battery sensors. Optional humidity warning threshold.
+* **Header Badges:** Add extra header info entries for any entity, with optional custom label, name visibility, and `rgba(...)` background.
 * **Buttons:** Add devices/entities, set width/height, alignment, and actions (Tap/Hold/Double Tap).
 * **Cleaner Buttons:** Toggle **Show State**, **Show Label**, **Show Icon**, and **Visible** per button.
 * **Text Order:** Choose whether **State/Value** or **Name** appears first.
@@ -115,7 +229,66 @@ When an entity is `unavailable` or `unknown`:
 
 This improves feedback and prevents accidental actions, while keeping layout and behavior stable.
 
-### YAML options
+### Dynamic State Icons (new in 1.1.0)
+
+Button icons automatically change based on entity state for common domains. No extra configuration needed when adding new buttons via the editor.
+
+Supported domains and their default icon maps:
+
+| Domain | State → Icon |
+|---|---|
+| `light` | `on` → `mdi:lightbulb` / `off` → `mdi:lightbulb-outline` |
+| `switch` | `on` → `mdi:toggle-switch` / `off` → `mdi:toggle-switch-off-outline` |
+| `fan` | `on` → `mdi:fan` / `off` → `mdi:fan-off` |
+| `lock` | `locked` → `mdi:lock` / `unlocked` → `mdi:lock-open-outline` |
+| `cover` | `open` → `mdi:window-shutter-open` / `closed` → `mdi:window-shutter` |
+| `media_player` | `playing` → `mdi:cast-connected` / `idle` → `mdi:cast` / `off` → `mdi:cast-off` |
+
+**Override with `icon_map`** for fully custom per-state icons:
+```yaml
+controls:
+  - entity: light.living_room
+    icon_map:
+      on: mdi:ceiling-light
+      off: mdi:ceiling-light-outline
+```
+
+**Static icon override:** Set the `icon` field in the editor to pin a single icon regardless of state.
+
+**Priority:** `icon_map[state]` → `icon` (static) → built-in domain default → `attributes.icon` → `mdi:circle`
+
+### Custom Header Badges (new in 1.1.1)
+
+Add extra header info entries for any entity using `header_badges`:
+
+```yaml
+header_info_background: rgba(255,255,255,0.18)
+header_badges:
+  - entity: binary_sensor.door_front
+    label: Front door
+    show_name: true
+    background: rgba(255,0,0,0.22)
+  - entity: sensor.living_room_co2
+    label: CO₂
+    show_name: false
+    background: rgba(33,150,243,0.22)
+```
+
+| Option | Values | Default |
+|---|---|---|
+| `entity` | Any HA entity ID | *(required)* |
+| `label` | Display text | `friendly_name` |
+| `show_name` | `true` · `false` | `true` |
+| `background` | Any CSS color, recommended `rgba(...)` | none |
+| `header_info_background` | Any CSS color, recommended `rgba(...)` | none |
+
+Behavior:
+* Built-in main climate info uses `header_info_background` when set.
+* Custom `header_badges` are appended to the same header info line.
+* If `show_name: false`, only the entity value is shown.
+* `background` applies only to the corresponding custom header badge.
+
+### New in 1.0.9 (YAML options)
 ```yaml
 type: custom:oneline-room-card
 humidity_warning_threshold: 60
