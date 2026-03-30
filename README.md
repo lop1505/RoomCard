@@ -20,6 +20,7 @@ Developed with a focus on stability, simple design, and maximum flexibility.
 * 🔋 **Advanced Status Chips:** Automatically alerts you about room status:
   * **Windows:** Shows open windows immediately.
   * **Batteries:** Differentiates between "Critical" (≤ 5%), "Low" (≤ 15%), or "Empty" (Binary Sensors).
+* 🎨 **Header Typography:** Customize font size, weight, and style for the room name and info line directly in the editor.
 * 💧 **Humidity Warning:** Optional high-humidity chip and blue outline with configurable threshold.
 * ⚡ **Performance:** Vanilla JS, no external dependencies, loads extremely fast.
 * 🖱️ **Sortable:** Reorder buttons via drag & drop or arrow keys in the editor.
@@ -50,6 +51,26 @@ Header icon color now follows this order:
 3. **Default theme color**
 
 No scripting is required, and existing dashboards remain backward compatible.
+
+## 🆕 What’s new in 1.2.3
+
+* Editor UX: **Header Typography** section — customize the room name and info line font settings without CSS.
+* Runtime: Expose header fonts as CSS Custom Properties for advanced `card-mod` usage.
+
+### Header Typography (new in 1.2.3)
+
+Available via the visual editor or YAML:
+
+| Option | Description | Default |
+|---|---|---|
+| `header_name_size` | Font size of the room name | `14px` |
+| `header_name_weight` | Font weight (normal, bold, 100-900) | `bold` |
+| `header_name_style` | Font style (normal, italic) | `normal` |
+| `header_info_size` | Font size of the info line | `12px` |
+| `header_info_weight` | Font weight of the info line | `normal` |
+| `header_info_style` | Font style of the info line | `normal` |
+
+---
 
 ## 🆕 What’s new in 1.2.2
 

@@ -1,4 +1,4 @@
-const VERSION = "1.2.2";
+const VERSION = "1.2.3";
 const LOG_FLAG = `customCards_RoomCard_Logged_${VERSION}`;
 
 if (!window[LOG_FLAG]) {
@@ -53,7 +53,9 @@ const TRANSLATIONS = {
     migration_text: "Card renamed to <b>oneline-room-card</b> to avoid conflicts.<br>Please change <code>type: custom:room-card</code> to <code>type: custom:oneline-room-card</code> in your YAML.",
     control_mode: "Control Mode", ctrl_default: "Default", ctrl_slider: "Inline Slider", ctrl_buttons: "Inline Buttons (Cover)",
     collapsible: "Collapsible", default_state: "Default State", state_expanded: "Expanded", state_collapsed: "Collapsed",
-    header_height: "Header Height (px)"
+    header_height: "Header Height (px)",
+    typography: "Header Typography", name_font: "Room Name Font", info_font: "Info Line Font",
+    font_size: "Size (px)", font_weight: "Weight", font_style: "Style", font_color: "Color", badge_bg: "Badge Background"
   },
   de: {
     empty: "Leer", low: "Niedrig", critical: "Kritisch", window: "Fenster", general: "Allgemein",
@@ -96,7 +98,9 @@ const TRANSLATIONS = {
     migration_text: "Karte wurde in <b>oneline-room-card</b> umbenannt.<br>Bitte ändere <code>type: custom:room-card</code> zu <code>type: custom:oneline-room-card</code> in deiner YAML-Konfiguration.",
     control_mode: "Steuerungsmodus", ctrl_default: "Standard", ctrl_slider: "Inline-Slider", ctrl_buttons: "Inline-Buttons (Rollladen)",
     collapsible: "Einklappbar", default_state: "Standardzustand", state_expanded: "Ausgeklappt", state_collapsed: "Eingeklappt",
-    header_height: "Kopfzeilenhöhe (px)"
+    header_height: "Kopfzeilenhöhe (px)",
+    typography: "Header Typografie", name_font: "Raumname Schrift", info_font: "Info-Zeile Schrift",
+    font_size: "Größe (px)", font_weight: "Gewicht", font_style: "Stil", font_color: "Farbe", badge_bg: "Badge Hintergrund"
   },
   fr: {
     empty: "Vide", low: "Faible", critical: "Critique", window: "Fenêtre", general: "Général",
@@ -139,7 +143,9 @@ const TRANSLATIONS = {
     migration_text: "Carte renommée en <b>oneline-room-card</b> pour éviter les conflits.<br>Veuillez changer <code>type: custom:room-card</code> en <code>type: custom:oneline-room-card</code>.",
     control_mode: "Mode de contrôle", ctrl_default: "Défaut", ctrl_slider: "Curseur intégré", ctrl_buttons: "Boutons intégrés (Volet)",
     collapsible: "Rétractable", default_state: "État par défaut", state_expanded: "Déplié", state_collapsed: "Replié",
-    header_height: "Hauteur de l'en-tête (px)"
+    header_height: "Hauteur de l'en-tête (px)",
+    typography: "Typographie de l'en-tête", name_font: "Police du nom", info_font: "Police des infos",
+    font_size: "Taille (px)", font_weight: "Poids", font_style: "Style", font_color: "Couleur", badge_bg: "Fond du badge"
   }
 };
 
@@ -461,8 +467,8 @@ class OneLineRoomCard extends HTMLElement {
         .overlay { position: absolute; top: 0; left: 0; width: 100%; padding: 12px; background: linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%); display: flex; align-items: center; gap: 12px; }
         .text { display: flex; flex-direction: column; color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
         ha-icon { color: var(--icon-color, white); }
-        .primary { font-weight: bold; font-size: 14px; }
-        .secondary { font-size: 12px; opacity: 0.9; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+        .primary { font-weight: var(--rc-header-name-weight, bold); font-size: var(--rc-header-name-size, 14px); font-style: var(--rc-header-name-style, normal); color: var(--rc-header-name-color, white); }
+        .secondary { font-weight: var(--rc-header-info-weight, normal); font-size: var(--rc-header-info-size, 12px); font-style: var(--rc-header-info-style, normal); color: var(--rc-header-info-color, white); opacity: 0.9; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
         .info-item { display: inline-flex; align-items: center; min-width: 0; }
         .info-item.badge { padding: 2px 6px; border-radius: 999px; }
         .chips { position: absolute; bottom: 8px; left: 8px; display: flex; gap: 6px; flex-wrap: wrap; z-index: 2; }
@@ -752,6 +758,24 @@ class OneLineRoomCard extends HTMLElement {
     if (cardEl) {
       cardEl.classList.toggle("warning-battery", batteryWarn);
       cardEl.classList.toggle("warning-humidity", !batteryWarn && humidityWarn);
+      
+      const setPxProp = (k, v, def) => {
+        if (v !== undefined && v !== null && v !== "") {
+          const num = Number(v);
+          cardEl.style.setProperty(k, Number.isFinite(num) ? num + "px" : String(v));
+        } else {
+          cardEl.style.setProperty(k, def);
+        }
+      };
+      const setStrProp = (k, v, def) => cardEl.style.setProperty(k, (v !== undefined && v !== null && v !== "") ? String(v) : def);
+      setPxProp("--rc-header-name-size", c.header_name_size, "14px");
+      setStrProp("--rc-header-name-weight", c.header_name_weight, "bold");
+      setStrProp("--rc-header-name-style", c.header_name_style, "normal");
+      setStrProp("--rc-header-name-color", c.header_name_color, "white");
+      setPxProp("--rc-header-info-size", c.header_info_size, "12px");
+      setStrProp("--rc-header-info-weight", c.header_info_weight, "normal");
+      setStrProp("--rc-header-info-style", c.header_info_style, "normal");
+      setStrProp("--rc-header-info-color", c.header_info_color, "white");
     }
 
     const collapseBtn = this.shadowRoot.getElementById("collapse-btn");
@@ -1109,6 +1133,7 @@ class OneLineRoomCardEditor extends HTMLElement {
     this._batteryListOpen = false;
     this._manualSensorsOpen = false;
     this._imageSectionOpen = false;
+    this._typoSectionOpen = false;
     this._badgesSectionOpen = false;
     this._controlIds = [];
     this._nextControlId = 1;
@@ -1146,14 +1171,14 @@ class OneLineRoomCardEditor extends HTMLElement {
   set hass(hass) {
     const upd = this._hass?.language !== hass?.language;
     this._hass = hass;
-    if (upd) { this._controlTemplatesCache = null; this.render(); return; }
+    if (upd) { this._controlTemplatesCache = null; this._navOptionsLoaded = false; this.render(); return; }
     if (this.shadowRoot) {
       this.shadowRoot.querySelectorAll("ha-selector,ha-entity-picker,ha-icon-picker,ha-textfield,ha-switch").forEach(e => {
         if (e.hass !== hass) e.hass = hass;
       });
       // After a hot-reload patch, new DOM elements may be missing from the old shadow DOM.
       // Force a full re-render once so the new static HTML (including any new toggles) is applied.
-      if (this._config && !this.shadowRoot.getElementById("show-name-toggle")) {
+      if (this._config && (!this.shadowRoot.getElementById("show-name-toggle") || !this.shadowRoot.getElementById("typo-sec"))) {
         this.shadowRoot.innerHTML = "";
         this.render();
         return;
@@ -1553,7 +1578,10 @@ class OneLineRoomCardEditor extends HTMLElement {
     this._ensureEditorState();
     if (!this._config) return;
     const alreadyRendered = !!this.shadowRoot.innerHTML;
-    if (alreadyRendered) { this.updVal(); this.renBtn(); this._applyNavSelectorOptions(); this._ensureNavOptions(); this._updateBatteryListUI(); this._updateManualSensorsUI(); this._updateImageSectionUI(); this._updateBadgesUI(); return; }
+    const domVersion = this.shadowRoot.querySelector("[data-rc-version]")?.dataset?.rcVersion;
+    if (alreadyRendered && domVersion === VERSION) { this.updVal(); this.renBtn(); this._applyNavSelectorOptions(); this._ensureNavOptions(); this._updateBatteryListUI(); this._updateManualSensorsUI(); this._updateImageSectionUI(); this._updateBadgesUI(); this._updateTypographyUI(); return; }
+    // Force full re-render if DOM is stale or from old version
+    this.shadowRoot.innerHTML = "";
     const h = this._hass;
     this.shadowRoot.innerHTML = `
       <style>
@@ -1650,6 +1678,7 @@ class OneLineRoomCardEditor extends HTMLElement {
         .qa-native-select:hover { border-color: var(--primary-text-color, rgba(0,0,0,0.87)); }
         .qa-native-select:focus { border: 2px solid var(--mdc-theme-primary, var(--primary-color)); padding: 0 35px 0 15px; }
       </style>
+      <span data-rc-version="${VERSION}" style="display:none"></span>
       <div class="sec">
         <h3>${getTranslation(h, "general")}</h3>
         <div class="row" style="margin-top:8px; align-items:center">
@@ -1670,11 +1699,44 @@ class OneLineRoomCardEditor extends HTMLElement {
           <ha-selector id="default-state-sel" label="${getTranslation(h, "default_state")}"></ha-selector>
         </div>
         <ha-textfield label="${getTranslation(h, "header_height")}" cfg="header_height" class="i" type="number" min="0" max="400" style="width:100%;margin-top:4px" placeholder="120"></ha-textfield>
-        <ha-entity-picker label="${getTranslation(h, "main_climate")}" cfg="entity" class="i" include-domains='["climate"]'></ha-entity-picker>
-        <div class="cl-row">
-          <ha-textfield id="standard-badge-bg" label="${getTranslation(h, "standard_badge_background")}"></ha-textfield>
-          <input type="color" id="standard-badge-bg-picker" class="cp">
+        <div id="typo-sec" class="manual-sec" style="margin-top:8px">
+          <div id="typo-head" class="manual-head">
+            <span id="typo-title" class="manual-title" style="display:flex;align-items:center;gap:6px"><ha-icon icon="mdi:format-text" style="--mdc-icon-size:16px;opacity:0.7"></ha-icon>${getTranslation(h, "typography")}</span>
+            <ha-icon id="typo-chev" class="manual-chev" icon="mdi:chevron-right"></ha-icon>
+          </div>
+          <div id="typo-content" class="manual-content" hidden>
+            <div class="image-title" style="margin-bottom:8px">${getTranslation(h, "name_font")}</div>
+            <div class="row">
+              <ha-textfield label="${getTranslation(h, "font_size")}" cfg="header_name_size" class="i" type="number" placeholder="14"></ha-textfield>
+              <ha-selector id="header-name-weight-sel" label="${getTranslation(h, "font_weight")}"></ha-selector>
+            </div>
+            <div class="row">
+              <ha-selector id="header-name-style-sel" label="${getTranslation(h, "font_style")}"></ha-selector>
+              <div class="cl-row">
+                <ha-textfield id="header-name-color" label="${getTranslation(h, "font_color")}" placeholder="#ffffff"></ha-textfield>
+                <input type="color" id="header-name-color-picker" class="cp" value="#ffffff">
+              </div>
+            </div>
+            <div class="image-title" style="margin:12px 0 8px">${getTranslation(h, "info_font")}</div>
+            <div class="row">
+              <ha-textfield label="${getTranslation(h, "font_size")}" cfg="header_info_size" class="i" type="number" placeholder="12"></ha-textfield>
+              <ha-selector id="header-info-weight-sel" label="${getTranslation(h, "font_weight")}"></ha-selector>
+            </div>
+            <div class="row">
+              <ha-selector id="header-info-style-sel" label="${getTranslation(h, "font_style")}"></ha-selector>
+              <div class="cl-row">
+                <ha-textfield id="header-info-color" label="${getTranslation(h, "font_color")}" placeholder="#ffffff"></ha-textfield>
+                <input type="color" id="header-info-color-picker" class="cp" value="#ffffff">
+              </div>
+            </div>
+            <div class="image-title" style="margin:12px 0 8px">${getTranslation(h, "badge_bg")}</div>
+            <div class="cl-row">
+              <ha-textfield id="standard-badge-bg" label="${getTranslation(h, "standard_badge_background")}"></ha-textfield>
+              <input type="color" id="standard-badge-bg-picker" class="cp">
+            </div>
+          </div>
         </div>
+        <ha-entity-picker label="${getTranslation(h, "main_climate")}" cfg="entity" class="i" include-domains='["climate"]' style="margin-top:8px"></ha-entity-picker>
         <div class="row" style="margin-top:8px; align-items:center">
           <ha-formfield label="${getTranslation(h, "force_color")}">
             <ha-switch id="header-force-color"></ha-switch>
@@ -1805,6 +1867,64 @@ class OneLineRoomCardEditor extends HTMLElement {
         this._updateImageSectionUI();
       });
     }
+    const typoHead = this.shadowRoot.getElementById("typo-head");
+    if (typoHead) {
+      typoHead.addEventListener("click", () => {
+        this._typoSectionOpen = !this._typoSectionOpen;
+        this._updateTypographyUI();
+      });
+    }
+
+    const weightOptions = ["normal", "bold", "100", "200", "300", "400", "500", "600", "700", "800", "900"].map(v => ({ value: v, label: v }));
+    const styleOptions = [{ value: "normal", label: "Normal" }, { value: "italic", label: "Italic" }];
+
+    ["name", "info"].forEach(type => {
+      const weightSel = this.shadowRoot.getElementById(`header-${type}-weight-sel`);
+      if (weightSel) {
+        weightSel.hass = h;
+        weightSel.selector = { select: { mode: "dropdown", options: weightOptions } };
+        weightSel.value = this._config[`header_${type}_weight`] || (type === "name" ? "bold" : "normal");
+        weightSel.addEventListener("value-changed", ev => {
+          ev.stopPropagation();
+          this._fire({ ...this._config, [`header_${type}_weight`]: ev.detail.value });
+        });
+      }
+      const styleSel = this.shadowRoot.getElementById(`header-${type}-style-sel`);
+      if (styleSel) {
+        styleSel.hass = h;
+        styleSel.selector = { select: { mode: "dropdown", options: styleOptions } };
+        styleSel.value = this._config[`header_${type}_style`] || "normal";
+        styleSel.addEventListener("value-changed", ev => {
+          ev.stopPropagation();
+          this._fire({ ...this._config, [`header_${type}_style`]: ev.detail.value });
+        });
+      }
+      // Color text + picker
+      const colorField = this.shadowRoot.getElementById(`header-${type}-color`);
+      const colorPicker = this.shadowRoot.getElementById(`header-${type}-color-picker`);
+      if (colorField) {
+        colorField.value = this._config[`header_${type}_color`] || "";
+        colorField.addEventListener("change", ev => {
+          ev.stopPropagation();
+          const val = trimStr(ev.target.value || "");
+          const next = { ...this._config };
+          if (val) next[`header_${type}_color`] = val;
+          else delete next[`header_${type}_color`];
+          this._fire(next);
+          if (colorPicker) colorPicker.value = parseColorToPickerHex(val || "#ffffff");
+        });
+      }
+      if (colorPicker) {
+        colorPicker.value = parseColorToPickerHex(this._config[`header_${type}_color`] || "#ffffff");
+        colorPicker.addEventListener("change", ev => {
+          ev.stopPropagation();
+          const val = ev.target.value;
+          const next = { ...this._config, [`header_${type}_color`]: val };
+          this._fire(next);
+          if (colorField) colorField.value = val;
+        });
+      }
+    });
 
     this.shadowRoot.querySelectorAll(".i").forEach(e => {
       const k = e.getAttribute("cfg");
@@ -1825,6 +1945,10 @@ class OneLineRoomCardEditor extends HTMLElement {
           const raw = String(v ?? "").trim();
           if (raw === "") { delete c[k]; }
           else { const num = Number(raw); c[k] = Number.isFinite(num) && num >= 0 ? Math.round(num) : 120; }
+        } else if (k === "header_name_size" || k === "header_info_size") {
+          const raw = String(v ?? "").trim();
+          if (raw === "") { delete c[k]; }
+          else { const num = Number(raw); c[k] = Number.isFinite(num) && num > 0 ? Math.round(num) : undefined; if (c[k] === undefined) delete c[k]; }
         } else {
           c[k] = v;
         }
@@ -2086,6 +2210,7 @@ class OneLineRoomCardEditor extends HTMLElement {
     this._updateBatteryListUI();
     this._updateManualSensorsUI();
     this._updateImageSectionUI();
+    this._updateTypographyUI();
     this._updateBadgesUI();
   }
 
@@ -2272,6 +2397,37 @@ class OneLineRoomCardEditor extends HTMLElement {
         this._updateBadgesUI();
       };
     }
+  }
+
+  _updateTypographyUI() {
+    const sec = this.shadowRoot?.getElementById("typo-sec");
+    const content = this.shadowRoot?.getElementById("typo-content");
+    if (!sec || !content) return;
+    sec.classList.toggle("open", this._typoSectionOpen === true);
+    content.hidden = this._typoSectionOpen !== true;
+    // Sync weight/style/color to current config
+    ["name", "info"].forEach(type => {
+      const w = this.shadowRoot.getElementById(`header-${type}-weight-sel`);
+      if (w) {
+        const val = this._config?.[`header_${type}_weight`] || (type === "name" ? "bold" : "normal");
+        if (w.value !== val) w.value = val;
+      }
+      const s = this.shadowRoot.getElementById(`header-${type}-style-sel`);
+      if (s) {
+        const val = this._config?.[`header_${type}_style`] || "normal";
+        if (s.value !== val) s.value = val;
+      }
+      const cf = this.shadowRoot.getElementById(`header-${type}-color`);
+      if (cf) {
+        const val = this._config?.[`header_${type}_color`] || "";
+        if (cf.value !== val) cf.value = val;
+      }
+      const cp = this.shadowRoot.getElementById(`header-${type}-color-picker`);
+      if (cp) {
+        const val = parseColorToPickerHex(this._config?.[`header_${type}_color`] || "#ffffff");
+        if (cp.value !== val) cp.value = val;
+      }
+    });
   }
 
   updPreview() {
@@ -2604,6 +2760,16 @@ class OneLineRoomCardEditor extends HTMLElement {
       const v = this._config?.default_state || "expanded";
       if (defaultStateSel.value !== v) defaultStateSel.value = v;
     }
+    ["name", "info"].forEach(type => {
+        const w = this.shadowRoot.getElementById(`header-${type}-weight-sel`);
+        if (w) w.value = this._config[`header_${type}_weight`] || (type === "name" ? "bold" : "normal");
+        const s = this.shadowRoot.getElementById(`header-${type}-style-sel`);
+        if (s) s.value = this._config[`header_${type}_style`] || "normal";
+        const cf = this.shadowRoot.getElementById(`header-${type}-color`);
+        if (cf) { const v = this._config[`header_${type}_color`] || ""; if (cf.value !== v) cf.value = v; }
+        const cp = this.shadowRoot.getElementById(`header-${type}-color-picker`);
+        if (cp) { const v = parseColorToPickerHex(this._config[`header_${type}_color`] || "#ffffff"); if (cp.value !== v) cp.value = v; }
+    });
   }
 
   updCp() {
@@ -2621,7 +2787,7 @@ class OneLineRoomCardEditor extends HTMLElement {
 // =============================================================================
 
 const patchExistingEditor = (ExistingEditor, NewEditor) => {
-  const methods = ["render", "updVal", "updCp", "renBtn", "setConfig", "_fire", "_handleUpload", "updPreview", "connectedCallback", "disconnectedCallback", "_ensureEditorState", "_emitConfigNow", "_flushPendingConfig", "_handlePrimarySave", "_updateBadgesUI"];
+  const methods = ["render", "updVal", "updCp", "renBtn", "setConfig", "_fire", "_handleUpload", "updPreview", "connectedCallback", "disconnectedCallback", "_ensureEditorState", "_emitConfigNow", "_flushPendingConfig", "_handlePrimarySave", "_updateBadgesUI", "_updateTypographyUI"];
   methods.forEach((name) => {
     if (typeof NewEditor.prototype[name] === "function") {
       ExistingEditor.prototype[name] = NewEditor.prototype[name];
