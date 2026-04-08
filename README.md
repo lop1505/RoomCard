@@ -43,6 +43,12 @@ Developed with a focus on stability, simple design, and maximum flexibility.
 * 🏷️ **Custom Header Badges:** Add extra header info entries for any entity with optional custom label, name toggle, and configurable `rgba(...)` background.
 * 🌡️ **Main Climate Header Badge Styling:** The built-in main climate header info (temperature / humidity) can use its own optional `rgba(...)` badge background.
 * 📐 **Configurable Header Height:** Set `header_height` (px) to reduce or fully hide the header image area.
+* 🌡️ **Climate Inline Slider:** Control the target temperature directly on a climate button — displays current → setpoint while dragging, with live feedback.
+* 🗂️ **Structured Editor:** Settings split into a **Konfiguration** tab (Card Behavior + Header) and a dedicated **Buttons** tab — each section collapsible for a cleaner editing experience.
+* 🎨 **Window Chip Colors:** Customize open/closed chip color for window/door sensors, with an option to always show chips.
+* 🎨 **State-Dependent Button Colors (`color_map`):** Automatically change button icon color and background based on entity state.
+* 📐 **Configurable Icon Size:** Set `icon_size` per button or `global_icon_size` as a card-level default.
+* 🎨 **Light Color Favorites:** Show tap-to-set color swatches directly on light buttons. Configurable per button via the editor or YAML.
 
 ### Header Icon Color Priority
 Header icon color now follows this order:
@@ -51,6 +57,79 @@ Header icon color now follows this order:
 3. **Default theme color**
 
 No scripting is required, and existing dashboards remain backward compatible.
+
+## 🆕 What’s new in 1.2.4
+
+* Runtime: **Climate Inline Slider** — `control_mode: slider` now works for `climate` entities. Drag to set the target temperature; the button state shows current → setpoint and updates live while dragging. Closes [#44](https://github.com/lop1505/RoomCard/issues/44).
+* Runtime: **Window Sensor Chip Colors** — window/door sensor chips in the header support custom colors for open and closed states, plus an option to always show the chip even when closed. Closes [#49](https://github.com/lop1505/RoomCard/issues/49).
+* Runtime: **State-Dependent Button Colors (`color_map`)** — buttons can automatically change icon color and background based on the entity’s current state.
+* Editor UX: **Dedicated Buttons Tab** — button configuration (Quick Add, bulk toggle, individual buttons) is now on its own **Buttons** tab, keeping **Konfiguration** focused on card and header settings. Closes [#42](https://github.com/lop1505/RoomCard/issues/42).
+* Editor UX: **Redesigned General Settings** — the "General" section is now split into **Card Behavior** (name, live preview, collapsible) and **Header** (height, typography, icon, image), each collapsible independently. Closes [#43](https://github.com/lop1505/RoomCard/issues/43).
+* Runtime: **Configurable Icon Size** — set `icon_size` per button or `global_icon_size` as a card-level default (in px). Closes [#48](https://github.com/lop1505/RoomCard/issues/48).
+* Runtime: **Light Color Favorites** — tap-to-set color swatches on light buttons. Define up to N favorite colors per button; the active color is highlighted automatically. Closes [#40](https://github.com/lop1505/RoomCard/issues/40).
+* Runtime: **Header Position Sliders** — drag the header info line (temp/humidity/badges) and the title left, center, or right with sliders. A new **Synchronize Positions** toggle lets you link them together. The info line now also prevents text wrapping to maintain a clean layout. Closes [#47](https://github.com/lop1505/RoomCard/issues/47).
+* Runtime: **CSS Custom Properties for Buttons** — expose `--rc-btn-bg` and `--rc-icon-color` for advanced `card-mod` styling. Closes [#46](https://github.com/lop1505/RoomCard/issues/46).
+* Runtime: **Cover Position Presets** — tap-to-set preset buttons for covers/blinds (default: 0%, 50%, 100%), configurable per button. Active position highlighted automatically. Closes [#41](https://github.com/lop1505/RoomCard/issues/41).
+* Runtime: **Climate Temperature Presets** — tap-to-set temperature presets for thermostats. Supports fixed values, `auto` (HVAC mode) and `max` (entity’s max temperature). Active preset highlighted automatically.
+* Editor UX: **Merged Sensors Section** — "Sensors (Manual)" and "Batteries (List)" are now a single collapsible **Sensors** section with a unified badge count.
+* Editor UX: **Fixed Expand/Collapse All Buttons** — the `><` bulk toggle now correctly tracks open/closed state for all button entries.
+
+### Climate Inline Slider (new in 1.2.4)
+
+Configure `control_mode: slider` on a climate button for direct temperature control:
+
+```yaml
+controls:
+  - entity: climate.living_room
+    name: Heizung
+    control_mode: slider    # Target temperature slider
+```
+
+* Slider range is taken from the entity’s `min_temp` / `max_temp` attributes (fallback: 5–35 °C).
+* Step size is `0.5` (matching HA climate precision).
+* Button state shows **current → target** temperature (e.g. `21.5°C → 22°C`) while dragging.
+* On release, calls `climate.set_temperature` with the selected value.
+* Unavailable entities fall back to normal disabled display.
+
+| Option | Value | Effect |
+|---|---|---|
+| `control_mode` | `slider` | Inline temperature slider for climate entities |
+
+### Window Sensor Chip Colors (new in 1.2.4)
+
+Configure custom chip colors and visibility at card level:
+
+```yaml
+window_always_show: true     # show chip even when window is closed (default: false)
+window_open_color: "#FFA000" # chip color when open (default: #FFA000)
+window_closed_color: "#9E9E9E" # chip color when closed (default: #9E9E9E)
+```
+
+| Option | Default | Effect |
+|---|---|---|
+| `window_always_show` | `false` | Show chip for closed sensors too |
+| `window_open_color` | `#FFA000` | Chip color (icon + background tint) when open |
+| `window_closed_color` | `#9E9E9E` | Chip color when closed (only visible if `window_always_show: true`) |
+
+### State-Dependent Button Colors — `color_map` (new in 1.2.4)
+
+Override the button icon color and background automatically based on the entity state:
+
+```yaml
+controls:
+  - entity: light.living_room
+    color_map:
+      "on": gold
+      "off": grey
+      default: steelblue   # fallback for unmapped states
+```
+
+* Hex colors (`#RRGGBB`) get a 20 % tinted background automatically.
+* Named colors use `color-mix(in srgb, …)` for the background tint.
+* Priority: `force_color` > `color_map` > domain logic (rgb_color, hvac_action, theme).
+* Configure visually in the **Buttons** tab → expand a button → **State Colors** section.
+
+---
 
 ## 🆕 What’s new in 1.2.3
 
@@ -308,6 +387,34 @@ Behavior:
 * Custom `header_badges` are appended to the same header info line.
 * If `show_name: false`, only the entity value is shown.
 * `background` applies only to the corresponding custom header badge.
+
+### Light Color Favorites (new in 1.2.4)
+
+Show tap-to-set color swatches directly on light buttons. Tapping a swatch calls `light.turn_on` with the chosen RGB color — no dialog required.
+
+**How to enable:**
+1. Open the card editor → **Buttons** tab → expand a **light** button.
+2. Toggle **"Color Favorites"** on. Three default colors are added automatically.
+3. Use the color pickers to change individual swatches, or the **+** button to add more. Click **×** on a swatch to remove it.
+
+**YAML example:**
+```yaml
+controls:
+  - entity: light.living_room
+    show_color_favorites: true
+    color_favorites: "#ff9800; #2196f3; #4caf50"
+```
+
+* Colors are stored as `#RRGGBB` hex values separated by `;`.
+* The currently active color is highlighted with a border automatically (within ±8 per channel).
+* The entity's `light_color_favorites` attribute is read first (if supported by the integration); the manual `color_favorites` value is used as fallback.
+
+| Option | Default | Effect |
+|---|---|---|
+| `show_color_favorites` | `false` | Show color swatch row below the light button |
+| `color_favorites` | `#ff9800; #2196f3; #4caf50` | Semicolon-separated list of `#RRGGBB` hex colors |
+
+---
 
 ### New in 1.0.9 (YAML options)
 ```yaml

@@ -1,0 +1,264 @@
+## 🆕 What's new in 1.2.4
+
+### Climate Inline Slider (#44)
+
+`control_mode: slider` now works for **climate** entities, enabling direct target temperature control without opening a detail dialog.
+
+**How it works:**
+* The button displays **current → target** temperature while dragging (e.g. `21.5°C → 22°C`).
+* On release, `climate.set_temperature` is called with the selected value.
+* Slider range is read from `min_temp` / `max_temp` attributes (fallback: 5–35 °C), step is `0.5`.
+* Unavailable entities fall back to normal disabled display.
+
+**Configuration:**
+```yaml
+controls:
+  - entity: climate.living_room
+    name: Heizung
+    control_mode: slider
+```
+
+---
+
+### Dedicated Buttons Tab (#42)
+
+Button configuration has moved to its own **Buttons** tab in the editor.
+
+The editor now has two tabs:
+
+| Tab | Contents |
+|---|---|
+| **Konfiguration** | Card Behavior, Header (all card-level and header settings) |
+| **Buttons** | Global Label Position, Quick Add, Bulk Expand/Collapse, Individual button configs |
+
+No YAML changes required — this is a pure UI reorganisation.
+
+---
+
+### Editor Restructure: Card Behavior + Header (#43)
+
+The former **"General"** section is split into two collapsible sections:
+
+| Section | Contents |
+|---|---|
+| **Card Behavior** | Name, Show Title, Live Preview, Collapsible, Default State, Navigation Path |
+| **Header** | Header Height, Typography, Main Climate Device, Icon/Color, Header Badges, Background Image |
+
+Both sections can be collapsed independently for a cleaner editing experience.
+
+---
+
+### Fix: Expand/Collapse All Buttons
+
+The `><` bulk toggle in the Buttons section now correctly tracks and toggles the open/closed state for all button entries.
+
+---
+
+### State-Dependent Button Colors (`color_map`) (#49)
+
+Buttons can now change their icon color and background automatically based on the entity's current state.
+
+**How it works:**
+* Define a `color_map` with state → color entries (any CSS color or hex value).
+* Optional `default` key acts as fallback for unmapped states.
+* Priority: `force_color` > `color_map` > domain logic (rgb_color, hvac_action, theme).
+* Hex colors get a 20 % tinted background automatically; named colors use `color-mix`.
+
+**YAML configuration:**
+```yaml
+controls:
+  - entity: light.living_room
+    color_map:
+      "on": gold
+      "off": grey
+      default: steelblue
+```
+
+**Editor UI:**
+Open the **Buttons** tab → expand a button → scroll down below "Manuelle Farbe erzwingen" → **Zustandsfarben / State Colors** section. Use "Farbe hinzufügen / Add State Color" to add entries visually with a color picker.
+
+---
+
+---
+
+### Configurable Icon Size per Button (#48)
+
+Set a custom icon size per button, or a global default for all buttons.
+
+**YAML:**
+```yaml
+global_icon_size: 24   # applies to all buttons (default: 20)
+
+controls:
+  - entity: light.living_room
+    icon_size: 28       # overrides global for this button
+```
+
+**Editor UI:**
+- Global size: **Buttons** tab → **Global Icon Size (px)** next to label position.
+- Per-button: expand a button → **Icon Size** field at the top of the entity section.
+
+| Option | Scope | Default |
+|---|---|---|
+| `global_icon_size` | All buttons | `20` (px) |
+| `icon_size` | Per button | inherits global |
+
+---
+
+---
+
+### Info Line Position Slider (#47)
+
+A slider in the **Header** section lets you drag the info line (temperature, humidity, badges) and the title left, center, or right across the card header.
+
+* Drag freely between 0 and 100.
+* **Synchronize Positions:** A new toggle lets you link the title and info line sliders so they move together.
+* **No text wrapping:** The info line now intelligently hides overflow with an ellipsis (`...`) instead of breaking onto multiple lines when space is limited.
+* Snaps automatically to **left (0)**, **center (50)**, and **right (100)** when within 5 units.
+* **YAML:** `header_info_offset: 50` / `header_name_offset: 50` / `header_sync_offsets: true`
+
+| Option | Default | Effect |
+|---|---|---|
+| `header_info_offset` | `0` (left) | Horizontal position of the info line in the header (0–100) |
+
+---
+
+### Button Background Customization & CSS Properties (#46)
+
+You can now fully customize the background color of your buttons, visually in the editor or via YAML!
+
+**Via Editor / YAML:**
+* **Global Button Background:** Set a default background for all buttons via the **Buttons** tab visually (or `global_button_background: "rgba(255,0,0,0.2)"` in YAML).
+* **Per-Button Background:** Override the background for a specific button in its individual settings under "Button Background" (or `button_background` in YAML).
+
+**Via CSS Custom Properties (`card-mod`):**
+Advanced users can fully override button backgrounds and icon colors using CSS Custom Properties, taking precedence over the card's dynamic inline styles.
+
+**Available variables:**
+* `--rc-btn-bg` (default button background)
+* `--rc-btn-bg-hover` (hover state background)
+* `--rc-btn-bg-active` (active/pressed state background)
+* `--rc-icon-color` (button icon color)
+
+**Example with `card-mod`:**
+```yaml
+type: custom:oneline-room-card
+card_mod:
+  style: |
+    ha-card {
+      --rc-btn-bg: rgba(255, 0, 0, 0.1);
+      --rc-btn-bg-hover: rgba(255, 0, 0, 0.2);
+    }
+```
+
+---
+
+### Cover Position Presets (#41)
+
+Inspired by the HA 2026.4 release, cover buttons now support **tap-to-set position presets** — small inline buttons that jump the cover to a predefined position in one tap.
+
+**How to enable:**
+1. Open the card editor → expand a **cover** button.
+2. Toggle **"Position Presets"** on.
+3. Optionally set custom preset values in the **"Preset Values"** field (comma-separated: `0, 25, 50, 75, 100`).
+
+**Behavior:**
+* Default presets: `0%`, `50%`, `100%`.
+* The **currently active position** is highlighted automatically (within ±2% tolerance).
+* The layout automatically adjusts to `height: auto` when presets are active — the manual height slider still works as override.
+
+**YAML example:**
+```yaml
+controls:
+  - entity: cover.living_room_blind
+    show_cover_presets: true
+    cover_presets:
+      - 0
+      - 25
+      - 50
+      - 75
+      - 100
+```
+
+| Option | Default | Effect |
+|---|---|---|
+| `show_cover_presets` | `false` | Show position preset buttons below the cover button |
+| `cover_presets` | `[0, 50, 100]` | List of preset positions (0–100) |
+
+---
+
+### Climate Temperature Presets
+
+Thermostats now support tap-to-set temperature presets — the same concept as cover position presets, tailored for heating/cooling.
+
+**How to enable:**
+1. Open the card editor → expand a **climate** button.
+2. Toggle **"Temperature Presets"** on.
+3. Optionally set custom values in the **"Temperatures"** field.
+
+**Supported preset values:**
+| Value | Action | Label |
+|---|---|---|
+| `0` | `climate.turn_off` | "Off" |
+| `18`, `20`, `22` … | `climate.set_temperature` | `18°C`, `20°C` … |
+| `auto` | `climate.set_hvac_mode: auto` | "Auto" |
+| `max` | `climate.set_temperature` → `max_temp` | "Max" |
+
+**YAML example:**
+```yaml
+controls:
+  - entity: climate.living_room
+    show_climate_presets: true
+    climate_presets:
+      - 0
+      - 18
+      - 20
+      - auto
+      - max
+```
+
+**Active highlighting:**
+* Fixed temperature: active when target temp matches (±0.5°).
+* `auto`: active when current HVAC mode is `auto`.
+* `max`: active when target temp equals `max_temp`.
+* `0` / Off: active when entity state is `off`.
+
+| Option | Default | Effect |
+|---|---|---|
+| `show_climate_presets` | `false` | Show temperature preset buttons below the climate button |
+| `climate_presets` | `[0, 18, 20, 22]` | List including numbers, `auto`, and `max` |
+
+---
+
+---
+
+### Light Color Favorites (#40)
+
+Light buttons now support tap-to-set color swatches — small inline circles that set the light to a predefined color in one tap.
+
+**How to enable:**
+1. Open the card editor → **Buttons** tab → expand a **light** button.
+2. Toggle **"Color Favorites"** on. Three default colors (`#ff9800`, `#2196f3`, `#4caf50`) are added automatically.
+3. Use the color pickers to change individual swatches, or the **+** button to add more. Click **×** on a swatch to remove it.
+
+**Behavior:**
+* Tapping a swatch calls `light.turn_on` with the chosen RGB color — no dialog required.
+* The currently active color is highlighted automatically (matched within ±8 per RGB channel).
+* The entity's `light_color_favorites` attribute is read first (if the integration supports it); `color_favorites` from config is used as fallback.
+
+**YAML example:**
+```yaml
+controls:
+  - entity: light.living_room
+    show_color_favorites: true
+    color_favorites: "#ff9800; #2196f3; #4caf50"
+```
+
+| Option | Default | Effect |
+|---|---|---|
+| `show_color_favorites` | `false` | Show color swatch row below the light button |
+| `color_favorites` | `#ff9800; #2196f3; #4caf50` | Semicolon-separated `#RRGGBB` hex colors |
+
+---
+
+No breaking changes. Existing YAML configurations are unaffected.
