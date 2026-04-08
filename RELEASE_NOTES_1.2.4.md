@@ -109,11 +109,13 @@ controls:
 
 ### Info Line Position Slider (#47)
 
-A slider in the **Header** section lets you drag the info line (temperature, humidity, badges) left, center, or right across the card header.
+A slider in the **Header** section lets you drag the info line (temperature, humidity, badges) and the title left, center, or right across the card header.
 
 * Drag freely between 0 and 100.
+* **Synchronize Positions:** A new toggle lets you link the title and info line sliders so they move together.
+* **No text wrapping:** The info line now intelligently hides overflow with an ellipsis (`...`) instead of breaking onto multiple lines when space is limited.
 * Snaps automatically to **left (0)**, **center (50)**, and **right (100)** when within 5 units.
-* **YAML:** `header_info_offset: 50` (0 = left, 50 = center, 100 = right)
+* **YAML:** `header_info_offset: 50` / `header_name_offset: 50` / `header_sync_offsets: true`
 
 | Option | Default | Effect |
 |---|---|---|

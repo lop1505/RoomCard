@@ -62,7 +62,8 @@ const TRANSLATIONS = {
     sensors: "Sensors",
     icon_size: "Icon Size", global_icon_size: "Global Icon Size (px)",
     header_info_offset: "Info Line Position",
-    header_name_offset: "Title Position"
+    header_name_offset: "Title Position",
+    header_sync_offsets: "Synchronize Positions"
   },
   de: {
     empty: "Leer", low: "Niedrig", critical: "Kritisch", window: "Fenster", general: "Allgemein",
@@ -114,7 +115,8 @@ const TRANSLATIONS = {
     sensors: "Sensoren",
     icon_size: "Icon-Größe", global_icon_size: "Globale Icon-Größe (px)",
     header_info_offset: "Info-Zeile Position",
-    header_name_offset: "Titel Position"
+    header_name_offset: "Titel Position",
+    header_sync_offsets: "Synchron Bewegen"
   },
   fr: {
     empty: "Vide", low: "Faible", critical: "Critique", window: "Fenêtre", general: "Général",
@@ -166,7 +168,8 @@ const TRANSLATIONS = {
     sensors: "Capteurs",
     icon_size: "Taille icône", global_icon_size: "Taille icône globale (px)",
     header_info_offset: "Position ligne info",
-    header_name_offset: "Position titre"
+    header_name_offset: "Position titre",
+    header_sync_offsets: "Synchroniser les positions"
   }
 };
 
@@ -485,12 +488,12 @@ class OneLineRoomCard extends HTMLElement {
         .container { display: flex; flex-direction: column; background: var(--ha-card-background, rgba(255,255,255,0.1)); border-radius: 16px; }
         .img-box { position: relative; width: 100%; height: 120px; overflow: hidden; border-radius: 16px 16px 0 0; background: #444; cursor: pointer; }
         .img { width: 100%; height: 100%; object-fit: cover; display: block; }
-        .overlay { position: absolute; top: 0; left: 0; width: 100%; padding: 12px; background: linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%); display: flex; align-items: center; gap: 12px; }
+        .overlay { position: absolute; top: 0; left: 0; width: 100%; padding: 12px; box-sizing: border-box; background: linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%); display: flex; align-items: center; gap: 12px; }
         .text { display: flex; flex: 1; min-width: 0; flex-direction: column; align-items: flex-start; color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
         ha-icon { color: var(--icon-color, white); }
         .primary { display: block; max-width: 100%; font-weight: var(--rc-header-name-weight, bold); font-size: var(--rc-header-name-size, 14px); font-style: var(--rc-header-name-style, normal); color: var(--rc-header-name-color, white); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .secondary { max-width: 100%; min-width: 0; font-weight: var(--rc-header-info-weight, normal); font-size: var(--rc-header-info-size, 12px); font-style: var(--rc-header-info-style, normal); color: var(--rc-header-info-color, white); opacity: 0.9; display: flex; flex-wrap: nowrap; gap: 6px; align-items: center; overflow: hidden; }
-        .info-item { display: inline-flex; align-items: center; min-width: 0; }
+        .info-item { display: inline-flex; align-items: center; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .info-item.badge { padding: 2px 6px; border-radius: 999px; }
         .chips { position: absolute; bottom: 8px; left: 8px; display: flex; gap: 6px; flex-wrap: wrap; z-index: 2; }
         .chip { display: flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 8px; font-size: 11px; font-weight: bold; background: #FFF8E1; color: #FFA000; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
@@ -909,22 +912,26 @@ class OneLineRoomCard extends HTMLElement {
     if (!containerEl || !itemEl || requested <= 0) return 0;
     const containerWidth = containerEl.clientWidth || 0;
     const itemWidth = Math.ceil(itemEl.scrollWidth || itemEl.getBoundingClientRect().width || 0);
-    if (containerWidth <= 0 || itemWidth <= 0) return requested;
+    if (containerWidth <= 0 || itemWidth <= 0) return 0;
     const maxPercent = Math.max(0, ((containerWidth - itemWidth) / containerWidth) * 100);
-    return Math.min(requested, maxPercent);
+    return (requested / 100) * maxPercent;
   }
 
   _applyHeaderOffset(itemEl, requestedPercent, containerEl) {
     if (!itemEl) return;
-    itemEl.style.marginLeft = "";
-    itemEl.style.marginRight = "";
-    const safeOffset = this._getSafeHeaderOffset(requestedPercent, containerEl, itemEl);
-    if (safeOffset <= 0) return;
-    if (safeOffset >= 99.5) {
-      itemEl.style.marginLeft = "auto";
-      return;
-    }
-    itemEl.style.marginLeft = `${safeOffset}%`;
+    const apply = () => {
+      itemEl.style.marginLeft = "";
+      itemEl.style.marginRight = "";
+      const safeOffset = this._getSafeHeaderOffset(requestedPercent, containerEl, itemEl);
+      if (safeOffset <= 0) return;
+      if (safeOffset >= 99.5) {
+        itemEl.style.marginLeft = "auto";
+        return;
+      }
+      itemEl.style.marginLeft = `${safeOffset}%`;
+    };
+    apply();
+    requestAnimationFrame(() => requestAnimationFrame(apply));
   }
 
   _updateBtnState(btn, ctrl, h) {
@@ -1937,6 +1944,11 @@ class OneLineRoomCardEditor extends HTMLElement {
             </div>
           </div>
         </div>
+        <div class="row" style="margin-top:10px; align-items:center; margin-bottom: 4px;">
+          <ha-formfield label="${getTranslation(h, "header_sync_offsets")}">
+            <ha-switch id="sync-offsets-toggle"></ha-switch>
+          </ha-formfield>
+        </div>
         <div style="margin-top:10px">
           <div class="image-title" style="margin-bottom:4px">${getTranslation(h, "header_name_offset")}</div>
           <div style="display:flex;align-items:center;gap:8px;">
@@ -2308,6 +2320,13 @@ class OneLineRoomCardEditor extends HTMLElement {
         if (nameOffsetValue) nameOffsetValue.textContent = `${val}%`;
         const next = { ...this._config };
         if (val > 0) next.header_name_offset = val; else delete next.header_name_offset;
+        if (this._config?.header_sync_offsets) {
+          const infS = this.shadowRoot.getElementById("info-offset-slider");
+          const infV = this.shadowRoot.getElementById("info-offset-value");
+          if (infS) infS.value = String(val);
+          if (infV) infV.textContent = `${val}%`;
+          if (val > 0) next.header_info_offset = val; else delete next.header_info_offset;
+        }
         this._fire(next);
       });
     }
@@ -2327,6 +2346,30 @@ class OneLineRoomCardEditor extends HTMLElement {
         if (infoOffsetValue) infoOffsetValue.textContent = `${val}%`;
         const next = { ...this._config };
         if (val > 0) next.header_info_offset = val; else delete next.header_info_offset;
+        if (this._config?.header_sync_offsets) {
+          const namS = this.shadowRoot.getElementById("name-offset-slider");
+          const namV = this.shadowRoot.getElementById("name-offset-value");
+          if (namS) namS.value = String(val);
+          if (namV) namV.textContent = `${val}%`;
+          if (val > 0) next.header_name_offset = val; else delete next.header_name_offset;
+        }
+        this._fire(next);
+      });
+    }
+    const syncOffsetsToggle = this.shadowRoot.getElementById("sync-offsets-toggle");
+    if (syncOffsetsToggle) {
+      syncOffsetsToggle.checked = this._config?.header_sync_offsets === true;
+      syncOffsetsToggle.addEventListener("change", (ev) => {
+        ev.stopPropagation();
+        const next = { ...this._config };
+        if (ev.target.checked) {
+          next.header_sync_offsets = true;
+          // Auto-sync line to name position when turning on
+          const val = this._config?.header_name_offset ?? 0;
+          if (val > 0) next.header_info_offset = val; else delete next.header_info_offset;
+        } else {
+          delete next.header_sync_offsets;
+        }
         this._fire(next);
       });
     }
