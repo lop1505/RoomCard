@@ -67,7 +67,9 @@ const TRANSLATIONS = {
     global_button_bg: "Global Button Background",
     button_bg: "Button Background",
     show_cover_presets: "Position Presets",
-    cover_presets_label: "Preset Values (comma-separated)"
+    cover_presets_label: "Preset Values (comma-separated)",
+    show_climate_presets: "Temperature Presets",
+    climate_presets_label: "Temperatures (comma-separated)"
   },
   de: {
     empty: "Leer", low: "Niedrig", critical: "Kritisch", window: "Fenster", general: "Allgemein",
@@ -124,7 +126,9 @@ const TRANSLATIONS = {
     global_button_bg: "Globaler Button Hintergrund",
     button_bg: "Button Hintergrund",
     show_cover_presets: "Positions-Voreinstellungen",
-    cover_presets_label: "Voreinstellungen (kommagetrennt)"
+    cover_presets_label: "Voreinstellungen (kommagetrennt)",
+    show_climate_presets: "Temperatur-Voreinstellungen",
+    climate_presets_label: "Temperaturen (kommagetrennt)"
   },
   fr: {
     empty: "Vide", low: "Faible", critical: "Critique", window: "Fenêtre", general: "Général",
@@ -181,7 +185,9 @@ const TRANSLATIONS = {
     global_button_bg: "Fond du bouton global",
     button_bg: "Fond du bouton",
     show_cover_presets: "Préréglages de position",
-    cover_presets_label: "Valeurs (séparées par virgule)"
+    cover_presets_label: "Valeurs (séparées par virgule)",
+    show_climate_presets: "Préréglages de température",
+    climate_presets_label: "Températures (séparées par virgule)"
   }
 };
 
@@ -1090,8 +1096,9 @@ class OneLineRoomCard extends HTMLElement {
     const hasSlider = controlMode === "slider" && !isUnavail && (domain === "light" || domain === "cover" || domain === "climate");
     const hasCoverBtns = controlMode === "buttons" && !isUnavail && domain === "cover";
     const hasCoverPresets = ctrl.show_cover_presets === true && domain === "cover" && !isUnavail;
+    const hasClimatePresets = ctrl.show_climate_presets === true && domain === "climate" && !isUnavail;
 
-    if (hasSlider || hasCoverBtns || hasCoverPresets) {
+    if (hasSlider || hasCoverBtns || hasCoverPresets || hasClimatePresets) {
       btn.classList.add("has-inline-ctrl");
       const topDiv = document.createElement("div");
       topDiv.className = "btn-top";
@@ -1192,6 +1199,61 @@ class OneLineRoomCard extends HTMLElement {
             e.stopPropagation();
             if (!this._isEntityUnavailable(ctrl.entity)) {
               this._hass.callService("cover", "set_cover_position", { entity_id: ctrl.entity, position: pos });
+            }
+          });
+          presetsDiv.appendChild(pb);
+        });
+        btn.appendChild(presetsDiv);
+      }
+
+      // Climate temperature presets
+      if (domain === "climate" && ctrl.show_climate_presets === true) {
+        const tempUnit = this._hass?.config?.unit_system?.temperature || "°C";
+        const rawPresets = Array.isArray(ctrl.climate_presets) ? ctrl.climate_presets
+          : typeof ctrl.climate_presets === "string"
+            ? ctrl.climate_presets.split(",").map(v => {
+                const t = v.trim().toLowerCase();
+                if (t === "auto" || t === "max") return t;
+                const n = parseFloat(t);
+                return isNaN(n) ? null : n;
+              }).filter(v => v !== null)
+            : [0, 18, 20, 22];
+        const currentTarget = st?.attributes?.temperature ?? -999;
+        const maxTemp = st?.attributes?.max_temp ?? null;
+        const presetsDiv = document.createElement("div");
+        presetsDiv.className = "btn-cover-presets";
+        rawPresets.forEach(val => {
+          const pb = document.createElement("div");
+          pb.className = "preset-btn";
+          let label, isActive;
+          if (val === "auto") {
+            label = "Auto";
+            isActive = st?.state === "auto" || st?.attributes?.hvac_mode === "auto";
+          } else if (val === "max") {
+            label = "Max";
+            isActive = maxTemp != null && Math.abs(currentTarget - maxTemp) < 0.5;
+          } else if (val === 0) {
+            label = "Off";
+            isActive = st?.state === "off";
+          } else {
+            label = `${val}${tempUnit}`;
+            isActive = Math.abs(currentTarget - val) < 0.5;
+          }
+          pb.textContent = label;
+          if (isActive) pb.classList.add("active");
+          pb.addEventListener("pointerdown", e => e.stopPropagation());
+          pb.addEventListener("click", e => {
+            e.stopPropagation();
+            if (!this._isEntityUnavailable(ctrl.entity)) {
+              if (val === "auto") {
+                this._hass.callService("climate", "set_hvac_mode", { entity_id: ctrl.entity, hvac_mode: "auto" });
+              } else if (val === "max") {
+                if (maxTemp != null) this._hass.callService("climate", "set_temperature", { entity_id: ctrl.entity, temperature: maxTemp });
+              } else if (val === 0) {
+                this._hass.callService("climate", "turn_off", { entity_id: ctrl.entity });
+              } else {
+                this._hass.callService("climate", "set_temperature", { entity_id: ctrl.entity, temperature: val });
+              }
             }
           });
           presetsDiv.appendChild(pb);
@@ -3000,6 +3062,12 @@ class OneLineRoomCardEditor extends HTMLElement {
             <ha-textfield class="cpv" label="${getTranslation(h, "cover_presets_label")}" placeholder="0, 25, 50, 75, 100" style="flex:1;min-width:160px"></ha-textfield>
           </div>
         </div>
+        <div class="entity-only climate-only ${hideEntity}" style="margin-top:8px; border-top:1px solid var(--divider-color); padding-top:8px">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <ha-formfield label="${getTranslation(h, "show_climate_presets")}"><ha-switch class="sctp"></ha-switch></ha-formfield>
+            <ha-textfield class="ctpv" label="${getTranslation(h, "climate_presets_label")}" placeholder="0, 18, 20, auto, max" style="flex:1;min-width:160px"></ha-textfield>
+          </div>
+        </div>
         </div>`;
 
       const head = box.querySelector(".head");
@@ -3181,6 +3249,41 @@ class OneLineRoomCardEditor extends HTMLElement {
             const c = [...this._config.controls];
             const next = { ...c[i] };
             if (parsed?.length) next.cover_presets = parsed; else delete next.cover_presets;
+            c[i] = next; keepOpen(); this._fire({ ...this._config, controls: c }); this.renBtn();
+          });
+        }
+      }
+      // Climate presets section — only visible for climate domain
+      const climateOnly = box.querySelector(".climate-only");
+      if (climateOnly) {
+        climateOnly.hidden = ctrlDomain !== "climate";
+        const sctp = climateOnly.querySelector(".sctp");
+        const ctpv = climateOnly.querySelector(".ctpv");
+        if (sctp) {
+          sctp.checked = ctrl.show_climate_presets === true;
+          sctp.addEventListener("change", e => {
+            e.stopPropagation();
+            const c = [...this._config.controls];
+            const next = { ...c[i] };
+            if (e.target.checked) next.show_climate_presets = true; else delete next.show_climate_presets;
+            c[i] = next; keepOpen(); this._fire({ ...this._config, controls: c }); this.renBtn();
+          });
+        }
+        if (ctpv) {
+          const presets = Array.isArray(ctrl.climate_presets) ? ctrl.climate_presets.join(", ") : (ctrl.climate_presets || "");
+          ctpv.value = presets;
+          ctpv.addEventListener("change", e => {
+            e.stopPropagation();
+            const raw = e.target.value.trim();
+            const parsed = raw ? raw.split(",").map(v => {
+              const t = v.trim().toLowerCase();
+              if (t === "auto" || t === "max") return t;
+              const n = parseFloat(t);
+              return isNaN(n) ? null : n;
+            }).filter(v => v !== null) : undefined;
+            const c = [...this._config.controls];
+            const next = { ...c[i] };
+            if (parsed?.length) next.climate_presets = parsed; else delete next.climate_presets;
             c[i] = next; keepOpen(); this._fire({ ...this._config, controls: c }); this.renBtn();
           });
         }

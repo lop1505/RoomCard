@@ -187,4 +187,47 @@ controls:
 
 ---
 
+### Climate Temperature Presets
+
+Thermostats now support tap-to-set temperature presets — the same concept as cover position presets, tailored for heating/cooling.
+
+**How to enable:**
+1. Open the card editor → expand a **climate** button.
+2. Toggle **"Temperature Presets"** on.
+3. Optionally set custom values in the **"Temperatures"** field.
+
+**Supported preset values:**
+| Value | Action | Label |
+|---|---|---|
+| `0` | `climate.turn_off` | "Off" |
+| `18`, `20`, `22` … | `climate.set_temperature` | `18°C`, `20°C` … |
+| `auto` | `climate.set_hvac_mode: auto` | "Auto" |
+| `max` | `climate.set_temperature` → `max_temp` | "Max" |
+
+**YAML example:**
+```yaml
+controls:
+  - entity: climate.living_room
+    show_climate_presets: true
+    climate_presets:
+      - 0
+      - 18
+      - 20
+      - auto
+      - max
+```
+
+**Active highlighting:**
+* Fixed temperature: active when target temp matches (±0.5°).
+* `auto`: active when current HVAC mode is `auto`.
+* `max`: active when target temp equals `max_temp`.
+* `0` / Off: active when entity state is `off`.
+
+| Option | Default | Effect |
+|---|---|---|
+| `show_climate_presets` | `false` | Show temperature preset buttons below the climate button |
+| `climate_presets` | `[0, 18, 20, 22]` | List including numbers, `auto`, and `max` |
+
+---
+
 No breaking changes. Existing YAML configurations are unaffected.
