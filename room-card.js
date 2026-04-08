@@ -1,4 +1,4 @@
-const VERSION = "1.2.3";
+const VERSION = "1.2.4";
 const LOG_FLAG = `customCards_RoomCard_Logged_${VERSION}`;
 
 if (!window[LOG_FLAG]) {
@@ -55,7 +55,8 @@ const TRANSLATIONS = {
     collapsible: "Collapsible", default_state: "Default State", state_expanded: "Expanded", state_collapsed: "Collapsed",
     header_height: "Header Height (px)",
     typography: "Header Typography", name_font: "Room Name Font", info_font: "Info Line Font",
-    font_size: "Size (px)", font_weight: "Weight", font_style: "Style", font_color: "Color", badge_bg: "Badge Background"
+    font_size: "Size (px)", font_weight: "Weight", font_style: "Style", font_color: "Color", badge_bg: "Badge Background",
+    card_behavior: "Card Behavior", header: "Header"
   },
   de: {
     empty: "Leer", low: "Niedrig", critical: "Kritisch", window: "Fenster", general: "Allgemein",
@@ -100,7 +101,8 @@ const TRANSLATIONS = {
     collapsible: "Einklappbar", default_state: "Standardzustand", state_expanded: "Ausgeklappt", state_collapsed: "Eingeklappt",
     header_height: "Kopfzeilenhöhe (px)",
     typography: "Header Typografie", name_font: "Raumname Schrift", info_font: "Info-Zeile Schrift",
-    font_size: "Größe (px)", font_weight: "Gewicht", font_style: "Stil", font_color: "Farbe", badge_bg: "Badge Hintergrund"
+    font_size: "Größe (px)", font_weight: "Gewicht", font_style: "Stil", font_color: "Farbe", badge_bg: "Badge Hintergrund",
+    card_behavior: "Kartenverhalten", header: "Header"
   },
   fr: {
     empty: "Vide", low: "Faible", critical: "Critique", window: "Fenêtre", general: "Général",
@@ -145,7 +147,8 @@ const TRANSLATIONS = {
     collapsible: "Rétractable", default_state: "État par défaut", state_expanded: "Déplié", state_collapsed: "Replié",
     header_height: "Hauteur de l'en-tête (px)",
     typography: "Typographie de l'en-tête", name_font: "Police du nom", info_font: "Police des infos",
-    font_size: "Taille (px)", font_weight: "Poids", font_style: "Style", font_color: "Couleur", badge_bg: "Fond du badge"
+    font_size: "Taille (px)", font_weight: "Poids", font_style: "Style", font_color: "Couleur", badge_bg: "Fond du badge",
+    card_behavior: "Comportement de la carte", header: "En-tête"
   }
 };
 
@@ -904,10 +907,18 @@ class OneLineRoomCard extends HTMLElement {
     if (isUnavail) badge = `<ha-icon class="warn warn-offline" icon="mdi:lan-disconnect" title="${unavailableText}"></ha-icon>`;
 
     // --- NEW: USE DYNAMIC UNIT IN TEMPLATE ---
+    const climateHasSlider = typ === "climate" && ctrl.control_mode === "slider";
     const stateText = isTemplate
       ? (tpl?.state || "")
-      : (typ === "climate" && st?.attributes?.current_temperature
-        ? st.attributes.current_temperature + unit
+      : (typ === "climate"
+        ? (() => {
+            const cur = st?.attributes?.current_temperature;
+            const tar = st?.attributes?.temperature;
+            if (climateHasSlider && cur != null && tar != null) return `${cur}${unit} → ${tar}${unit}`;
+            if (climateHasSlider && tar != null) return tar + unit;
+            if (cur != null) return cur + unit;
+            return s;
+          })()
         : s);
     const showState = isTemplate ? ctrl.show_state === true : ctrl.show_state !== false;
     const showLabel = ctrl.show_label !== false;
@@ -966,7 +977,7 @@ class OneLineRoomCard extends HTMLElement {
 
     // Inline controls (slider / cover buttons)
     const controlMode = ctrl.control_mode;
-    const hasSlider = controlMode === "slider" && !isUnavail && (domain === "light" || domain === "cover");
+    const hasSlider = controlMode === "slider" && !isUnavail && (domain === "light" || domain === "cover" || domain === "climate");
     const hasCoverBtns = controlMode === "buttons" && !isUnavail && domain === "cover";
 
     if (hasSlider || hasCoverBtns) {
@@ -977,26 +988,49 @@ class OneLineRoomCard extends HTMLElement {
       btn.appendChild(topDiv);
 
       if (hasSlider) {
-        const pct = domain === "light"
-          ? (st?.attributes?.brightness != null ? Math.round((st.attributes.brightness / 255) * 100) : 0)
-          : (st?.attributes?.current_position != null ? st.attributes.current_position : 0);
+        let sliderMin = 0, sliderMax = 100, sliderStep = 1, sliderValue, sliderPct;
+        if (domain === "light") {
+          sliderValue = st?.attributes?.brightness != null ? Math.round((st.attributes.brightness / 255) * 100) : 0;
+          sliderPct = sliderValue;
+        } else if (domain === "climate") {
+          sliderMin = st?.attributes?.min_temp ?? 5;
+          sliderMax = st?.attributes?.max_temp ?? 35;
+          sliderStep = 0.5;
+          sliderValue = st?.attributes?.temperature ?? sliderMin;
+          sliderPct = ((sliderValue - sliderMin) / (sliderMax - sliderMin)) * 100;
+        } else {
+          sliderValue = st?.attributes?.current_position ?? 0;
+          sliderPct = sliderValue;
+        }
         const wrap = document.createElement("div");
         wrap.className = "btn-slider-wrap";
         const slider = document.createElement("input");
         slider.type = "range";
         slider.className = "btn-slider";
-        slider.min = 0; slider.max = 100; slider.value = pct;
-        slider.style.setProperty("--slider-pct", `${pct}%`);
+        slider.min = sliderMin; slider.max = sliderMax; slider.step = sliderStep; slider.value = sliderValue;
+        slider.style.setProperty("--slider-pct", `${sliderPct}%`);
         slider.addEventListener("pointerdown", e => e.stopPropagation());
         slider.addEventListener("click", e => e.stopPropagation());
         slider.addEventListener("input", e => {
           const v = +e.target.value;
-          e.target.style.setProperty("--slider-pct", `${v}%`);
+          const pct = domain === "climate"
+            ? ((v - sliderMin) / (sliderMax - sliderMin)) * 100
+            : v;
+          e.target.style.setProperty("--slider-pct", `${pct}%`);
+          if (domain === "climate") {
+            const stateEl = topDiv.querySelector(".btn-state");
+            if (stateEl) {
+              const cur = st?.attributes?.current_temperature;
+              stateEl.textContent = cur != null ? `${cur}${unit} → ${v}${unit}` : `${v}${unit}`;
+            }
+          }
         });
         slider.addEventListener("change", e => {
           const v = +e.target.value;
           if (domain === "light") {
             this._hass.callService("light", "turn_on", { entity_id: ctrl.entity, brightness: Math.round(v * 2.55) });
+          } else if (domain === "climate") {
+            this._hass.callService("climate", "set_temperature", { entity_id: ctrl.entity, temperature: v });
           } else {
             this._hass.callService("cover", "set_cover_position", { entity_id: ctrl.entity, position: v });
           }
@@ -1135,6 +1169,8 @@ class OneLineRoomCardEditor extends HTMLElement {
     this._imageSectionOpen = false;
     this._typoSectionOpen = false;
     this._badgesSectionOpen = false;
+    this._cardBehaviorOpen = true;
+    this._headerSectionOpen = true;
     this._controlIds = [];
     this._nextControlId = 1;
     this._livePreview = true;
@@ -1257,8 +1293,9 @@ class OneLineRoomCardEditor extends HTMLElement {
     const controls = Array.isArray(this._config?.controls) ? this._config.controls : [];
     if (controls.length === 0) return false;
     this._collapsedState = this._collapsedState || {};
-    return controls.every((ctrl, i) => {
-      const key = ctrl.entity || ctrl.name || ctrl.content || ctrl.device || String(i);
+    return controls.every((_ctrl, i) => {
+      const key = this._controlIds[i];
+      if (!key) return true;
       return this._collapsedState[key] !== true;
     });
   }
@@ -1266,9 +1303,9 @@ class OneLineRoomCardEditor extends HTMLElement {
   _toggleAllButtonsExpanded(expand) {
     const controls = Array.isArray(this._config?.controls) ? this._config.controls : [];
     this._collapsedState = this._collapsedState || {};
-    controls.forEach((ctrl, i) => {
-      const key = ctrl.entity || ctrl.name || ctrl.content || ctrl.device || String(i);
-      this._collapsedState[key] = !expand;
+    controls.forEach((_ctrl, i) => {
+      const key = this._controlIds[i];
+      if (key) this._collapsedState[key] = !expand;
     });
     this.renBtn();
     this._updateBulkToggleButton();
@@ -1579,7 +1616,7 @@ class OneLineRoomCardEditor extends HTMLElement {
     if (!this._config) return;
     const alreadyRendered = !!this.shadowRoot.innerHTML;
     const domVersion = this.shadowRoot.querySelector("[data-rc-version]")?.dataset?.rcVersion;
-    if (alreadyRendered && domVersion === VERSION) { this.updVal(); this.renBtn(); this._applyNavSelectorOptions(); this._ensureNavOptions(); this._updateBatteryListUI(); this._updateManualSensorsUI(); this._updateImageSectionUI(); this._updateBadgesUI(); this._updateTypographyUI(); return; }
+    if (alreadyRendered && domVersion === VERSION) { this.updVal(); this.renBtn(); this._applyNavSelectorOptions(); this._ensureNavOptions(); this._updateBatteryListUI(); this._updateManualSensorsUI(); this._updateImageSectionUI(); this._updateBadgesUI(); this._updateTypographyUI(); this._updateCardBehaviorUI(); this._updateHeaderSectionUI(); return; }
     // Force full re-render if DOM is stale or from old version
     this.shadowRoot.innerHTML = "";
     const h = this._hass;
@@ -1680,7 +1717,11 @@ class OneLineRoomCardEditor extends HTMLElement {
       </style>
       <span data-rc-version="${VERSION}" style="display:none"></span>
       <div class="sec">
-        <h3>${getTranslation(h, "general")}</h3>
+        <div id="card-beh-head" class="sec-head" style="cursor:pointer;user-select:none;padding:4px 0">
+          <h3>${getTranslation(h, "card_behavior")}</h3>
+          <ha-icon id="card-beh-chev" icon="mdi:chevron-right" style="--mdc-icon-size:18px;opacity:0.7;transition:transform 0.15s ease"></ha-icon>
+        </div>
+        <div id="card-beh-content">
         <div class="row" style="margin-top:8px; align-items:center">
           <ha-formfield label="${getTranslation(h, "live_preview")}">
             <ha-switch id="live-preview-toggle" checked></ha-switch>
@@ -1698,6 +1739,15 @@ class OneLineRoomCardEditor extends HTMLElement {
         <div id="default-state-row" class="row hidden">
           <ha-selector id="default-state-sel" label="${getTranslation(h, "default_state")}"></ha-selector>
         </div>
+        <ha-selector id="nav-path" label="${getTranslation(h, "path")}" style="margin-top:12px"></ha-selector>
+        </div>
+      </div>
+      <div class="sec">
+        <div id="header-sec-head" class="sec-head" style="cursor:pointer;user-select:none;padding:4px 0">
+          <h3>${getTranslation(h, "header")}</h3>
+          <ha-icon id="header-sec-chev" icon="mdi:chevron-right" style="--mdc-icon-size:18px;opacity:0.7;transition:transform 0.15s ease"></ha-icon>
+        </div>
+        <div id="header-sec-content">
         <ha-textfield label="${getTranslation(h, "header_height")}" cfg="header_height" class="i" type="number" min="0" max="400" style="width:100%;margin-top:4px" placeholder="120"></ha-textfield>
         <div id="typo-sec" class="manual-sec" style="margin-top:8px">
           <div id="typo-head" class="manual-head">
@@ -1777,7 +1827,7 @@ class OneLineRoomCardEditor extends HTMLElement {
             </div>
           </div>
         </div>
-        <ha-selector id="nav-path" label="${getTranslation(h, "path")}" style="margin-top:12px"></ha-selector>
+        </div>
       </div>
       <div class="sec">
         <div id="manual-sec" class="manual-sec">
@@ -1859,6 +1909,20 @@ class OneLineRoomCardEditor extends HTMLElement {
     if (uploadBtn && fileInput) {
       uploadBtn.addEventListener("click", () => fileInput.click());
       fileInput.addEventListener("change", (e) => this._handleUpload(e));
+    }
+    const cardBehHead = this.shadowRoot.getElementById("card-beh-head");
+    if (cardBehHead) {
+      cardBehHead.addEventListener("click", () => {
+        this._cardBehaviorOpen = !this._cardBehaviorOpen;
+        this._updateCardBehaviorUI();
+      });
+    }
+    const headerSecHead = this.shadowRoot.getElementById("header-sec-head");
+    if (headerSecHead) {
+      headerSecHead.addEventListener("click", () => {
+        this._headerSectionOpen = !this._headerSectionOpen;
+        this._updateHeaderSectionUI();
+      });
     }
     const imageHead = this.shadowRoot.getElementById("image-head");
     if (imageHead) {
@@ -2212,6 +2276,22 @@ class OneLineRoomCardEditor extends HTMLElement {
     this._updateImageSectionUI();
     this._updateTypographyUI();
     this._updateBadgesUI();
+    this._updateCardBehaviorUI();
+    this._updateHeaderSectionUI();
+  }
+
+  _updateCardBehaviorUI() {
+    const content = this.shadowRoot?.getElementById("card-beh-content");
+    const chev = this.shadowRoot?.getElementById("card-beh-chev");
+    if (content) content.hidden = !this._cardBehaviorOpen;
+    if (chev) chev.style.transform = this._cardBehaviorOpen ? "rotate(90deg)" : "";
+  }
+
+  _updateHeaderSectionUI() {
+    const content = this.shadowRoot?.getElementById("header-sec-content");
+    const chev = this.shadowRoot?.getElementById("header-sec-chev");
+    if (content) content.hidden = !this._headerSectionOpen;
+    if (chev) chev.style.transform = this._headerSectionOpen ? "rotate(90deg)" : "";
   }
 
   _updateImageSectionUI() {

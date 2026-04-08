@@ -43,6 +43,8 @@ Developed with a focus on stability, simple design, and maximum flexibility.
 * 🏷️ **Custom Header Badges:** Add extra header info entries for any entity with optional custom label, name toggle, and configurable `rgba(...)` background.
 * 🌡️ **Main Climate Header Badge Styling:** The built-in main climate header info (temperature / humidity) can use its own optional `rgba(...)` badge background.
 * 📐 **Configurable Header Height:** Set `header_height` (px) to reduce or fully hide the header image area.
+* 🌡️ **Climate Inline Slider:** Control the target temperature directly on a climate button — displays current → setpoint while dragging, with live feedback.
+* 🗂️ **Structured Editor:** General settings are split into **Card Behavior** and **Header** — both collapsible for a cleaner editing experience.
 
 ### Header Icon Color Priority
 Header icon color now follows this order:
@@ -51,6 +53,35 @@ Header icon color now follows this order:
 3. **Default theme color**
 
 No scripting is required, and existing dashboards remain backward compatible.
+
+## 🆕 What’s new in 1.2.4
+
+* Runtime: **Climate Inline Slider** — `control_mode: slider` now works for `climate` entities. Drag to set the target temperature; the button state shows current → setpoint and updates live while dragging. Closes [#44](https://github.com/lop1505/RoomCard/issues/44).
+* Editor UX: **Redesigned General Settings** — the "General" section is now split into **Card Behavior** (name, live preview, collapsible) and **Header** (height, typography, icon, image), each collapsible independently. Closes [#43](https://github.com/lop1505/RoomCard/issues/43).
+* Editor UX: **Fixed Expand/Collapse All Buttons** — the `><` bulk toggle now correctly tracks open/closed state for all button entries.
+
+### Climate Inline Slider (new in 1.2.4)
+
+Configure `control_mode: slider` on a climate button for direct temperature control:
+
+```yaml
+controls:
+  - entity: climate.living_room
+    name: Heizung
+    control_mode: slider    # Target temperature slider
+```
+
+* Slider range is taken from the entity’s `min_temp` / `max_temp` attributes (fallback: 5–35 °C).
+* Step size is `0.5` (matching HA climate precision).
+* Button state shows **current → target** temperature (e.g. `21.5°C → 22°C`) while dragging.
+* On release, calls `climate.set_temperature` with the selected value.
+* Unavailable entities fall back to normal disabled display.
+
+| Option | Value | Effect |
+|---|---|---|
+| `control_mode` | `slider` | Inline temperature slider for climate entities |
+
+---
 
 ## 🆕 What’s new in 1.2.3
 
