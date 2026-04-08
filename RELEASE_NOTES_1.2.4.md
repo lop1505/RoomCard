@@ -20,6 +20,21 @@ controls:
 
 ---
 
+### Dedicated Buttons Tab (#42)
+
+Button configuration has moved to its own **Buttons** tab in the editor.
+
+The editor now has two tabs:
+
+| Tab | Contents |
+|---|---|
+| **Konfiguration** | Card Behavior, Header (all card-level and header settings) |
+| **Buttons** | Global Label Position, Quick Add, Bulk Expand/Collapse, Individual button configs |
+
+No YAML changes required — this is a pure UI reorganisation.
+
+---
+
 ### Editor Restructure: Card Behavior + Header (#43)
 
 The former **"General"** section is split into two collapsible sections:

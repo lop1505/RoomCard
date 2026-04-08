@@ -44,7 +44,7 @@ Developed with a focus on stability, simple design, and maximum flexibility.
 * 🌡️ **Main Climate Header Badge Styling:** The built-in main climate header info (temperature / humidity) can use its own optional `rgba(...)` badge background.
 * 📐 **Configurable Header Height:** Set `header_height` (px) to reduce or fully hide the header image area.
 * 🌡️ **Climate Inline Slider:** Control the target temperature directly on a climate button — displays current → setpoint while dragging, with live feedback.
-* 🗂️ **Structured Editor:** General settings are split into **Card Behavior** and **Header** — both collapsible for a cleaner editing experience.
+* 🗂️ **Structured Editor:** Settings split into a **Konfiguration** tab (Card Behavior + Header) and a dedicated **Buttons** tab — each section collapsible for a cleaner editing experience.
 
 ### Header Icon Color Priority
 Header icon color now follows this order:
@@ -57,6 +57,7 @@ No scripting is required, and existing dashboards remain backward compatible.
 ## 🆕 What’s new in 1.2.4
 
 * Runtime: **Climate Inline Slider** — `control_mode: slider` now works for `climate` entities. Drag to set the target temperature; the button state shows current → setpoint and updates live while dragging. Closes [#44](https://github.com/lop1505/RoomCard/issues/44).
+* Editor UX: **Dedicated Buttons Tab** — button configuration (Quick Add, bulk toggle, individual buttons) is now on its own **Buttons** tab, keeping **Konfiguration** focused on card and header settings. Closes [#42](https://github.com/lop1505/RoomCard/issues/42).
 * Editor UX: **Redesigned General Settings** — the "General" section is now split into **Card Behavior** (name, live preview, collapsible) and **Header** (height, typography, icon, image), each collapsible independently. Closes [#43](https://github.com/lop1505/RoomCard/issues/43).
 * Editor UX: **Fixed Expand/Collapse All Buttons** — the `><` bulk toggle now correctly tracks open/closed state for all button entries.
 

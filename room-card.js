@@ -56,7 +56,7 @@ const TRANSLATIONS = {
     header_height: "Header Height (px)",
     typography: "Header Typography", name_font: "Room Name Font", info_font: "Info Line Font",
     font_size: "Size (px)", font_weight: "Weight", font_style: "Style", font_color: "Color", badge_bg: "Badge Background",
-    card_behavior: "Card Behavior", header: "Header"
+    card_behavior: "Card Behavior", header: "Header", configuration: "Configuration"
   },
   de: {
     empty: "Leer", low: "Niedrig", critical: "Kritisch", window: "Fenster", general: "Allgemein",
@@ -102,7 +102,7 @@ const TRANSLATIONS = {
     header_height: "Kopfzeilenhöhe (px)",
     typography: "Header Typografie", name_font: "Raumname Schrift", info_font: "Info-Zeile Schrift",
     font_size: "Größe (px)", font_weight: "Gewicht", font_style: "Stil", font_color: "Farbe", badge_bg: "Badge Hintergrund",
-    card_behavior: "Kartenverhalten", header: "Header"
+    card_behavior: "Kartenverhalten", header: "Header", configuration: "Konfiguration"
   },
   fr: {
     empty: "Vide", low: "Faible", critical: "Critique", window: "Fenêtre", general: "Général",
@@ -148,7 +148,7 @@ const TRANSLATIONS = {
     header_height: "Hauteur de l'en-tête (px)",
     typography: "Typographie de l'en-tête", name_font: "Police du nom", info_font: "Police des infos",
     font_size: "Taille (px)", font_weight: "Poids", font_style: "Style", font_color: "Couleur", badge_bg: "Fond du badge",
-    card_behavior: "Comportement de la carte", header: "En-tête"
+    card_behavior: "Comportement de la carte", header: "En-tête", configuration: "Configuration"
   }
 };
 
@@ -1171,6 +1171,7 @@ class OneLineRoomCardEditor extends HTMLElement {
     this._badgesSectionOpen = false;
     this._cardBehaviorOpen = true;
     this._headerSectionOpen = true;
+    this._activeTab = "config";
     this._controlIds = [];
     this._nextControlId = 1;
     this._livePreview = true;
@@ -1179,6 +1180,7 @@ class OneLineRoomCardEditor extends HTMLElement {
     this._quickAddType = "light";
     this._quickAddEntity = "";
     this._quickAddSelectReady = false;
+    this._lastInteractedControlId = "";
     this._boundHandlePrimarySave = (ev) => this._handlePrimarySave(ev);
   }
 
@@ -1271,22 +1273,87 @@ class OneLineRoomCardEditor extends HTMLElement {
     if (this._controlIds.length > len) this._controlIds.length = len;
   }
 
-  _getScrollParent() {
+  _getScrollParents() {
+    const out = [];
+    const seen = new Set();
     let el = this;
-    while (el && el.parentElement) {
-      const style = getComputedStyle(el);
-      const oy = style.overflowY;
-      if (oy === "auto" || oy === "scroll") return el;
-      el = el.parentElement;
+    while (el) {
+      if (el !== this && el instanceof Element) {
+        const style = getComputedStyle(el);
+        const oy = style.overflowY;
+        if ((oy === "auto" || oy === "scroll") && !seen.has(el)) {
+          seen.add(el);
+          out.push(el);
+        }
+      }
+      const parent = el.parentElement || el.assignedSlot || null;
+      if (parent) {
+        el = parent;
+      } else {
+        const root = el.getRootNode?.();
+        if (root instanceof ShadowRoot && root.host && !seen.has(root.host)) {
+          el = root.host;
+        } else {
+          break;
+        }
+      }
     }
-    return null;
+    const docScroller = this.ownerDocument?.scrollingElement;
+    if (docScroller && !seen.has(docScroller)) out.push(docScroller);
+    return out;
   }
 
   _withScrollRestore(fn) {
-    const sc = this._getScrollParent();
-    const top = sc ? sc.scrollTop : 0;
+    const scrollParents = this._getScrollParents();
+    const primaryScroller = scrollParents[0] || null;
+    const scrollTops = scrollParents.map((el) => ({ el, top: el.scrollTop }));
+    const activeEl = this.shadowRoot?.activeElement;
+    const activeBox = activeEl?.closest?.(".box");
+    const anchorId = activeBox?.dataset?.controlId || this._lastInteractedControlId || "";
+    const anchorBox = anchorId
+      ? this.shadowRoot?.querySelector(`.box[data-control-id="${anchorId}"]`)
+      : activeBox;
+    const anchorOffset = (primaryScroller && activeBox)
+      ? activeBox.getBoundingClientRect().top - primaryScroller.getBoundingClientRect().top
+      : (primaryScroller && anchorBox)
+        ? anchorBox.getBoundingClientRect().top - primaryScroller.getBoundingClientRect().top
+      : null;
+
+    // Verhindert das Einklappen des Editors während des Renderings
+    const oldHeight = this.offsetHeight;
+    if (oldHeight > 0) this.style.minHeight = `${oldHeight}px`;
+
     fn();
-    if (sc) sc.scrollTop = top;
+
+    if (scrollParents.length > 0) {
+      const restoreTop = () => {
+        const primaryTop = scrollTops[0]?.top ?? 0;
+        if (!anchorId || anchorOffset === null || !primaryScroller) return primaryTop;
+        const nextBox = this.shadowRoot?.querySelector(`.box[data-control-id="${anchorId}"]`);
+        if (!nextBox) return primaryTop;
+        const nextOffset = nextBox.getBoundingClientRect().top - primaryScroller.getBoundingClientRect().top;
+        return primaryTop + (nextOffset - anchorOffset);
+      };
+      const restoreScrollParents = () => {
+        scrollTops.forEach(({ el, top }, idx) => {
+          el.scrollTop = idx === 0 ? restoreTop() : top;
+        });
+        if (anchorId) {
+          const nextBox = this.shadowRoot?.querySelector(`.box[data-control-id="${anchorId}"]`);
+          nextBox?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
+        }
+      };
+      restoreScrollParents();
+      let frames = 6;
+      const restore = () => {
+        restoreScrollParents();
+        if (--frames > 0) requestAnimationFrame(restore);
+        else this.style.minHeight = ""; // Zurücksetzen, wenn fertig
+      };
+      requestAnimationFrame(restore);
+    } else {
+      this.style.minHeight = "";
+    }
   }
 
   _areAllButtonsExpanded() {
@@ -1616,7 +1683,7 @@ class OneLineRoomCardEditor extends HTMLElement {
     if (!this._config) return;
     const alreadyRendered = !!this.shadowRoot.innerHTML;
     const domVersion = this.shadowRoot.querySelector("[data-rc-version]")?.dataset?.rcVersion;
-    if (alreadyRendered && domVersion === VERSION) { this.updVal(); this.renBtn(); this._applyNavSelectorOptions(); this._ensureNavOptions(); this._updateBatteryListUI(); this._updateManualSensorsUI(); this._updateImageSectionUI(); this._updateBadgesUI(); this._updateTypographyUI(); this._updateCardBehaviorUI(); this._updateHeaderSectionUI(); return; }
+    if (alreadyRendered && domVersion === VERSION) { this.updVal(); this.renBtn(); this._applyNavSelectorOptions(); this._ensureNavOptions(); this._updateBatteryListUI(); this._updateManualSensorsUI(); this._updateImageSectionUI(); this._updateBadgesUI(); this._updateTypographyUI(); this._updateCardBehaviorUI(); this._updateHeaderSectionUI(); this._updateTabUI(); return; }
     // Force full re-render if DOM is stale or from old version
     this.shadowRoot.innerHTML = "";
     const h = this._hass;
@@ -1714,8 +1781,18 @@ class OneLineRoomCardEditor extends HTMLElement {
         .qa-native-select { width: 100%; height: 56px; padding: 0 36px 0 16px; border: 1px solid var(--divider-color, rgba(0,0,0,0.38)); border-radius: 4px; background: transparent; color: var(--primary-text-color); font-size: 16px; font-family: var(--mdc-typography-body1-font-family, var(--mdc-typography-font-family, Roboto, sans-serif)); cursor: pointer; box-sizing: border-box; appearance: auto; -webkit-appearance: auto; outline: none; transition: border-color 0.15s ease; }
         .qa-native-select:hover { border-color: var(--primary-text-color, rgba(0,0,0,0.87)); }
         .qa-native-select:focus { border: 2px solid var(--mdc-theme-primary, var(--primary-color)); padding: 0 35px 0 15px; }
+        .tab-bar { display: flex; border-bottom: 2px solid var(--divider-color); margin-bottom: 4px; }
+        .tab-btn { flex: 1; background: none; border: none; border-bottom: 3px solid transparent; padding: 10px 0; font-size: 14px; font-weight: 600; color: var(--secondary-text-color); cursor: pointer; margin-bottom: -2px; transition: color 0.15s, border-color 0.15s; }
+        .tab-btn.active { color: var(--primary-color); border-bottom-color: var(--primary-color); }
+        #tab-buttons-panel[hidden] { display: none; }
+        #tab-config-panel[hidden] { display: none; }
       </style>
       <span data-rc-version="${VERSION}" style="display:none"></span>
+      <div id="tab-bar" class="tab-bar">
+        <button id="tab-config-btn" class="tab-btn">${getTranslation(h, "configuration")}</button>
+        <button id="tab-buttons-btn" class="tab-btn">${getTranslation(h, "buttons")}</button>
+      </div>
+      <div id="tab-config-panel">
       <div class="sec">
         <div id="card-beh-head" class="sec-head" style="cursor:pointer;user-select:none;padding:4px 0">
           <h3>${getTranslation(h, "card_behavior")}</h3>
@@ -1853,6 +1930,8 @@ class OneLineRoomCardEditor extends HTMLElement {
           </div>
         </div>
       </div>
+      </div>
+      <div id="tab-buttons-panel">
       <div class="sec">
         <div class="sec-head">
           <h3>${getTranslation(h, "buttons")}</h3>
@@ -1902,8 +1981,24 @@ class OneLineRoomCardEditor extends HTMLElement {
         <mwc-button id="add" raised label="${getTranslation(h, "add_button")}">
           <ha-icon icon="mdi:plus" slot="icon"></ha-icon>
         </mwc-button>
+      </div>
       </div>`;
 
+    const tabConfigBtn = this.shadowRoot.getElementById("tab-config-btn");
+    const tabButtonsBtn = this.shadowRoot.getElementById("tab-buttons-btn");
+    if (tabConfigBtn) {
+      tabConfigBtn.addEventListener("click", () => {
+        this._activeTab = "config";
+        this._updateTabUI();
+      });
+    }
+    if (tabButtonsBtn) {
+      tabButtonsBtn.addEventListener("click", () => {
+        this._activeTab = "buttons";
+        this._updateTabUI();
+      });
+    }
+    this._updateTabUI();
     const fileInput = this.shadowRoot.getElementById("file-upload");
     const uploadBtn = this.shadowRoot.getElementById("upload-btn");
     if (uploadBtn && fileInput) {
@@ -2280,6 +2375,18 @@ class OneLineRoomCardEditor extends HTMLElement {
     this._updateHeaderSectionUI();
   }
 
+  _updateTabUI() {
+    const configPanel = this.shadowRoot?.getElementById("tab-config-panel");
+    const buttonsPanel = this.shadowRoot?.getElementById("tab-buttons-panel");
+    const configBtn = this.shadowRoot?.getElementById("tab-config-btn");
+    const buttonsBtn = this.shadowRoot?.getElementById("tab-buttons-btn");
+    const isConfig = this._activeTab !== "buttons";
+    if (configPanel) configPanel.hidden = !isConfig;
+    if (buttonsPanel) buttonsPanel.hidden = isConfig;
+    if (configBtn) configBtn.classList.toggle("active", isConfig);
+    if (buttonsBtn) buttonsBtn.classList.toggle("active", !isConfig);
+  }
+
   _updateCardBehaviorUI() {
     const content = this.shadowRoot?.getElementById("card-beh-content");
     const chev = this.shadowRoot?.getElementById("card-beh-chev");
@@ -2540,6 +2647,9 @@ class OneLineRoomCardEditor extends HTMLElement {
       const showNav = ctrl.tap_action?.action === "navigate" ? "" : "hidden";
       const key = this._controlIds[i] || this._makeControlId();
       this._controlIds[i] = key;
+      box.dataset.controlId = key;
+      box.addEventListener("pointerdown", () => { this._lastInteractedControlId = key; });
+      box.addEventListener("focusin", () => { this._lastInteractedControlId = key; });
       this._collapsedState = this._collapsedState || {};
       if (this._collapsedState[key] === undefined) this._collapsedState[key] = true;
       box.open = this._collapsedState[key] !== true;
@@ -2867,7 +2977,7 @@ class OneLineRoomCardEditor extends HTMLElement {
 // =============================================================================
 
 const patchExistingEditor = (ExistingEditor, NewEditor) => {
-  const methods = ["render", "updVal", "updCp", "renBtn", "setConfig", "_fire", "_handleUpload", "updPreview", "connectedCallback", "disconnectedCallback", "_ensureEditorState", "_emitConfigNow", "_flushPendingConfig", "_handlePrimarySave", "_updateBadgesUI", "_updateTypographyUI"];
+  const methods = ["render", "updVal", "updCp", "renBtn", "setConfig", "_fire", "_handleUpload", "updPreview", "connectedCallback", "disconnectedCallback", "_ensureEditorState", "_emitConfigNow", "_flushPendingConfig", "_handlePrimarySave", "_updateBadgesUI", "_updateTypographyUI", "_updateCardBehaviorUI", "_updateHeaderSectionUI", "_updateTabUI", "_areAllButtonsExpanded", "_toggleAllButtonsExpanded"];
   methods.forEach((name) => {
     if (typeof NewEditor.prototype[name] === "function") {
       ExistingEditor.prototype[name] = NewEditor.prototype[name];
