@@ -54,4 +54,29 @@ The `><` bulk toggle in the Buttons section now correctly tracks and toggles the
 
 ---
 
+### State-Dependent Button Colors (`color_map`) (#49)
+
+Buttons can now change their icon color and background automatically based on the entity's current state.
+
+**How it works:**
+* Define a `color_map` with state → color entries (any CSS color or hex value).
+* Optional `default` key acts as fallback for unmapped states.
+* Priority: `force_color` > `color_map` > domain logic (rgb_color, hvac_action, theme).
+* Hex colors get a 20 % tinted background automatically; named colors use `color-mix`.
+
+**YAML configuration:**
+```yaml
+controls:
+  - entity: light.living_room
+    color_map:
+      "on": gold
+      "off": grey
+      default: steelblue
+```
+
+**Editor UI:**
+Open the **Buttons** tab → expand a button → scroll down below "Manuelle Farbe erzwingen" → **Zustandsfarben / State Colors** section. Use "Farbe hinzufügen / Add State Color" to add entries visually with a color picker.
+
+---
+
 No breaking changes. Existing YAML configurations are unaffected.

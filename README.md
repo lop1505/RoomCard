@@ -45,6 +45,8 @@ Developed with a focus on stability, simple design, and maximum flexibility.
 * 📐 **Configurable Header Height:** Set `header_height` (px) to reduce or fully hide the header image area.
 * 🌡️ **Climate Inline Slider:** Control the target temperature directly on a climate button — displays current → setpoint while dragging, with live feedback.
 * 🗂️ **Structured Editor:** Settings split into a **Konfiguration** tab (Card Behavior + Header) and a dedicated **Buttons** tab — each section collapsible for a cleaner editing experience.
+* 🎨 **Window Chip Colors:** Customize open/closed chip color for window/door sensors, with an option to always show chips.
+* 🎨 **State-Dependent Button Colors (`color_map`):** Automatically change button icon color and background based on entity state.
 
 ### Header Icon Color Priority
 Header icon color now follows this order:
@@ -57,8 +59,11 @@ No scripting is required, and existing dashboards remain backward compatible.
 ## 🆕 What’s new in 1.2.4
 
 * Runtime: **Climate Inline Slider** — `control_mode: slider` now works for `climate` entities. Drag to set the target temperature; the button state shows current → setpoint and updates live while dragging. Closes [#44](https://github.com/lop1505/RoomCard/issues/44).
+* Runtime: **Window Sensor Chip Colors** — window/door sensor chips in the header support custom colors for open and closed states, plus an option to always show the chip even when closed. Closes [#49](https://github.com/lop1505/RoomCard/issues/49).
+* Runtime: **State-Dependent Button Colors (`color_map`)** — buttons can automatically change icon color and background based on the entity’s current state.
 * Editor UX: **Dedicated Buttons Tab** — button configuration (Quick Add, bulk toggle, individual buttons) is now on its own **Buttons** tab, keeping **Konfiguration** focused on card and header settings. Closes [#42](https://github.com/lop1505/RoomCard/issues/42).
 * Editor UX: **Redesigned General Settings** — the "General" section is now split into **Card Behavior** (name, live preview, collapsible) and **Header** (height, typography, icon, image), each collapsible independently. Closes [#43](https://github.com/lop1505/RoomCard/issues/43).
+* Editor UX: **Merged Sensors Section** — "Sensors (Manual)" and "Batteries (List)" are now a single collapsible **Sensors** section with a unified badge count.
 * Editor UX: **Fixed Expand/Collapse All Buttons** — the `><` bulk toggle now correctly tracks open/closed state for all button entries.
 
 ### Climate Inline Slider (new in 1.2.4)
@@ -81,6 +86,40 @@ controls:
 | Option | Value | Effect |
 |---|---|---|
 | `control_mode` | `slider` | Inline temperature slider for climate entities |
+
+### Window Sensor Chip Colors (new in 1.2.4)
+
+Configure custom chip colors and visibility at card level:
+
+```yaml
+window_always_show: true     # show chip even when window is closed (default: false)
+window_open_color: "#FFA000" # chip color when open (default: #FFA000)
+window_closed_color: "#9E9E9E" # chip color when closed (default: #9E9E9E)
+```
+
+| Option | Default | Effect |
+|---|---|---|
+| `window_always_show` | `false` | Show chip for closed sensors too |
+| `window_open_color` | `#FFA000` | Chip color (icon + background tint) when open |
+| `window_closed_color` | `#9E9E9E` | Chip color when closed (only visible if `window_always_show: true`) |
+
+### State-Dependent Button Colors — `color_map` (new in 1.2.4)
+
+Override the button icon color and background automatically based on the entity state:
+
+```yaml
+controls:
+  - entity: light.living_room
+    color_map:
+      "on": gold
+      "off": grey
+      default: steelblue   # fallback for unmapped states
+```
+
+* Hex colors (`#RRGGBB`) get a 20 % tinted background automatically.
+* Named colors use `color-mix(in srgb, …)` for the background tint.
+* Priority: `force_color` > `color_map` > domain logic (rgb_color, hvac_action, theme).
+* Configure visually in the **Buttons** tab → expand a button → **State Colors** section.
 
 ---
 

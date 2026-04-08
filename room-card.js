@@ -56,7 +56,10 @@ const TRANSLATIONS = {
     header_height: "Header Height (px)",
     typography: "Header Typography", name_font: "Room Name Font", info_font: "Info Line Font",
     font_size: "Size (px)", font_weight: "Weight", font_style: "Style", font_color: "Color", badge_bg: "Badge Background",
-    card_behavior: "Card Behavior", header: "Header", configuration: "Configuration"
+    card_behavior: "Card Behavior", header: "Header", configuration: "Configuration",
+    color_map: "State Colors", color_map_add: "Add State Color", color_map_state: "State",
+    window_always_show: "Always Show (incl. closed)", window_open_color: "Open Color", window_closed_color: "Closed Color",
+    sensors: "Sensors"
   },
   de: {
     empty: "Leer", low: "Niedrig", critical: "Kritisch", window: "Fenster", general: "Allgemein",
@@ -102,7 +105,10 @@ const TRANSLATIONS = {
     header_height: "Kopfzeilenhöhe (px)",
     typography: "Header Typografie", name_font: "Raumname Schrift", info_font: "Info-Zeile Schrift",
     font_size: "Größe (px)", font_weight: "Gewicht", font_style: "Stil", font_color: "Farbe", badge_bg: "Badge Hintergrund",
-    card_behavior: "Kartenverhalten", header: "Header", configuration: "Konfiguration"
+    card_behavior: "Kartenverhalten", header: "Header", configuration: "Konfiguration",
+    color_map: "Zustandsfarben", color_map_add: "Farbe hinzufügen", color_map_state: "Zustand",
+    window_always_show: "Immer anzeigen (auch geschlossen)", window_open_color: "Farbe geöffnet", window_closed_color: "Farbe geschlossen",
+    sensors: "Sensoren"
   },
   fr: {
     empty: "Vide", low: "Faible", critical: "Critique", window: "Fenêtre", general: "Général",
@@ -148,7 +154,10 @@ const TRANSLATIONS = {
     header_height: "Hauteur de l'en-tête (px)",
     typography: "Typographie de l'en-tête", name_font: "Police du nom", info_font: "Police des infos",
     font_size: "Taille (px)", font_weight: "Poids", font_style: "Style", font_color: "Couleur", badge_bg: "Fond du badge",
-    card_behavior: "Comportement de la carte", header: "En-tête", configuration: "Configuration"
+    card_behavior: "Comportement de la carte", header: "En-tête", configuration: "Configuration",
+    color_map: "Couleurs par état", color_map_add: "Ajouter couleur", color_map_state: "État",
+    window_always_show: "Toujours afficher (incl. fermé)", window_open_color: "Couleur ouvert", window_closed_color: "Couleur fermé",
+    sensors: "Capteurs"
   }
 };
 
@@ -752,9 +761,20 @@ class OneLineRoomCard extends HTMLElement {
       const txt = getTranslation(h, "high_humidity");
       ch.innerHTML += `<div class="chip humidity"><ha-icon icon="mdi:water-alert" style="--mdc-icon-size:14px"></ha-icon> ${txt}</div>`;
     }
+    const windowAlwaysShow = c.window_always_show === true;
+    const windowOpenColor = trimStr(c.window_open_color) || "#FFA000";
+    const windowClosedColor = trimStr(c.window_closed_color) || "#9E9E9E";
     (Array.isArray(effectiveWindowSensors) ? effectiveWindowSensors : []).forEach(s => {
       const st = h.states[s];
-      if (isEntityOn(st)) ch.innerHTML += `<div class="chip"><ha-icon icon="mdi:window-open-variant" style="--mdc-icon-size:14px"></ha-icon> ${st.attributes.friendly_name || getTranslation(h, "window")}</div>`;
+      if (!st) return;
+      const isOpen = isEntityOn(st);
+      if (!isOpen && !windowAlwaysShow) return;
+      const chipColor = isOpen ? windowOpenColor : windowClosedColor;
+      const isHex = /^#[0-9A-F]{6}$/i.test(chipColor);
+      const chipBg = isHex ? chipColor + "33" : `color-mix(in srgb, ${chipColor} 20%, transparent)`;
+      const icon = isOpen ? "mdi:window-open-variant" : "mdi:window-shutter";
+      const label = st.attributes.friendly_name || getTranslation(h, "window");
+      ch.innerHTML += `<div class="chip" style="background:${chipBg};color:${chipColor}"><ha-icon icon="${icon}" style="--mdc-icon-size:14px"></ha-icon> ${label}</div>`;
     });
 
     const cardEl = this.shadowRoot.querySelector("ha-card");
@@ -897,6 +917,20 @@ class OneLineRoomCard extends HTMLElement {
       col = resolved.color;
       bg = resolved.bg;
       isUnavail = resolved.isUnavailable;
+      // color_map: per-state color override (lower priority than force_color)
+      if (!ctrl.force_color && ctrl.color_map && !isUnavail) {
+        const normMap = Object.fromEntries(
+          Object.entries(ctrl.color_map).map(([k, v]) => [
+            k === true ? "on" : k === false ? "off" : String(k), v
+          ])
+        );
+        const mappedColor = trimStr(normMap[s] ?? normMap.default ?? "");
+        if (mappedColor) {
+          col = mappedColor;
+          const isHex = /^#[0-9A-F]{6}$/i.test(mappedColor);
+          bg = isHex ? mappedColor + "33" : `color-mix(in srgb, ${mappedColor} 20%, transparent)`;
+        }
+      }
     }
 
     const nameTxt = isTemplate
@@ -1164,8 +1198,7 @@ class OneLineRoomCardEditor extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
-    this._batteryListOpen = false;
-    this._manualSensorsOpen = false;
+    this._sensorsSectionOpen = false;
     this._imageSectionOpen = false;
     this._typoSectionOpen = false;
     this._badgesSectionOpen = false;
@@ -1683,7 +1716,7 @@ class OneLineRoomCardEditor extends HTMLElement {
     if (!this._config) return;
     const alreadyRendered = !!this.shadowRoot.innerHTML;
     const domVersion = this.shadowRoot.querySelector("[data-rc-version]")?.dataset?.rcVersion;
-    if (alreadyRendered && domVersion === VERSION) { this.updVal(); this.renBtn(); this._applyNavSelectorOptions(); this._ensureNavOptions(); this._updateBatteryListUI(); this._updateManualSensorsUI(); this._updateImageSectionUI(); this._updateBadgesUI(); this._updateTypographyUI(); this._updateCardBehaviorUI(); this._updateHeaderSectionUI(); this._updateTabUI(); return; }
+    if (alreadyRendered && domVersion === VERSION) { this.updVal(); this.renBtn(); this._applyNavSelectorOptions(); this._ensureNavOptions(); this._updateSensorsSectionUI(); this._updateImageSectionUI(); this._updateBadgesUI(); this._updateTypographyUI(); this._updateCardBehaviorUI(); this._updateHeaderSectionUI(); this._updateTabUI(); return; }
     // Force full re-render if DOM is stale or from old version
     this.shadowRoot.innerHTML = "";
     const h = this._hass;
@@ -1705,13 +1738,6 @@ class OneLineRoomCardEditor extends HTMLElement {
         .manual-sec.open .manual-chev { transform: rotate(90deg); }
         .manual-content { margin-top: 6px; }
         .manual-content[hidden] { display: none; }
-        .battery-sec { border: 1px solid var(--divider-color); border-radius: 8px; background: var(--secondary-background-color); padding: 6px 10px; margin-bottom: 8px; }
-        .battery-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer; user-select: none; padding: 4px 0; }
-        .battery-title { font-size: 12px; font-weight: 600; opacity: 0.8; }
-        .battery-chev { --mdc-icon-size: 18px; opacity: 0.7; transition: transform 0.15s ease; }
-        .battery-sec.open .battery-chev { transform: rotate(90deg); }
-        .battery-content { margin-top: 6px; }
-        .battery-content[hidden] { display: none; }
         .badges-sec { border: 1px solid var(--divider-color); border-radius: 8px; background: var(--secondary-background-color); padding: 6px 10px; margin-bottom: 8px; }
         .badges-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer; user-select: none; padding: 4px 0; }
         .badges-title { font-size: 12px; font-weight: 600; opacity: 0.8; }
@@ -1907,25 +1933,31 @@ class OneLineRoomCardEditor extends HTMLElement {
         </div>
       </div>
       <div class="sec">
-        <div id="manual-sec" class="manual-sec">
-          <div id="manual-head" class="manual-head">
-            <span id="manual-title" class="manual-title"></span>
-            <ha-icon id="manual-chev" class="manual-chev" icon="mdi:chevron-right"></ha-icon>
+        <div id="sensors-sec" class="manual-sec">
+          <div id="sensors-head" class="manual-head">
+            <span id="sensors-title" class="manual-title"></span>
+            <ha-icon id="sensors-chev" class="manual-chev" icon="mdi:chevron-right"></ha-icon>
           </div>
-          <div id="manual-content" class="manual-content" hidden>
+          <div id="sensors-content" class="manual-content" hidden>
+            <div class="image-title" style="font-size:11px;font-weight:600;opacity:0.6;margin-bottom:6px">${getTranslation(h, "sensors_manual")}</div>
             <ha-entity-picker label="${getTranslation(h, "temp_label")}" cfg="temp_sensor" class="i" allow-custom-entity></ha-entity-picker>
             <ha-entity-picker label="${getTranslation(h, "target_temp_label")}" cfg="target_temp_sensor" class="i" allow-custom-entity></ha-entity-picker>
             <ha-entity-picker label="${getTranslation(h, "humid_label")}" cfg="humid_sensor" class="i" allow-custom-entity></ha-entity-picker>
             <ha-textfield label="${getTranslation(h, "humid_warn_threshold")}" cfg="humidity_warning_threshold" class="i" type="number"></ha-textfield>
             <ha-selector cfg="window_sensors" class="i" label="${getTranslation(h, "window_label")}"></ha-selector>
-          </div>
-        </div>
-        <div id="battery-sec" class="battery-sec">
-          <div id="battery-head" class="battery-head">
-            <span id="battery-title" class="battery-title"></span>
-            <ha-icon id="battery-chev" class="battery-chev" icon="mdi:chevron-right"></ha-icon>
-          </div>
-          <div id="battery-content" class="battery-content" hidden>
+            <ha-formfield id="window-always-show-field" label="${getTranslation(h, "window_always_show")}" style="display:flex;align-items:center;margin:4px 0">
+              <ha-switch id="window-always-show"></ha-switch>
+            </ha-formfield>
+            <div style="display:flex;gap:8px;align-items:center;margin-top:4px">
+              <ha-textfield id="window-open-color" cfg="window_open_color" class="i" label="${getTranslation(h, "window_open_color")}" style="flex:1" placeholder="#FFA000"></ha-textfield>
+              <input type="color" id="window-open-color-picker" class="cp">
+            </div>
+            <div id="window-closed-color-row" style="display:flex;gap:8px;align-items:center;margin-top:4px">
+              <ha-textfield id="window-closed-color" cfg="window_closed_color" class="i" label="${getTranslation(h, "window_closed_color")}" style="flex:1" placeholder="#9E9E9E"></ha-textfield>
+              <input type="color" id="window-closed-color-picker" class="cp">
+            </div>
+            <div style="border-top:1px solid var(--divider-color);margin:10px 0 8px"></div>
+            <div class="image-title" style="font-size:11px;font-weight:600;opacity:0.6;margin-bottom:6px">${getTranslation(h, "battery_label")}</div>
             <ha-selector cfg="battery_sensors" class="i" label="${getTranslation(h, "battery_label")}"></ha-selector>
           </div>
         </div>
@@ -2116,18 +2148,72 @@ class OneLineRoomCardEditor extends HTMLElement {
         if (k === "image") this.updPreview();
       });
     });
-    const manualHead = this.shadowRoot.getElementById("manual-head");
-    if (manualHead) {
-      manualHead.addEventListener("click", () => {
-        this._manualSensorsOpen = !this._manualSensorsOpen;
-        this._updateManualSensorsUI();
+    const sensorsHead = this.shadowRoot.getElementById("sensors-head");
+    if (sensorsHead) {
+      sensorsHead.addEventListener("click", () => {
+        this._sensorsSectionOpen = !this._sensorsSectionOpen;
+        this._updateSensorsSectionUI();
       });
     }
-    const batteryHead = this.shadowRoot.getElementById("battery-head");
-    if (batteryHead) {
-      batteryHead.addEventListener("click", () => {
-        this._batteryListOpen = !this._batteryListOpen;
-        this._updateBatteryListUI();
+    const windowAlwaysShowToggle = this.shadowRoot.getElementById("window-always-show");
+    const windowClosedColorRow = this.shadowRoot.getElementById("window-closed-color-row");
+    const syncWindowClosedRow = () => {
+      if (windowClosedColorRow) windowClosedColorRow.style.display = (this._config?.window_always_show === true) ? "flex" : "none";
+    };
+    if (windowAlwaysShowToggle) {
+      windowAlwaysShowToggle.checked = this._config?.window_always_show === true;
+      syncWindowClosedRow();
+      windowAlwaysShowToggle.addEventListener("change", (ev) => {
+        ev.stopPropagation();
+        const next = { ...this._config };
+        if (ev.target.checked) next.window_always_show = true;
+        else delete next.window_always_show;
+        this._fire(next);
+        syncWindowClosedRow();
+      });
+    }
+    const windowOpenColorField = this.shadowRoot.getElementById("window-open-color");
+    const windowOpenColorPicker = this.shadowRoot.getElementById("window-open-color-picker");
+    if (windowOpenColorField) {
+      windowOpenColorField.value = this._config?.window_open_color || "";
+      windowOpenColorField.addEventListener("change", (ev) => {
+        ev.stopPropagation();
+        const val = trimStr(ev.target.value || "");
+        const next = { ...this._config };
+        if (val) next.window_open_color = val; else delete next.window_open_color;
+        this._fire(next);
+        if (windowOpenColorPicker) windowOpenColorPicker.value = parseColorToPickerHex(val || "#FFA000");
+      });
+    }
+    if (windowOpenColorPicker) {
+      windowOpenColorPicker.value = parseColorToPickerHex(this._config?.window_open_color || "#FFA000");
+      windowOpenColorPicker.addEventListener("change", (ev) => {
+        ev.stopPropagation();
+        const val = ev.target.value;
+        this._fire({ ...this._config, window_open_color: val });
+        if (windowOpenColorField) windowOpenColorField.value = val;
+      });
+    }
+    const windowClosedColorField = this.shadowRoot.getElementById("window-closed-color");
+    const windowClosedColorPicker = this.shadowRoot.getElementById("window-closed-color-picker");
+    if (windowClosedColorField) {
+      windowClosedColorField.value = this._config?.window_closed_color || "";
+      windowClosedColorField.addEventListener("change", (ev) => {
+        ev.stopPropagation();
+        const val = trimStr(ev.target.value || "");
+        const next = { ...this._config };
+        if (val) next.window_closed_color = val; else delete next.window_closed_color;
+        this._fire(next);
+        if (windowClosedColorPicker) windowClosedColorPicker.value = parseColorToPickerHex(val || "#9E9E9E");
+      });
+    }
+    if (windowClosedColorPicker) {
+      windowClosedColorPicker.value = parseColorToPickerHex(this._config?.window_closed_color || "#9E9E9E");
+      windowClosedColorPicker.addEventListener("change", (ev) => {
+        ev.stopPropagation();
+        const val = ev.target.value;
+        this._fire({ ...this._config, window_closed_color: val });
+        if (windowClosedColorField) windowClosedColorField.value = val;
       });
     }
     const badgesHead = this.shadowRoot.getElementById("badges-head");
@@ -2366,8 +2452,7 @@ class OneLineRoomCardEditor extends HTMLElement {
     }
     this._updateBulkToggleButton();
     this.updVal(); this.updCp(); this.renBtn(); this.updPreview();
-    this._updateBatteryListUI();
-    this._updateManualSensorsUI();
+    this._updateSensorsSectionUI();
     this._updateImageSectionUI();
     this._updateTypographyUI();
     this._updateBadgesUI();
@@ -2411,35 +2496,23 @@ class OneLineRoomCardEditor extends HTMLElement {
     content.hidden = !this._imageSectionOpen;
   }
 
-  _updateManualSensorsUI() {
-    const sec = this.shadowRoot?.getElementById("manual-sec");
-    const content = this.shadowRoot?.getElementById("manual-content");
-    const title = this.shadowRoot?.getElementById("manual-title");
+  _updateSensorsSectionUI() {
+    const sec = this.shadowRoot?.getElementById("sensors-sec");
+    const content = this.shadowRoot?.getElementById("sensors-content");
+    const title = this.shadowRoot?.getElementById("sensors-title");
     if (!sec || !content || !title) return;
     const c = this._config || {};
     const count = [
       c.temp_sensor,
       c.target_temp_sensor,
       c.humid_sensor,
-      ...(Array.isArray(c.window_sensors) ? c.window_sensors : [])
+      ...(Array.isArray(c.window_sensors) ? c.window_sensors : []),
+      ...(Array.isArray(c.battery_sensors) ? c.battery_sensors : [])
     ].filter((v) => v && String(v).trim() !== "").length;
-    const label = getTranslation(this._hass, "sensors_manual");
+    const label = getTranslation(this._hass, "sensors");
     title.textContent = count > 0 ? `${label} (${count})` : label;
-    sec.classList.toggle("open", this._manualSensorsOpen);
-    content.hidden = !this._manualSensorsOpen;
-  }
-
-  _updateBatteryListUI() {
-    const sec = this.shadowRoot?.getElementById("battery-sec");
-    const content = this.shadowRoot?.getElementById("battery-content");
-    const title = this.shadowRoot?.getElementById("battery-title");
-    if (!sec || !content || !title) return;
-    const items = Array.isArray(this._config?.battery_sensors) ? this._config.battery_sensors : [];
-    const count = items.length;
-    const label = getTranslation(this._hass, "battery_label");
-    title.textContent = count > 0 ? `${label} (${count})` : label;
-    sec.classList.toggle("open", this._batteryListOpen);
-    content.hidden = !this._batteryListOpen;
+    sec.classList.toggle("open", this._sensorsSectionOpen);
+    content.hidden = !this._sensorsSectionOpen;
   }
 
   _updateBadgesUI() {
@@ -2828,6 +2901,99 @@ class OneLineRoomCardEditor extends HTMLElement {
       const fc = box.querySelector(".fc"); if (fc) { fc.checked = ctrl.force_color === true; fc.addEventListener("change", e => { upd("force_color", e.target.checked); this.renBtn(); }); }
       const cl = box.querySelector(".cl"); if (cl) { cl.value = ctrl.color || ""; cl.addEventListener("change", e => upd("color", e.target.value)); }
       const clp = box.querySelector(".cl-p"); if (clp) { clp.value = ctrl.color || "#000000"; clp.addEventListener("change", e => upd("color", e.target.value)); }
+      // Color Map section
+      if (!isTemplate) {
+        const entityOnly = box.querySelector(".entity-only");
+        if (entityOnly) {
+          const cmSec = document.createElement("div");
+          cmSec.style.cssText = "margin-top:8px;border-top:1px solid var(--divider-color);padding-top:8px;";
+          const cmTitle = document.createElement("div");
+          cmTitle.className = "tmpl-label";
+          cmTitle.style.marginBottom = "6px";
+          cmTitle.textContent = getTranslation(h, "color_map");
+          cmSec.appendChild(cmTitle);
+          const cmList = document.createElement("div");
+          cmSec.appendChild(cmList);
+          const normMap = ctrl.color_map
+            ? Object.fromEntries(Object.entries(ctrl.color_map).map(([k, v]) => [k === true ? "on" : k === false ? "off" : String(k), v]))
+            : {};
+          Object.entries(normMap).forEach(([state, color]) => {
+            const row = document.createElement("div");
+            row.className = "cl-row";
+            row.style.cssText = "margin-bottom:6px;align-items:center;";
+            const stateField = document.createElement("ha-textfield");
+            stateField.label = getTranslation(h, "color_map_state");
+            stateField.value = state;
+            stateField.style.cssText = "flex:1;margin-bottom:0;";
+            stateField.addEventListener("change", ev => {
+              ev.stopPropagation();
+              const newKey = ev.target.value.trim();
+              const c = [...this._config.controls];
+              const oldMap = Object.fromEntries(Object.entries(c[i]?.color_map || {}).map(([k, v]) => [k === true ? "on" : k === false ? "off" : String(k), v]));
+              const colorVal = oldMap[state] ?? color;
+              delete oldMap[state];
+              if (newKey) oldMap[newKey] = colorVal;
+              const next = { ...c[i] };
+              if (Object.keys(oldMap).length > 0) next.color_map = oldMap; else delete next.color_map;
+              c[i] = next; keepOpen(); this._fire({ ...this._config, controls: c }); this.renBtn();
+            });
+            const colorField = document.createElement("ha-textfield");
+            colorField.label = getTranslation(h, "color");
+            colorField.value = typeof color === "string" ? color : "";
+            colorField.style.cssText = "flex:1;margin-bottom:0;";
+            colorField.addEventListener("change", ev => {
+              ev.stopPropagation();
+              const c = [...this._config.controls];
+              const newMap = Object.fromEntries(Object.entries(c[i]?.color_map || {}).map(([k, v]) => [k === true ? "on" : k === false ? "off" : String(k), v]));
+              newMap[state] = ev.target.value;
+              c[i] = { ...c[i], color_map: newMap }; keepOpen(); this._fire({ ...this._config, controls: c });
+              if (cmPicker) cmPicker.value = parseColorToPickerHex(ev.target.value);
+            });
+            const cmPicker = document.createElement("input");
+            cmPicker.type = "color";
+            cmPicker.className = "cp";
+            cmPicker.value = parseColorToPickerHex(typeof color === "string" ? color : "#000000");
+            cmPicker.addEventListener("change", ev => {
+              ev.stopPropagation();
+              const c = [...this._config.controls];
+              const newMap = Object.fromEntries(Object.entries(c[i]?.color_map || {}).map(([k, v]) => [k === true ? "on" : k === false ? "off" : String(k), v]));
+              newMap[state] = ev.target.value;
+              c[i] = { ...c[i], color_map: newMap }; keepOpen(); this._fire({ ...this._config, controls: c });
+              colorField.value = ev.target.value;
+            });
+            const delCmBtn = document.createElement("button");
+            delCmBtn.type = "button";
+            delCmBtn.className = "badge-del-btn";
+            delCmBtn.innerHTML = `<ha-icon icon="mdi:delete-outline"></ha-icon>`;
+            delCmBtn.addEventListener("click", ev => {
+              ev.stopPropagation();
+              const c = [...this._config.controls];
+              const newMap = Object.fromEntries(Object.entries(c[i]?.color_map || {}).map(([k, v]) => [k === true ? "on" : k === false ? "off" : String(k), v]));
+              delete newMap[state];
+              const next = { ...c[i] };
+              if (Object.keys(newMap).length > 0) next.color_map = newMap; else delete next.color_map;
+              c[i] = next; keepOpen(); this._fire({ ...this._config, controls: c }); this.renBtn();
+            });
+            row.appendChild(stateField); row.appendChild(colorField); row.appendChild(cmPicker); row.appendChild(delCmBtn);
+            cmList.appendChild(row);
+          });
+          const addCmBtn = document.createElement("mwc-button");
+          addCmBtn.setAttribute("raised", "");
+          addCmBtn.setAttribute("label", getTranslation(h, "color_map_add"));
+          addCmBtn.innerHTML = `<ha-icon icon="mdi:plus" slot="icon"></ha-icon>`;
+          addCmBtn.addEventListener("click", ev => {
+            ev.stopPropagation();
+            const c = [...this._config.controls];
+            const newMap = Object.fromEntries(Object.entries(c[i]?.color_map || {}).map(([k, v]) => [k === true ? "on" : k === false ? "off" : String(k), v]));
+            let newKey = "state"; let idx = 1;
+            while (newKey in newMap) { newKey = `state${idx++}`; }
+            newMap[newKey] = "#ffffff";
+            c[i] = { ...c[i], color_map: newMap }; keepOpen(); this._fire({ ...this._config, controls: c }); this.renBtn();
+          });
+          cmSec.appendChild(addCmBtn);
+          entityOnly.appendChild(cmSec);
+        }
+      }
       const ic = box.querySelector(".ic"); if (ic) { ic.value = ctrl.icon || ""; ic.addEventListener("value-changed", e => { e.stopPropagation(); upd("icon", e.detail.value); }); }
       const tc = box.querySelector(".tc"); if (tc) { tc.value = ctrl.content || ""; tc.addEventListener("change", e => { upd("content", e.target.value); this.renBtn(); }); }
       const ti = box.querySelector(".ti"); if (ti) { ti.value = ctrl.icon || ""; ti.addEventListener("change", e => { upd("icon", e.target.value); this.renBtn(); }); }
@@ -2960,6 +3126,23 @@ class OneLineRoomCardEditor extends HTMLElement {
         const cp = this.shadowRoot.getElementById(`header-${type}-color-picker`);
         if (cp) { const v = parseColorToPickerHex(this._config[`header_${type}_color`] || "#ffffff"); if (cp.value !== v) cp.value = v; }
     });
+    const windowAlwaysShowToggle = this.shadowRoot.getElementById("window-always-show");
+    if (windowAlwaysShowToggle) {
+      const v = this._config?.window_always_show === true;
+      if (windowAlwaysShowToggle.checked !== v) windowAlwaysShowToggle.checked = v;
+      const cr = this.shadowRoot.getElementById("window-closed-color-row");
+      if (cr) cr.style.display = v ? "flex" : "none";
+    }
+    const windowOpenColorPicker = this.shadowRoot.getElementById("window-open-color-picker");
+    if (windowOpenColorPicker) {
+      const v = parseColorToPickerHex(this._config?.window_open_color || "#FFA000");
+      if (windowOpenColorPicker.value !== v) windowOpenColorPicker.value = v;
+    }
+    const windowClosedColorPicker = this.shadowRoot.getElementById("window-closed-color-picker");
+    if (windowClosedColorPicker) {
+      const v = parseColorToPickerHex(this._config?.window_closed_color || "#9E9E9E");
+      if (windowClosedColorPicker.value !== v) windowClosedColorPicker.value = v;
+    }
   }
 
   updCp() {
@@ -2977,7 +3160,7 @@ class OneLineRoomCardEditor extends HTMLElement {
 // =============================================================================
 
 const patchExistingEditor = (ExistingEditor, NewEditor) => {
-  const methods = ["render", "updVal", "updCp", "renBtn", "setConfig", "_fire", "_handleUpload", "updPreview", "connectedCallback", "disconnectedCallback", "_ensureEditorState", "_emitConfigNow", "_flushPendingConfig", "_handlePrimarySave", "_updateBadgesUI", "_updateTypographyUI", "_updateCardBehaviorUI", "_updateHeaderSectionUI", "_updateTabUI", "_areAllButtonsExpanded", "_toggleAllButtonsExpanded"];
+  const methods = ["render", "updVal", "updCp", "renBtn", "setConfig", "_fire", "_handleUpload", "updPreview", "connectedCallback", "disconnectedCallback", "_ensureEditorState", "_emitConfigNow", "_flushPendingConfig", "_handlePrimarySave", "_updateBadgesUI", "_updateTypographyUI", "_updateCardBehaviorUI", "_updateHeaderSectionUI", "_updateTabUI", "_updateSensorsSectionUI", "_areAllButtonsExpanded", "_toggleAllButtonsExpanded"];
   methods.forEach((name) => {
     if (typeof NewEditor.prototype[name] === "function") {
       ExistingEditor.prototype[name] = NewEditor.prototype[name];
