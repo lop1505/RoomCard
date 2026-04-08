@@ -69,7 +69,9 @@ const TRANSLATIONS = {
     show_cover_presets: "Position Presets",
     cover_presets_label: "Preset Values (comma-separated)",
     show_climate_presets: "Temperature Presets",
-    climate_presets_label: "Temperatures (comma-separated)"
+    climate_presets_label: "Temperatures (comma-separated)",
+    show_color_favorites: "Color Favorites",
+    color_favorites_label: "Colors ('#hex' or 'r,g,b', comma-separated)"
   },
   de: {
     empty: "Leer", low: "Niedrig", critical: "Kritisch", window: "Fenster", general: "Allgemein",
@@ -128,7 +130,9 @@ const TRANSLATIONS = {
     show_cover_presets: "Positions-Voreinstellungen",
     cover_presets_label: "Voreinstellungen (kommagetrennt)",
     show_climate_presets: "Temperatur-Voreinstellungen",
-    climate_presets_label: "Temperaturen (kommagetrennt)"
+    climate_presets_label: "Temperaturen (kommagetrennt)",
+    show_color_favorites: "Lieblings-Farben",
+    color_favorites_label: "Farben ('#hex' oder 'r,g,b', kommagetrennt)"
   },
   fr: {
     empty: "Vide", low: "Faible", critical: "Critique", window: "Fenêtre", general: "Général",
@@ -187,7 +191,9 @@ const TRANSLATIONS = {
     show_cover_presets: "Préréglages de position",
     cover_presets_label: "Valeurs (séparées par virgule)",
     show_climate_presets: "Préréglages de température",
-    climate_presets_label: "Températures (séparées par virgule)"
+    climate_presets_label: "Températures (séparées par virgule)",
+    show_color_favorites: "Couleurs favorites",
+    color_favorites_label: "Couleurs ('#hex' ou 'r,g,b', virgule)"
   }
 };
 
@@ -569,6 +575,10 @@ class OneLineRoomCard extends HTMLElement {
         .preset-btn { flex: 1; display: flex; align-items: center; justify-content: center; background: rgba(128,128,128,0.1); border-radius: 6px; padding: 3px 4px; cursor: pointer; transition: background 0.15s, color 0.15s; font-size: 11px; font-weight: 600; color: var(--secondary-text-color); white-space: nowrap; }
         .preset-btn:hover { background: rgba(128,128,128,0.22); color: var(--primary-text-color); }
         .preset-btn.active { background: var(--icon-color, var(--primary-color, #ff9800)); color: #fff; }
+        .btn-color-favorites { display: flex; gap: 6px; width: 100%; flex: 0 0 auto; padding-bottom: 4px; flex-wrap: wrap; }
+        .color-swatch { width: 20px; height: 20px; border-radius: 50%; cursor: pointer; flex-shrink: 0; border: 2px solid transparent; transition: transform 0.15s, border-color 0.15s; box-shadow: 0 1px 3px rgba(0,0,0,0.25); }
+        .color-swatch:hover { transform: scale(1.2); }
+        .color-swatch.active { border-color: var(--primary-text-color); transform: scale(1.15); }
         .controls { transition: max-height 0.35s ease, padding 0.35s ease; overflow: hidden; max-height: 2000px; }
         .controls.collapsed { max-height: 0 !important; padding-top: 0 !important; padding-bottom: 0 !important; }
         .collapse-btn { position: absolute; bottom: 8px; right: 8px; z-index: 3; width: 28px; height: 28px; border-radius: 50%; background: rgba(0,0,0,0.38); display: none; align-items: center; justify-content: center; cursor: pointer; }
@@ -1097,8 +1107,9 @@ class OneLineRoomCard extends HTMLElement {
     const hasCoverBtns = controlMode === "buttons" && !isUnavail && domain === "cover";
     const hasCoverPresets = ctrl.show_cover_presets === true && domain === "cover" && !isUnavail;
     const hasClimatePresets = ctrl.show_climate_presets === true && domain === "climate" && !isUnavail;
+    const hasColorFavorites = ctrl.show_color_favorites === true && domain === "light" && !isUnavail;
 
-    if (hasSlider || hasCoverBtns || hasCoverPresets || hasClimatePresets) {
+    if (hasSlider || hasCoverBtns || hasCoverPresets || hasClimatePresets || hasColorFavorites) {
       btn.classList.add("has-inline-ctrl");
       const topDiv = document.createElement("div");
       topDiv.className = "btn-top";
@@ -1259,6 +1270,61 @@ class OneLineRoomCard extends HTMLElement {
           presetsDiv.appendChild(pb);
         });
         btn.appendChild(presetsDiv);
+      }
+
+      // Light color favorites
+      if (domain === "light" && ctrl.show_color_favorites === true) {
+        // Read from HA entity attribute first, then fall back to manual config
+        const entityFavorites = st?.attributes?.light_color_favorites;
+        const manualFavorites = ctrl.color_favorites;
+        let favorites = [];
+        const parseColor = (raw) => {
+          if (typeof raw === "string") {
+            const t = raw.trim();
+            if (/^#[0-9a-f]{6}$/i.test(t)) {
+              const r = parseInt(t.slice(1,3),16), g = parseInt(t.slice(3,5),16), b = parseInt(t.slice(5,7),16);
+              return [r, g, b];
+            }
+            const parts = t.split(",").map(v => parseInt(v.trim())).filter(v => !isNaN(v) && v >= 0 && v <= 255);
+            if (parts.length === 3) return parts;
+          } else if (Array.isArray(raw) && raw.length === 3) {
+            return raw.map(Number);
+          }
+          return null;
+        };
+        if (Array.isArray(entityFavorites) && entityFavorites.length) {
+          favorites = entityFavorites.map(parseColor).filter(Boolean);
+        }
+        if (!favorites.length && Array.isArray(manualFavorites) && manualFavorites.length) {
+          favorites = manualFavorites.map(parseColor).filter(Boolean);
+        }
+        if (!favorites.length && typeof manualFavorites === "string") {
+          favorites = manualFavorites.split(";").map(s => parseColor(s.trim())).filter(Boolean);
+        }
+        if (favorites.length) {
+          const currentRgb = st?.attributes?.rgb_color;
+          const swatchRow = document.createElement("div");
+          swatchRow.className = "btn-color-favorites";
+          favorites.forEach(rgb => {
+            const sw = document.createElement("div");
+            sw.className = "color-swatch";
+            sw.style.background = `rgb(${rgb.join(",")})`;
+            const isActive = Array.isArray(currentRgb)
+              && Math.abs(currentRgb[0]-rgb[0]) < 8
+              && Math.abs(currentRgb[1]-rgb[1]) < 8
+              && Math.abs(currentRgb[2]-rgb[2]) < 8;
+            if (isActive) sw.classList.add("active");
+            sw.addEventListener("pointerdown", e => e.stopPropagation());
+            sw.addEventListener("click", e => {
+              e.stopPropagation();
+              if (!this._isEntityUnavailable(ctrl.entity)) {
+                this._hass.callService("light", "turn_on", { entity_id: ctrl.entity, rgb_color: rgb });
+              }
+            });
+            swatchRow.appendChild(sw);
+          });
+          btn.appendChild(swatchRow);
+        }
       }
     } else {
       btn.classList.remove("has-inline-ctrl");
@@ -1474,25 +1540,21 @@ class OneLineRoomCardEditor extends HTMLElement {
   _getScrollParents() {
     const out = [];
     const seen = new Set();
-    let el = this;
-    while (el) {
+    const queue = [this];
+    while (queue.length > 0) {
+      const el = queue.shift();
+      if (!el || seen.has(el)) continue;
+      seen.add(el);
       if (el !== this && el instanceof Element) {
-        const style = getComputedStyle(el);
-        const oy = style.overflowY;
-        if ((oy === "auto" || oy === "scroll") && !seen.has(el)) {
-          seen.add(el);
-          out.push(el);
-        }
+        const oy = getComputedStyle(el).overflowY;
+        if (oy === "auto" || oy === "scroll") out.push(el);
       }
-      const parent = el.parentElement || el.assignedSlot || null;
-      if (parent) {
-        el = parent;
-      } else {
+      if (el.parentElement) queue.push(el.parentElement);
+      if (el.assignedSlot) queue.push(el.assignedSlot);
+      if (!el.parentElement && !el.assignedSlot) {
         const root = el.getRootNode?.();
         if (root instanceof ShadowRoot && root.host && !seen.has(root.host)) {
-          el = root.host;
-        } else {
-          break;
+          queue.push(root.host);
         }
       }
     }
@@ -3068,6 +3130,12 @@ class OneLineRoomCardEditor extends HTMLElement {
             <ha-textfield class="ctpv" label="${getTranslation(h, "climate_presets_label")}" placeholder="0, 18, 20, auto, max" style="flex:1;min-width:160px"></ha-textfield>
           </div>
         </div>
+        <div class="entity-only light-only ${hideEntity}" style="margin-top:8px; border-top:1px solid var(--divider-color); padding-top:8px">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <ha-formfield label="${getTranslation(h, "show_color_favorites")}"><ha-switch class="scf"></ha-switch></ha-formfield>
+            <div class="cfv-swatches" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;min-height:28px;flex:1"></div>
+          </div>
+        </div>
         </div>`;
 
       const head = box.querySelector(".head");
@@ -3286,6 +3354,112 @@ class OneLineRoomCardEditor extends HTMLElement {
             if (parsed?.length) next.climate_presets = parsed; else delete next.climate_presets;
             c[i] = next; keepOpen(); this._fire({ ...this._config, controls: c }); this.renBtn();
           });
+        }
+      }
+      // Light color favorites section — only visible for light domain
+      const lightOnly = box.querySelector(".light-only");
+      if (lightOnly) {
+        lightOnly.hidden = ctrlDomain !== "light";
+        const scf = lightOnly.querySelector(".scf");
+        const cfvContainer = lightOnly.querySelector(".cfv-swatches");
+        if (scf) {
+          scf.checked = ctrl.show_color_favorites === true;
+          scf.addEventListener("change", e => {
+            e.stopPropagation();
+            const c = [...this._config.controls];
+            const next = { ...c[i] };
+            if (e.target.checked) {
+              next.show_color_favorites = true;
+              if (!next.color_favorites) next.color_favorites = "#ff9800; #2196f3; #4caf50";
+            } else { delete next.show_color_favorites; }
+            this._lastInteractedControlId = key;
+            c[i] = next; keepOpen(); this._fire({ ...this._config, controls: c }); this.renBtn();
+          });
+        }
+        if (cfvContainer) {
+          const parseFavToHex = (raw) => {
+            const t = String(raw).trim();
+            if (/^#[0-9a-f]{6}$/i.test(t)) return t.toLowerCase();
+            const parts = t.split(",").map(v => parseInt(v.trim(), 10));
+            if (parts.length === 3 && parts.every(p => !isNaN(p) && p >= 0 && p <= 255))
+              return "#" + parts.map(p => p.toString(16).padStart(2, "0")).join("");
+            return null;
+          };
+          const getFavsArray = (raw) => {
+            if (Array.isArray(raw)) return raw.map(v => parseFavToHex(Array.isArray(v) ? v.join(",") : v)).filter(Boolean);
+            if (typeof raw === "string") return raw.split(";").map(s => parseFavToHex(s)).filter(Boolean);
+            return [];
+          };
+          const rebuildSwatches = () => {
+            const currentFavs = getFavsArray(this._config.controls[i]?.color_favorites);
+            cfvContainer.replaceChildren();
+            currentFavs.forEach((hex, idx) => {
+              const wrap = document.createElement("div");
+              wrap.style.cssText = "position:relative;display:inline-flex;width:24px;height:24px;flex-shrink:0;";
+              const swatch = document.createElement("div");
+              swatch.style.cssText = `width:24px;height:24px;border-radius:50%;background:${hex};border:2px solid rgba(0,0,0,0.15);box-shadow:0 1px 3px rgba(0,0,0,0.25);`;
+              const picker = document.createElement("input");
+              picker.type = "color";
+              picker.value = hex;
+              picker.style.cssText = "position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer;border:none;padding:0;";
+              picker.addEventListener("pointerdown", e => e.stopPropagation());
+              picker.addEventListener("change", e => {
+                e.stopPropagation();
+                const newFavs = getFavsArray(this._config.controls[i]?.color_favorites);
+                newFavs[idx] = e.target.value;
+                const c = [...this._config.controls];
+                c[i] = { ...c[i], color_favorites: newFavs.join("; ") };
+                keepOpen(); this._fire({ ...this._config, controls: c });
+                rebuildSwatches();
+              });
+              const delBtn = document.createElement("button");
+              delBtn.type = "button";
+              delBtn.style.cssText = "position:absolute;top:-5px;right:-5px;width:14px;height:14px;border-radius:50%;background:#d32f2f;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;font-size:10px;color:white;line-height:1;z-index:1;";
+              delBtn.textContent = "×";
+              delBtn.addEventListener("pointerdown", e => e.stopPropagation());
+              delBtn.addEventListener("click", e => {
+                e.stopPropagation();
+                const newFavs = getFavsArray(this._config.controls[i]?.color_favorites);
+                newFavs.splice(idx, 1);
+                const c = [...this._config.controls];
+                const next = { ...c[i] };
+                if (newFavs.length) next.color_favorites = newFavs.join("; "); else delete next.color_favorites;
+                c[i] = next; keepOpen(); this._fire({ ...this._config, controls: c });
+                rebuildSwatches();
+              });
+              wrap.appendChild(swatch);
+              wrap.appendChild(picker);
+              wrap.appendChild(delBtn);
+              cfvContainer.appendChild(wrap);
+            });
+            // "+" add button
+            const addWrap = document.createElement("div");
+            addWrap.style.cssText = "position:relative;display:inline-flex;width:24px;height:24px;flex-shrink:0;";
+            const addPicker = document.createElement("input");
+            addPicker.type = "color";
+            addPicker.value = "#ff9800";
+            addPicker.style.cssText = "position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer;border:none;padding:0;";
+            const addBtn = document.createElement("button");
+            addBtn.type = "button";
+            addBtn.style.cssText = "width:24px;height:24px;border-radius:50%;background:rgba(128,128,128,0.12);border:1.5px dashed var(--divider-color,rgba(0,0,0,0.25));cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--secondary-text-color);padding:0;line-height:1;";
+            addBtn.textContent = "+";
+            addPicker.addEventListener("pointerdown", e => e.stopPropagation());
+            addPicker.addEventListener("change", e => {
+              e.stopPropagation();
+              const newFavs = getFavsArray(this._config.controls[i]?.color_favorites);
+              newFavs.push(e.target.value);
+              const c = [...this._config.controls];
+              c[i] = { ...c[i], color_favorites: newFavs.join("; ") };
+              keepOpen(); this._fire({ ...this._config, controls: c });
+              rebuildSwatches();
+            });
+            addBtn.addEventListener("pointerdown", e => e.stopPropagation());
+            addBtn.addEventListener("click", e => { e.stopPropagation(); addPicker.click(); });
+            addWrap.appendChild(addPicker);
+            addWrap.appendChild(addBtn);
+            cfvContainer.appendChild(addWrap);
+          };
+          rebuildSwatches();
         }
       }
       // Color Map section

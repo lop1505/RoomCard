@@ -48,6 +48,7 @@ Developed with a focus on stability, simple design, and maximum flexibility.
 * 🎨 **Window Chip Colors:** Customize open/closed chip color for window/door sensors, with an option to always show chips.
 * 🎨 **State-Dependent Button Colors (`color_map`):** Automatically change button icon color and background based on entity state.
 * 📐 **Configurable Icon Size:** Set `icon_size` per button or `global_icon_size` as a card-level default.
+* 🎨 **Light Color Favorites:** Show tap-to-set color swatches directly on light buttons. Configurable per button via the editor or YAML.
 
 ### Header Icon Color Priority
 Header icon color now follows this order:
@@ -65,6 +66,7 @@ No scripting is required, and existing dashboards remain backward compatible.
 * Editor UX: **Dedicated Buttons Tab** — button configuration (Quick Add, bulk toggle, individual buttons) is now on its own **Buttons** tab, keeping **Konfiguration** focused on card and header settings. Closes [#42](https://github.com/lop1505/RoomCard/issues/42).
 * Editor UX: **Redesigned General Settings** — the "General" section is now split into **Card Behavior** (name, live preview, collapsible) and **Header** (height, typography, icon, image), each collapsible independently. Closes [#43](https://github.com/lop1505/RoomCard/issues/43).
 * Runtime: **Configurable Icon Size** — set `icon_size` per button or `global_icon_size` as a card-level default (in px). Closes [#48](https://github.com/lop1505/RoomCard/issues/48).
+* Runtime: **Light Color Favorites** — tap-to-set color swatches on light buttons. Define up to N favorite colors per button; the active color is highlighted automatically. Closes [#40](https://github.com/lop1505/RoomCard/issues/40).
 * Runtime: **Header Position Sliders** — drag the header info line (temp/humidity/badges) and the title left, center, or right with sliders. A new **Synchronize Positions** toggle lets you link them together. The info line now also prevents text wrapping to maintain a clean layout. Closes [#47](https://github.com/lop1505/RoomCard/issues/47).
 * Runtime: **CSS Custom Properties for Buttons** — expose `--rc-btn-bg` and `--rc-icon-color` for advanced `card-mod` styling. Closes [#46](https://github.com/lop1505/RoomCard/issues/46).
 * Runtime: **Cover Position Presets** — tap-to-set preset buttons for covers/blinds (default: 0%, 50%, 100%), configurable per button. Active position highlighted automatically. Closes [#41](https://github.com/lop1505/RoomCard/issues/41).
@@ -385,6 +387,34 @@ Behavior:
 * Custom `header_badges` are appended to the same header info line.
 * If `show_name: false`, only the entity value is shown.
 * `background` applies only to the corresponding custom header badge.
+
+### Light Color Favorites (new in 1.2.4)
+
+Show tap-to-set color swatches directly on light buttons. Tapping a swatch calls `light.turn_on` with the chosen RGB color — no dialog required.
+
+**How to enable:**
+1. Open the card editor → **Buttons** tab → expand a **light** button.
+2. Toggle **"Color Favorites"** on. Three default colors are added automatically.
+3. Use the color pickers to change individual swatches, or the **+** button to add more. Click **×** on a swatch to remove it.
+
+**YAML example:**
+```yaml
+controls:
+  - entity: light.living_room
+    show_color_favorites: true
+    color_favorites: "#ff9800; #2196f3; #4caf50"
+```
+
+* Colors are stored as `#RRGGBB` hex values separated by `;`.
+* The currently active color is highlighted with a border automatically (within ±8 per channel).
+* The entity's `light_color_favorites` attribute is read first (if supported by the integration); the manual `color_favorites` value is used as fallback.
+
+| Option | Default | Effect |
+|---|---|---|
+| `show_color_favorites` | `false` | Show color swatch row below the light button |
+| `color_favorites` | `#ff9800; #2196f3; #4caf50` | Semicolon-separated list of `#RRGGBB` hex colors |
+
+---
 
 ### New in 1.0.9 (YAML options)
 ```yaml

@@ -230,4 +230,35 @@ controls:
 
 ---
 
+---
+
+### Light Color Favorites (#40)
+
+Light buttons now support tap-to-set color swatches — small inline circles that set the light to a predefined color in one tap.
+
+**How to enable:**
+1. Open the card editor → **Buttons** tab → expand a **light** button.
+2. Toggle **"Color Favorites"** on. Three default colors (`#ff9800`, `#2196f3`, `#4caf50`) are added automatically.
+3. Use the color pickers to change individual swatches, or the **+** button to add more. Click **×** on a swatch to remove it.
+
+**Behavior:**
+* Tapping a swatch calls `light.turn_on` with the chosen RGB color — no dialog required.
+* The currently active color is highlighted automatically (matched within ±8 per RGB channel).
+* The entity's `light_color_favorites` attribute is read first (if the integration supports it); `color_favorites` from config is used as fallback.
+
+**YAML example:**
+```yaml
+controls:
+  - entity: light.living_room
+    show_color_favorites: true
+    color_favorites: "#ff9800; #2196f3; #4caf50"
+```
+
+| Option | Default | Effect |
+|---|---|---|
+| `show_color_favorites` | `false` | Show color swatch row below the light button |
+| `color_favorites` | `#ff9800; #2196f3; #4caf50` | Semicolon-separated `#RRGGBB` hex colors |
+
+---
+
 No breaking changes. Existing YAML configurations are unaffected.
