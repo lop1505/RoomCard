@@ -79,4 +79,30 @@ Open the **Buttons** tab → expand a button → scroll down below "Manuelle Far
 
 ---
 
+---
+
+### Configurable Icon Size per Button (#48)
+
+Set a custom icon size per button, or a global default for all buttons.
+
+**YAML:**
+```yaml
+global_icon_size: 24   # applies to all buttons (default: 20)
+
+controls:
+  - entity: light.living_room
+    icon_size: 28       # overrides global for this button
+```
+
+**Editor UI:**
+- Global size: **Buttons** tab → **Global Icon Size (px)** next to label position.
+- Per-button: expand a button → **Icon Size** field at the top of the entity section.
+
+| Option | Scope | Default |
+|---|---|---|
+| `global_icon_size` | All buttons | `20` (px) |
+| `icon_size` | Per button | inherits global |
+
+---
+
 No breaking changes. Existing YAML configurations are unaffected.

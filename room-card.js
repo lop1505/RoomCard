@@ -59,7 +59,8 @@ const TRANSLATIONS = {
     card_behavior: "Card Behavior", header: "Header", configuration: "Configuration",
     color_map: "State Colors", color_map_add: "Add State Color", color_map_state: "State",
     window_always_show: "Always Show (incl. closed)", window_open_color: "Open Color", window_closed_color: "Closed Color",
-    sensors: "Sensors"
+    sensors: "Sensors",
+    icon_size: "Icon Size", global_icon_size: "Global Icon Size (px)"
   },
   de: {
     empty: "Leer", low: "Niedrig", critical: "Kritisch", window: "Fenster", general: "Allgemein",
@@ -108,7 +109,8 @@ const TRANSLATIONS = {
     card_behavior: "Kartenverhalten", header: "Header", configuration: "Konfiguration",
     color_map: "Zustandsfarben", color_map_add: "Farbe hinzufügen", color_map_state: "Zustand",
     window_always_show: "Immer anzeigen (auch geschlossen)", window_open_color: "Farbe geöffnet", window_closed_color: "Farbe geschlossen",
-    sensors: "Sensoren"
+    sensors: "Sensoren",
+    icon_size: "Icon-Größe", global_icon_size: "Globale Icon-Größe (px)"
   },
   fr: {
     empty: "Vide", low: "Faible", critical: "Critique", window: "Fenêtre", general: "Général",
@@ -157,7 +159,8 @@ const TRANSLATIONS = {
     card_behavior: "Comportement de la carte", header: "En-tête", configuration: "Configuration",
     color_map: "Couleurs par état", color_map_add: "Ajouter couleur", color_map_state: "État",
     window_always_show: "Toujours afficher (incl. fermé)", window_open_color: "Couleur ouvert", window_closed_color: "Couleur fermé",
-    sensors: "Capteurs"
+    sensors: "Capteurs",
+    icon_size: "Taille icône", global_icon_size: "Taille icône globale (px)"
   }
 };
 
@@ -985,9 +988,14 @@ class OneLineRoomCard extends HTMLElement {
           }
           return ctrl.icon || DOMAIN_STATE_ICON_MAPS[domain]?.[s] || st?.attributes?.icon || "mdi:circle";
         })();
+    const iconSizePx = (() => {
+      const raw = trimStr(ctrl.icon_size) || trimStr(this.config?.global_icon_size) || "";
+      if (!raw) return "20px";
+      return /^\d+(\.\d+)?$/.test(raw) ? raw + "px" : raw;
+    })();
     const iconHtml = showIcon
       ? `<div class="icon-box">
-        <ha-icon icon="${resolvedIcon}" style="--mdc-icon-size:20px"></ha-icon>
+        <ha-icon icon="${resolvedIcon}" style="--mdc-icon-size:${iconSizePx}"></ha-icon>
       </div>`
       : "";
     btn.innerHTML = `
@@ -1970,6 +1978,7 @@ class OneLineRoomCardEditor extends HTMLElement {
         </div>
         <div class="row">
           <ha-selector id="global-label-pos" label="${getTranslation(h, "label_position_all")}"></ha-selector>
+          <ha-textfield id="global-icon-size" label="${getTranslation(h, "global_icon_size")}" type="number" style="max-width:140px" placeholder="20"></ha-textfield>
         </div>
         <details id="quick-add" class="qa" ${this._quickAddOpen ? "open" : ""}>
           <summary class="qa-summary">
@@ -2352,6 +2361,19 @@ class OneLineRoomCardEditor extends HTMLElement {
         ev.stopPropagation();
         const v = ev.detail?.value ?? "right";
         this._fire({ ...this._config, global_label_position: v });
+        this.renBtn();
+      });
+    }
+    const globalIconSize = this.shadowRoot.getElementById("global-icon-size");
+    if (globalIconSize) {
+      const raw = trimStr(this._config?.global_icon_size) || "";
+      globalIconSize.value = /^\d+(\.\d+)?(px)?$/.test(raw) ? raw.replace("px", "") : raw;
+      globalIconSize.addEventListener("change", (ev) => {
+        ev.stopPropagation();
+        const v = ev.target.value.trim();
+        const next = { ...this._config };
+        if (v) next.global_icon_size = v; else delete next.global_icon_size;
+        this._fire(next);
         this.renBtn();
       });
     }
@@ -2753,7 +2775,7 @@ class OneLineRoomCardEditor extends HTMLElement {
           <div class="tmpl-preview"><span>${getTranslation(h, "tmpl_preview")}:</span> <ha-icon class="tp-ic"></ha-icon> <span class="tp-tx"></span></div>
         </details>
         <div class="row" style="margin-top:8px; align-items:center"><ha-selector class="al" label="${getTranslation(h, "align")}"></ha-selector><ha-selector class="lp" label="${getTranslation(h, "label_position")}"></ha-selector><ha-selector class="tl" label="${getTranslation(h, "text_layout")}"></ha-selector><ha-formfield label="${getTranslation(h, "show_state")}"><ha-switch class="ss" checked></ha-switch></ha-formfield><ha-formfield label="${getTranslation(h, "show_label")}"><ha-switch class="sl" checked></ha-switch></ha-formfield><ha-formfield label="${getTranslation(h, "show_icon")}"><ha-switch class="si" checked></ha-switch></ha-formfield><ha-formfield label="${getTranslation(h, "visible")}"><ha-switch class="hd" checked></ha-switch></ha-formfield></div>
-        <div class="entity-only ${hideEntity}" style="margin-top:12px; border-top:1px solid var(--divider-color); padding-top:12px"><ha-selector class="cm" label="${getTranslation(h, "control_mode")}"></ha-selector><ha-selector class="tap" label="${getTranslation(h, "tap_action")}"></ha-selector><ha-textfield class="tap-nav ${showNav}" label="Nav Pfad"></ha-textfield><ha-selector class="hold" label="${getTranslation(h, "hold_action")}"></ha-selector><ha-selector class="dbl" label="${getTranslation(h, "double_tap_action")}"></ha-selector></div>
+        <div class="entity-only ${hideEntity}" style="margin-top:12px; border-top:1px solid var(--divider-color); padding-top:12px"><ha-textfield class="isz" label="${getTranslation(h, "icon_size")}" type="number" style="max-width:120px" placeholder="20"></ha-textfield><ha-selector class="cm" label="${getTranslation(h, "control_mode")}"></ha-selector><ha-selector class="tap" label="${getTranslation(h, "tap_action")}"></ha-selector><ha-textfield class="tap-nav ${showNav}" label="Nav Pfad"></ha-textfield><ha-selector class="hold" label="${getTranslation(h, "hold_action")}"></ha-selector><ha-selector class="dbl" label="${getTranslation(h, "double_tap_action")}"></ha-selector></div>
         </div>`;
 
       const head = box.querySelector(".head");
@@ -2901,6 +2923,11 @@ class OneLineRoomCardEditor extends HTMLElement {
       const fc = box.querySelector(".fc"); if (fc) { fc.checked = ctrl.force_color === true; fc.addEventListener("change", e => { upd("force_color", e.target.checked); this.renBtn(); }); }
       const cl = box.querySelector(".cl"); if (cl) { cl.value = ctrl.color || ""; cl.addEventListener("change", e => upd("color", e.target.value)); }
       const clp = box.querySelector(".cl-p"); if (clp) { clp.value = ctrl.color || "#000000"; clp.addEventListener("change", e => upd("color", e.target.value)); }
+      const isz = box.querySelector(".isz"); if (isz) {
+        const rawIsz = trimStr(ctrl.icon_size) || "";
+        isz.value = /^\d+(\.\d+)?(px)?$/.test(rawIsz) ? rawIsz.replace("px", "") : rawIsz;
+        isz.addEventListener("change", e => { e.stopPropagation(); const v = e.target.value.trim(); upd("icon_size", v || undefined); this.renBtn(); });
+      }
       // Color Map section
       if (!isTemplate) {
         const entityOnly = box.querySelector(".entity-only");

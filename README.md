@@ -47,6 +47,7 @@ Developed with a focus on stability, simple design, and maximum flexibility.
 * 🗂️ **Structured Editor:** Settings split into a **Konfiguration** tab (Card Behavior + Header) and a dedicated **Buttons** tab — each section collapsible for a cleaner editing experience.
 * 🎨 **Window Chip Colors:** Customize open/closed chip color for window/door sensors, with an option to always show chips.
 * 🎨 **State-Dependent Button Colors (`color_map`):** Automatically change button icon color and background based on entity state.
+* 📐 **Configurable Icon Size:** Set `icon_size` per button or `global_icon_size` as a card-level default.
 
 ### Header Icon Color Priority
 Header icon color now follows this order:
@@ -63,6 +64,7 @@ No scripting is required, and existing dashboards remain backward compatible.
 * Runtime: **State-Dependent Button Colors (`color_map`)** — buttons can automatically change icon color and background based on the entity’s current state.
 * Editor UX: **Dedicated Buttons Tab** — button configuration (Quick Add, bulk toggle, individual buttons) is now on its own **Buttons** tab, keeping **Konfiguration** focused on card and header settings. Closes [#42](https://github.com/lop1505/RoomCard/issues/42).
 * Editor UX: **Redesigned General Settings** — the "General" section is now split into **Card Behavior** (name, live preview, collapsible) and **Header** (height, typography, icon, image), each collapsible independently. Closes [#43](https://github.com/lop1505/RoomCard/issues/43).
+* Runtime: **Configurable Icon Size** — set `icon_size` per button or `global_icon_size` as a card-level default (in px). Closes [#48](https://github.com/lop1505/RoomCard/issues/48).
 * Editor UX: **Merged Sensors Section** — "Sensors (Manual)" and "Batteries (List)" are now a single collapsible **Sensors** section with a unified badge count.
 * Editor UX: **Fixed Expand/Collapse All Buttons** — the `><` bulk toggle now correctly tracks open/closed state for all button entries.
 
