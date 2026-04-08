@@ -153,4 +153,38 @@ card_mod:
 
 ---
 
+### Cover Position Presets (#41)
+
+Inspired by the HA 2026.4 release, cover buttons now support **tap-to-set position presets** — small inline buttons that jump the cover to a predefined position in one tap.
+
+**How to enable:**
+1. Open the card editor → expand a **cover** button.
+2. Toggle **"Position Presets"** on.
+3. Optionally set custom preset values in the **"Preset Values"** field (comma-separated: `0, 25, 50, 75, 100`).
+
+**Behavior:**
+* Default presets: `0%`, `50%`, `100%`.
+* The **currently active position** is highlighted automatically (within ±2% tolerance).
+* The layout automatically adjusts to `height: auto` when presets are active — the manual height slider still works as override.
+
+**YAML example:**
+```yaml
+controls:
+  - entity: cover.living_room_blind
+    show_cover_presets: true
+    cover_presets:
+      - 0
+      - 25
+      - 50
+      - 75
+      - 100
+```
+
+| Option | Default | Effect |
+|---|---|---|
+| `show_cover_presets` | `false` | Show position preset buttons below the cover button |
+| `cover_presets` | `[0, 50, 100]` | List of preset positions (0–100) |
+
+---
+
 No breaking changes. Existing YAML configurations are unaffected.

@@ -65,7 +65,9 @@ const TRANSLATIONS = {
     header_name_offset: "Title Position",
     header_sync_offsets: "Synchronize Positions",
     global_button_bg: "Global Button Background",
-    button_bg: "Button Background"
+    button_bg: "Button Background",
+    show_cover_presets: "Position Presets",
+    cover_presets_label: "Preset Values (comma-separated)"
   },
   de: {
     empty: "Leer", low: "Niedrig", critical: "Kritisch", window: "Fenster", general: "Allgemein",
@@ -120,7 +122,9 @@ const TRANSLATIONS = {
     header_name_offset: "Titel Position",
     header_sync_offsets: "Synchron Bewegen",
     global_button_bg: "Globaler Button Hintergrund",
-    button_bg: "Button Hintergrund"
+    button_bg: "Button Hintergrund",
+    show_cover_presets: "Positions-Voreinstellungen",
+    cover_presets_label: "Voreinstellungen (kommagetrennt)"
   },
   fr: {
     empty: "Vide", low: "Faible", critical: "Critique", window: "Fenêtre", general: "Général",
@@ -175,7 +179,9 @@ const TRANSLATIONS = {
     header_name_offset: "Position titre",
     header_sync_offsets: "Synchroniser les positions",
     global_button_bg: "Fond du bouton global",
-    button_bg: "Fond du bouton"
+    button_bg: "Fond du bouton",
+    show_cover_presets: "Préréglages de position",
+    cover_presets_label: "Valeurs (séparées par virgule)"
   }
 };
 
@@ -553,6 +559,10 @@ class OneLineRoomCard extends HTMLElement {
         .cover-action-btn { flex: 1; display: flex; align-items: center; justify-content: center; background: rgba(128,128,128,0.1); border-radius: 6px; padding: 4px 2px; cursor: pointer; transition: background 0.15s; }
         .cover-action-btn:hover { background: rgba(128,128,128,0.22); }
         .cover-action-btn ha-icon { --mdc-icon-size: 16px; color: var(--primary-text-color); }
+        .btn-cover-presets { display: flex; gap: 4px; width: 100%; flex: 0 0 auto; padding-bottom: 4px; }
+        .preset-btn { flex: 1; display: flex; align-items: center; justify-content: center; background: rgba(128,128,128,0.1); border-radius: 6px; padding: 3px 4px; cursor: pointer; transition: background 0.15s, color 0.15s; font-size: 11px; font-weight: 600; color: var(--secondary-text-color); white-space: nowrap; }
+        .preset-btn:hover { background: rgba(128,128,128,0.22); color: var(--primary-text-color); }
+        .preset-btn.active { background: var(--icon-color, var(--primary-color, #ff9800)); color: #fff; }
         .controls { transition: max-height 0.35s ease, padding 0.35s ease; overflow: hidden; max-height: 2000px; }
         .controls.collapsed { max-height: 0 !important; padding-top: 0 !important; padding-bottom: 0 !important; }
         .collapse-btn { position: absolute; bottom: 8px; right: 8px; z-index: 3; width: 28px; height: 28px; border-radius: 50%; background: rgba(0,0,0,0.38); display: none; align-items: center; justify-content: center; cursor: pointer; }
@@ -630,6 +640,7 @@ class OneLineRoomCard extends HTMLElement {
       attrs.friendly_name ?? "",
       attrs.hvac_action ?? "",
       attrs.icon ?? "",
+      attrs.current_position ?? "",
       rgb
     ].join("|");
   }
@@ -1078,8 +1089,9 @@ class OneLineRoomCard extends HTMLElement {
     const controlMode = ctrl.control_mode;
     const hasSlider = controlMode === "slider" && !isUnavail && (domain === "light" || domain === "cover" || domain === "climate");
     const hasCoverBtns = controlMode === "buttons" && !isUnavail && domain === "cover";
+    const hasCoverPresets = ctrl.show_cover_presets === true && domain === "cover" && !isUnavail;
 
-    if (hasSlider || hasCoverBtns) {
+    if (hasSlider || hasCoverBtns || hasCoverPresets) {
       btn.classList.add("has-inline-ctrl");
       const topDiv = document.createElement("div");
       topDiv.className = "btn-top";
@@ -1159,6 +1171,32 @@ class OneLineRoomCard extends HTMLElement {
           actDiv.appendChild(b);
         });
         btn.appendChild(actDiv);
+      }
+
+      // Cover position presets
+      if (domain === "cover" && ctrl.show_cover_presets === true) {
+        const rawPresets = Array.isArray(ctrl.cover_presets) ? ctrl.cover_presets
+          : typeof ctrl.cover_presets === "string" ? ctrl.cover_presets.split(",").map(v => parseFloat(v.trim())).filter(v => !isNaN(v))
+          : [0, 50, 100];
+        const currentPos = st?.attributes?.current_position ?? -1;
+        const presetsDiv = document.createElement("div");
+        presetsDiv.className = "btn-cover-presets";
+        rawPresets.forEach(pos => {
+          const pb = document.createElement("div");
+          pb.className = "preset-btn";
+          pb.textContent = `${pos}%`;
+          const isActive = Math.abs(currentPos - pos) < 2;
+          if (isActive) pb.classList.add("active");
+          pb.addEventListener("pointerdown", e => e.stopPropagation());
+          pb.addEventListener("click", e => {
+            e.stopPropagation();
+            if (!this._isEntityUnavailable(ctrl.entity)) {
+              this._hass.callService("cover", "set_cover_position", { entity_id: ctrl.entity, position: pos });
+            }
+          });
+          presetsDiv.appendChild(pb);
+        });
+        btn.appendChild(presetsDiv);
       }
     } else {
       btn.classList.remove("has-inline-ctrl");
@@ -2956,6 +2994,12 @@ class OneLineRoomCardEditor extends HTMLElement {
         </details>
         <div class="row" style="margin-top:8px; align-items:center"><ha-selector class="al" label="${getTranslation(h, "align")}"></ha-selector><ha-selector class="lp" label="${getTranslation(h, "label_position")}"></ha-selector><ha-selector class="tl" label="${getTranslation(h, "text_layout")}"></ha-selector><ha-formfield label="${getTranslation(h, "show_state")}"><ha-switch class="ss" checked></ha-switch></ha-formfield><ha-formfield label="${getTranslation(h, "show_label")}"><ha-switch class="sl" checked></ha-switch></ha-formfield><ha-formfield label="${getTranslation(h, "show_icon")}"><ha-switch class="si" checked></ha-switch></ha-formfield><ha-formfield label="${getTranslation(h, "visible")}"><ha-switch class="hd" checked></ha-switch></ha-formfield></div>
         <div class="entity-only ${hideEntity}" style="margin-top:12px; border-top:1px solid var(--divider-color); padding-top:12px"><ha-textfield class="isz" label="${getTranslation(h, "icon_size")}" type="number" style="max-width:120px" placeholder="20"></ha-textfield><ha-selector class="cm" label="${getTranslation(h, "control_mode")}"></ha-selector><ha-selector class="tap" label="${getTranslation(h, "tap_action")}"></ha-selector><ha-textfield class="tap-nav ${showNav}" label="Nav Pfad"></ha-textfield><ha-selector class="hold" label="${getTranslation(h, "hold_action")}"></ha-selector><ha-selector class="dbl" label="${getTranslation(h, "double_tap_action")}"></ha-selector></div>
+        <div class="entity-only cover-only ${hideEntity}" style="margin-top:8px; border-top:1px solid var(--divider-color); padding-top:8px">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <ha-formfield label="${getTranslation(h, "show_cover_presets")}"><ha-switch class="scp"></ha-switch></ha-formfield>
+            <ha-textfield class="cpv" label="${getTranslation(h, "cover_presets_label")}" placeholder="0, 25, 50, 75, 100" style="flex:1;min-width:160px"></ha-textfield>
+          </div>
+        </div>
         </div>`;
 
       const head = box.querySelector(".head");
@@ -3109,6 +3153,37 @@ class OneLineRoomCardEditor extends HTMLElement {
         const rawIsz = trimStr(ctrl.icon_size) || "";
         isz.value = /^\d+(\.\d+)?(px)?$/.test(rawIsz) ? rawIsz.replace("px", "") : rawIsz;
         isz.addEventListener("change", e => { e.stopPropagation(); const v = e.target.value.trim(); upd("icon_size", v || undefined); this.renBtn(); });
+      }
+      // Cover presets section — only visible for cover domain
+      const coverOnly = box.querySelector(".cover-only");
+      const ctrlDomain = ctrl.entity?.split(".")?.[0] || "";
+      if (coverOnly) {
+        coverOnly.hidden = ctrlDomain !== "cover";
+        const scp = coverOnly.querySelector(".scp");
+        const cpv = coverOnly.querySelector(".cpv");
+        if (scp) {
+          scp.checked = ctrl.show_cover_presets === true;
+          scp.addEventListener("change", e => {
+            e.stopPropagation();
+            const c = [...this._config.controls];
+            const next = { ...c[i], show_cover_presets: e.target.checked === true };
+            if (!e.target.checked) delete next.show_cover_presets;
+            c[i] = next; keepOpen(); this._fire({ ...this._config, controls: c }); this.renBtn();
+          });
+        }
+        if (cpv) {
+          const presets = Array.isArray(ctrl.cover_presets) ? ctrl.cover_presets.join(", ") : (ctrl.cover_presets || "");
+          cpv.value = presets;
+          cpv.addEventListener("change", e => {
+            e.stopPropagation();
+            const raw = e.target.value.trim();
+            const parsed = raw ? raw.split(",").map(v => parseFloat(v.trim())).filter(v => !isNaN(v)) : undefined;
+            const c = [...this._config.controls];
+            const next = { ...c[i] };
+            if (parsed?.length) next.cover_presets = parsed; else delete next.cover_presets;
+            c[i] = next; keepOpen(); this._fire({ ...this._config, controls: c }); this.renBtn();
+          });
+        }
       }
       // Color Map section
       if (!isTemplate) {
