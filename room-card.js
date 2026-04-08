@@ -60,7 +60,9 @@ const TRANSLATIONS = {
     color_map: "State Colors", color_map_add: "Add State Color", color_map_state: "State",
     window_always_show: "Always Show (incl. closed)", window_open_color: "Open Color", window_closed_color: "Closed Color",
     sensors: "Sensors",
-    icon_size: "Icon Size", global_icon_size: "Global Icon Size (px)"
+    icon_size: "Icon Size", global_icon_size: "Global Icon Size (px)",
+    header_info_offset: "Info Line Position",
+    header_name_offset: "Title Position"
   },
   de: {
     empty: "Leer", low: "Niedrig", critical: "Kritisch", window: "Fenster", general: "Allgemein",
@@ -110,7 +112,9 @@ const TRANSLATIONS = {
     color_map: "Zustandsfarben", color_map_add: "Farbe hinzufügen", color_map_state: "Zustand",
     window_always_show: "Immer anzeigen (auch geschlossen)", window_open_color: "Farbe geöffnet", window_closed_color: "Farbe geschlossen",
     sensors: "Sensoren",
-    icon_size: "Icon-Größe", global_icon_size: "Globale Icon-Größe (px)"
+    icon_size: "Icon-Größe", global_icon_size: "Globale Icon-Größe (px)",
+    header_info_offset: "Info-Zeile Position",
+    header_name_offset: "Titel Position"
   },
   fr: {
     empty: "Vide", low: "Faible", critical: "Critique", window: "Fenêtre", general: "Général",
@@ -160,7 +164,9 @@ const TRANSLATIONS = {
     color_map: "Couleurs par état", color_map_add: "Ajouter couleur", color_map_state: "État",
     window_always_show: "Toujours afficher (incl. fermé)", window_open_color: "Couleur ouvert", window_closed_color: "Couleur fermé",
     sensors: "Capteurs",
-    icon_size: "Taille icône", global_icon_size: "Taille icône globale (px)"
+    icon_size: "Taille icône", global_icon_size: "Taille icône globale (px)",
+    header_info_offset: "Position ligne info",
+    header_name_offset: "Position titre"
   }
 };
 
@@ -480,10 +486,10 @@ class OneLineRoomCard extends HTMLElement {
         .img-box { position: relative; width: 100%; height: 120px; overflow: hidden; border-radius: 16px 16px 0 0; background: #444; cursor: pointer; }
         .img { width: 100%; height: 100%; object-fit: cover; display: block; }
         .overlay { position: absolute; top: 0; left: 0; width: 100%; padding: 12px; background: linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%); display: flex; align-items: center; gap: 12px; }
-        .text { display: flex; flex-direction: column; color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
+        .text { display: flex; flex: 1; min-width: 0; flex-direction: column; align-items: flex-start; color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
         ha-icon { color: var(--icon-color, white); }
-        .primary { font-weight: var(--rc-header-name-weight, bold); font-size: var(--rc-header-name-size, 14px); font-style: var(--rc-header-name-style, normal); color: var(--rc-header-name-color, white); }
-        .secondary { font-weight: var(--rc-header-info-weight, normal); font-size: var(--rc-header-info-size, 12px); font-style: var(--rc-header-info-style, normal); color: var(--rc-header-info-color, white); opacity: 0.9; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+        .primary { display: block; max-width: 100%; font-weight: var(--rc-header-name-weight, bold); font-size: var(--rc-header-name-size, 14px); font-style: var(--rc-header-name-style, normal); color: var(--rc-header-name-color, white); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .secondary { max-width: 100%; min-width: 0; font-weight: var(--rc-header-info-weight, normal); font-size: var(--rc-header-info-size, 12px); font-style: var(--rc-header-info-style, normal); color: var(--rc-header-info-color, white); opacity: 0.9; display: flex; flex-wrap: nowrap; gap: 6px; align-items: center; overflow: hidden; }
         .info-item { display: inline-flex; align-items: center; min-width: 0; }
         .info-item.badge { padding: 2px 6px; border-radius: 999px; }
         .chips { position: absolute; bottom: 8px; left: 8px; display: flex; gap: 6px; flex-wrap: wrap; z-index: 2; }
@@ -741,6 +747,17 @@ class OneLineRoomCard extends HTMLElement {
       }
     });
 
+    const textEl = this.shadowRoot.querySelector(".text");
+    const nameOffset = Number(c.header_name_offset ?? 0);
+    const infoOffset = Number(c.header_info_offset ?? 0);
+    if (textEl) textEl.style.flex = (nameOffset > 0 || infoOffset > 0) ? "1" : "";
+
+    // Title horizontal offset
+    this._applyHeaderOffset(nameEl, nameOffset, textEl);
+
+    // Info line horizontal offset
+    this._applyHeaderOffset(infoEl, infoOffset, textEl);
+
     const ch = this.shadowRoot.getElementById("chips");
     ch.innerHTML = "";
     let al = null;
@@ -885,6 +902,29 @@ class OneLineRoomCard extends HTMLElement {
     }
 
     return { color, bg, isUnavailable };
+  }
+
+  _getSafeHeaderOffset(requestedPercent, containerEl, itemEl) {
+    const requested = clampNum(requestedPercent, 0, 100, 0);
+    if (!containerEl || !itemEl || requested <= 0) return 0;
+    const containerWidth = containerEl.clientWidth || 0;
+    const itemWidth = Math.ceil(itemEl.scrollWidth || itemEl.getBoundingClientRect().width || 0);
+    if (containerWidth <= 0 || itemWidth <= 0) return requested;
+    const maxPercent = Math.max(0, ((containerWidth - itemWidth) / containerWidth) * 100);
+    return Math.min(requested, maxPercent);
+  }
+
+  _applyHeaderOffset(itemEl, requestedPercent, containerEl) {
+    if (!itemEl) return;
+    itemEl.style.marginLeft = "";
+    itemEl.style.marginRight = "";
+    const safeOffset = this._getSafeHeaderOffset(requestedPercent, containerEl, itemEl);
+    if (safeOffset <= 0) return;
+    if (safeOffset >= 99.5) {
+      itemEl.style.marginLeft = "auto";
+      return;
+    }
+    itemEl.style.marginLeft = `${safeOffset}%`;
   }
 
   _updateBtnState(btn, ctrl, h) {
@@ -1897,6 +1937,26 @@ class OneLineRoomCardEditor extends HTMLElement {
             </div>
           </div>
         </div>
+        <div style="margin-top:10px">
+          <div class="image-title" style="margin-bottom:4px">${getTranslation(h, "header_name_offset")}</div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <input type="range" id="name-offset-slider" min="0" max="100" step="1" style="flex:1;cursor:pointer;accent-color:var(--primary-color)">
+            <span id="name-offset-value" style="min-width:30px;text-align:right;font-size:12px;opacity:0.8;"></span>
+          </div>
+          <div style="display:flex;font-size:10px;opacity:0.55;margin-top:2px;pointer-events:none;margin-right:38px">
+            <span style="flex:1;text-align:left">&#9664; Links</span><span style="flex:1;text-align:center">Mitte</span><span style="flex:1;text-align:right">Rechts &#9654;</span>
+          </div>
+        </div>
+        <div style="margin-top:10px">
+          <div class="image-title" style="margin-bottom:4px">${getTranslation(h, "header_info_offset")}</div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <input type="range" id="info-offset-slider" min="0" max="100" step="1" style="flex:1;cursor:pointer;accent-color:var(--primary-color)">
+            <span id="info-offset-value" style="min-width:30px;text-align:right;font-size:12px;opacity:0.8;"></span>
+          </div>
+          <div style="display:flex;font-size:10px;opacity:0.55;margin-top:2px;pointer-events:none;margin-right:38px">
+            <span style="flex:1;text-align:left">&#9664; Links</span><span style="flex:1;text-align:center">Mitte</span><span style="flex:1;text-align:right">Rechts &#9654;</span>
+          </div>
+        </div>
         <ha-entity-picker label="${getTranslation(h, "main_climate")}" cfg="entity" class="i" include-domains='["climate"]' style="margin-top:8px"></ha-entity-picker>
         <div class="row" style="margin-top:8px; align-items:center">
           <ha-formfield label="${getTranslation(h, "force_color")}">
@@ -2230,6 +2290,44 @@ class OneLineRoomCardEditor extends HTMLElement {
       badgesHead.addEventListener("click", () => {
         this._badgesSectionOpen = !this._badgesSectionOpen;
         this._updateBadgesUI();
+      });
+    }
+    const nameOffsetSlider = this.shadowRoot.getElementById("name-offset-slider");
+    if (nameOffsetSlider) {
+      const INFO_SNAP = [0, 50, 100];
+      const nameOffsetValue = this.shadowRoot.getElementById("name-offset-value");
+      const INFO_SNAP_THRESHOLD = 5;
+      nameOffsetSlider.value = String(this._config?.header_name_offset ?? 0);
+      nameOffsetSlider.addEventListener("input", (ev) => {
+        ev.stopPropagation();
+        let val = parseInt(ev.target.value, 10);
+        for (const p of INFO_SNAP) {
+          if (Math.abs(val - p) <= INFO_SNAP_THRESHOLD) { val = p; break; }
+        }
+        ev.target.value = String(val);
+        if (nameOffsetValue) nameOffsetValue.textContent = `${val}%`;
+        const next = { ...this._config };
+        if (val > 0) next.header_name_offset = val; else delete next.header_name_offset;
+        this._fire(next);
+      });
+    }
+    const infoOffsetSlider = this.shadowRoot.getElementById("info-offset-slider");
+    if (infoOffsetSlider) {
+      const infoOffsetValue = this.shadowRoot.getElementById("info-offset-value");
+      const INFO_SNAP = [0, 50, 100];
+      const INFO_SNAP_THRESHOLD = 5;
+      infoOffsetSlider.value = String(this._config?.header_info_offset ?? 0);
+      infoOffsetSlider.addEventListener("input", (ev) => {
+        ev.stopPropagation();
+        let val = parseInt(ev.target.value, 10);
+        for (const p of INFO_SNAP) {
+          if (Math.abs(val - p) <= INFO_SNAP_THRESHOLD) { val = p; break; }
+        }
+        ev.target.value = String(val);
+        if (infoOffsetValue) infoOffsetValue.textContent = `${val}%`;
+        const next = { ...this._config };
+        if (val > 0) next.header_info_offset = val; else delete next.header_info_offset;
+        this._fire(next);
       });
     }
     const navSelect = this.shadowRoot.getElementById("nav-path");
@@ -3169,6 +3267,20 @@ class OneLineRoomCardEditor extends HTMLElement {
     if (windowClosedColorPicker) {
       const v = parseColorToPickerHex(this._config?.window_closed_color || "#9E9E9E");
       if (windowClosedColorPicker.value !== v) windowClosedColorPicker.value = v;
+    }
+    const infoOffsetSlider = this.shadowRoot.getElementById("info-offset-slider");
+    if (infoOffsetSlider) {
+      const infoOffsetValue = this.shadowRoot.getElementById("info-offset-value");
+      const v = String(this._config?.header_info_offset ?? 0);
+      if (infoOffsetSlider.value !== v) infoOffsetSlider.value = v;
+      if (infoOffsetValue) infoOffsetValue.textContent = `${v}%`;
+    }
+    const nameOffsetSlider = this.shadowRoot.getElementById("name-offset-slider");
+    if (nameOffsetSlider) {
+      const nameOffsetValue = this.shadowRoot.getElementById("name-offset-value");
+      const v = String(this._config?.header_name_offset ?? 0);
+      if (nameOffsetSlider.value !== v) nameOffsetSlider.value = v;
+      if (nameOffsetValue) nameOffsetValue.textContent = `${v}%`;
     }
   }
 

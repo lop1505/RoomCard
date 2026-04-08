@@ -105,4 +105,20 @@ controls:
 
 ---
 
+---
+
+### Info Line Position Slider (#47)
+
+A slider in the **Header** section lets you drag the info line (temperature, humidity, badges) left, center, or right across the card header.
+
+* Drag freely between 0 and 100.
+* Snaps automatically to **left (0)**, **center (50)**, and **right (100)** when within 5 units.
+* **YAML:** `header_info_offset: 50` (0 = left, 50 = center, 100 = right)
+
+| Option | Default | Effect |
+|---|---|---|
+| `header_info_offset` | `0` (left) | Horizontal position of the info line in the header (0–100) |
+
+---
+
 No breaking changes. Existing YAML configurations are unaffected.
