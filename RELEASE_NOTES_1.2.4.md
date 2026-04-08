@@ -123,4 +123,34 @@ A slider in the **Header** section lets you drag the info line (temperature, hum
 
 ---
 
+### Button Background Customization & CSS Properties (#46)
+
+You can now fully customize the background color of your buttons, visually in the editor or via YAML!
+
+**Via Editor / YAML:**
+* **Global Button Background:** Set a default background for all buttons via the **Buttons** tab visually (or `global_button_background: "rgba(255,0,0,0.2)"` in YAML).
+* **Per-Button Background:** Override the background for a specific button in its individual settings under "Button Background" (or `button_background` in YAML).
+
+**Via CSS Custom Properties (`card-mod`):**
+Advanced users can fully override button backgrounds and icon colors using CSS Custom Properties, taking precedence over the card's dynamic inline styles.
+
+**Available variables:**
+* `--rc-btn-bg` (default button background)
+* `--rc-btn-bg-hover` (hover state background)
+* `--rc-btn-bg-active` (active/pressed state background)
+* `--rc-icon-color` (button icon color)
+
+**Example with `card-mod`:**
+```yaml
+type: custom:oneline-room-card
+card_mod:
+  style: |
+    ha-card {
+      --rc-btn-bg: rgba(255, 0, 0, 0.1);
+      --rc-btn-bg-hover: rgba(255, 0, 0, 0.2);
+    }
+```
+
+---
+
 No breaking changes. Existing YAML configurations are unaffected.

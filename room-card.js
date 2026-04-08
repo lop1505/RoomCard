@@ -63,7 +63,9 @@ const TRANSLATIONS = {
     icon_size: "Icon Size", global_icon_size: "Global Icon Size (px)",
     header_info_offset: "Info Line Position",
     header_name_offset: "Title Position",
-    header_sync_offsets: "Synchronize Positions"
+    header_sync_offsets: "Synchronize Positions",
+    global_button_bg: "Global Button Background",
+    button_bg: "Button Background"
   },
   de: {
     empty: "Leer", low: "Niedrig", critical: "Kritisch", window: "Fenster", general: "Allgemein",
@@ -116,7 +118,9 @@ const TRANSLATIONS = {
     icon_size: "Icon-Größe", global_icon_size: "Globale Icon-Größe (px)",
     header_info_offset: "Info-Zeile Position",
     header_name_offset: "Titel Position",
-    header_sync_offsets: "Synchron Bewegen"
+    header_sync_offsets: "Synchron Bewegen",
+    global_button_bg: "Globaler Button Hintergrund",
+    button_bg: "Button Hintergrund"
   },
   fr: {
     empty: "Vide", low: "Faible", critical: "Critique", window: "Fenêtre", general: "Général",
@@ -169,7 +173,9 @@ const TRANSLATIONS = {
     icon_size: "Taille icône", global_icon_size: "Taille icône globale (px)",
     header_info_offset: "Position ligne info",
     header_name_offset: "Position titre",
-    header_sync_offsets: "Synchroniser les positions"
+    header_sync_offsets: "Synchroniser les positions",
+    global_button_bg: "Fond du bouton global",
+    button_bg: "Fond du bouton"
   }
 };
 
@@ -502,7 +508,7 @@ class OneLineRoomCard extends HTMLElement {
         .chip.info { background: #E3F2FD; color: #1976D2; }
         .chip.custom { background: var(--chip-bg); color: var(--chip-color); }
         .controls { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px; }
-        .btn { position: relative; display: flex; align-items: center; gap: 10px; padding: 0 10px; border-radius: 12px; cursor: pointer; background: var(--btn-bg, var(--card-background-color, rgba(128,128,128,0.05))); border: 1px solid transparent; flex-grow: 1; flex-shrink: 1; min-width: 0; overflow: hidden; box-sizing: border-box; transition: background 0.2s; user-select: none; -webkit-user-select: none; flex-basis: var(--btn-flex-basis, auto); height: var(--btn-height, 60px); justify-content: var(--btn-justify, center); }
+        .btn { position: relative; display: flex; align-items: center; gap: 10px; padding: 0 10px; border-radius: 12px; cursor: pointer; background: var(--rc-btn-bg, var(--btn-bg, var(--card-background-color, rgba(128,128,128,0.05)))); border: 1px solid transparent; flex-grow: 1; flex-shrink: 1; min-width: 0; overflow: hidden; box-sizing: border-box; transition: background 0.2s; user-select: none; -webkit-user-select: none; flex-basis: var(--btn-flex-basis, auto); height: var(--btn-height, 60px); justify-content: var(--btn-justify, center); }
         .btn.label-right { flex-direction: row; align-items: center; justify-content: var(--btn-justify, center); gap: 10px; padding: 0 10px; }
         .btn.label-left { flex-direction: row-reverse; align-items: center; justify-content: var(--btn-justify, center); gap: 10px; padding: 0 10px; }
         .btn.label-bottom { flex-direction: column; justify-content: flex-start; align-items: center; gap: 1px; padding: 2px 4px; overflow: hidden; }
@@ -521,17 +527,17 @@ class OneLineRoomCard extends HTMLElement {
         .btn.label-top .btn-state { font-size: 11px; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
         .btn.label-bottom .btn-name { font-size: 11px; line-height: 11px; }
         .btn.label-bottom .btn-state { font-size: 10px; line-height: 10px; margin-top: 0; }
-        .btn:hover { background: rgba(128,128,128,0.1); border-color: rgba(128,128,128,0.2); }
-        .btn:active { background: rgba(128,128,128,0.15); }
+        .btn:hover { background: var(--rc-btn-bg-hover, rgba(128,128,128,0.1)); border-color: rgba(128,128,128,0.2); }
+        .btn:active { background: var(--rc-btn-bg-active, rgba(128,128,128,0.15)); }
         .btn.state-unavailable { opacity: 0.56; }
         .btn.state-unavailable:hover,
-        .btn.state-unavailable:active { background: var(--btn-bg, var(--card-background-color, rgba(128,128,128,0.05))); border-color: transparent; }
+        .btn.state-unavailable:active { background: var(--rc-btn-bg, var(--btn-bg, var(--card-background-color, rgba(128,128,128,0.05)))); border-color: transparent; }
         .btn.state-unavailable .btn-name,
         .btn.state-unavailable .btn-state,
         .btn.state-unavailable ha-icon { color: var(--disabled-text-color, var(--secondary-text-color)); }
         .icon-box { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0; background: var(--icon-bg, transparent); }
         .btn-txt { display: flex; flex-direction: column; text-align: left; overflow: hidden; min-width: 0; flex: initial; max-width: 100%; }
-        .btn ha-icon { color: var(--icon-color, grey); --mdc-icon-size: 20px; }
+        .btn ha-icon { color: var(--rc-icon-color, var(--icon-color, grey)); --mdc-icon-size: 20px; }
         .btn-name { font-size: 13px; font-weight: 600; color: var(--primary-text-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
         .btn-state { font-size: 11px; color: var(--secondary-text-color); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
         .warn { position: absolute; top: 4px; right: 4px; color: #d32f2f; --mdc-icon-size: 16px; background: rgba(255,255,255,0.8); border-radius: 50%; padding: 1px; }
@@ -982,6 +988,10 @@ class OneLineRoomCard extends HTMLElement {
         }
       }
     }
+    
+    // Override with manual background configuration if provided
+    const manualBg = ctrl.button_background || this.config?.global_button_background || "";
+    if (manualBg) bg = manualBg;
 
     const nameTxt = isTemplate
       ? (tpl?.content || ctrl.name || "")
@@ -2052,6 +2062,10 @@ class OneLineRoomCardEditor extends HTMLElement {
           <ha-selector id="global-label-pos" label="${getTranslation(h, "label_position_all")}"></ha-selector>
           <ha-textfield id="global-icon-size" label="${getTranslation(h, "global_icon_size")}" type="number" style="max-width:140px" placeholder="20"></ha-textfield>
         </div>
+        <div class="cl-row" style="margin-top: 8px">
+          <ha-textfield id="global-btn-bg" cfg="global_button_background" label="${getTranslation(h, "global_button_bg")}" class="i"></ha-textfield>
+          <input type="color" id="global-btn-bg-picker" class="cp i-cp" cfg="global_button_background" style="margin-right: 0px">
+        </div>
         <details id="quick-add" class="qa" ${this._quickAddOpen ? "open" : ""}>
           <summary class="qa-summary">
             <div class="qa-title">${getTranslation(h, "quick_add_title")}</div>
@@ -2518,6 +2532,30 @@ class OneLineRoomCardEditor extends HTMLElement {
         this.renBtn();
       });
     }
+    const globalBtnBg = this.shadowRoot.getElementById("global-btn-bg");
+    const globalBtnBgPicker = this.shadowRoot.getElementById("global-btn-bg-picker");
+    if (globalBtnBg) {
+      globalBtnBg.value = this._config?.global_button_background || "";
+      globalBtnBg.addEventListener("change", (ev) => {
+        ev.stopPropagation();
+        const v = ev.target.value.trim();
+        const next = { ...this._config };
+        if (v) next.global_button_background = v; else delete next.global_button_background;
+        this._fire(next);
+        this.renBtn();
+      });
+      if (globalBtnBgPicker) {
+        globalBtnBgPicker.value = parseColorToPickerHex(this._config?.global_button_background || "#ffffff");
+        globalBtnBgPicker.addEventListener("input", (ev) => {
+          ev.stopPropagation();
+          const v = ev.target.value;
+          if (globalBtnBg.value !== v) globalBtnBg.value = v;
+          const next = { ...this._config, global_button_background: v };
+          this._fire(next);
+          this.renBtn();
+        });
+      }
+    }
     const updateQuickAddHints = () => {
       if (!tmplSelect || !tmplEntity) return;
       const template = this._getTemplateById(tmplSelect.value || "light");
@@ -2907,6 +2945,7 @@ class OneLineRoomCardEditor extends HTMLElement {
           <div class="row"><ha-selector class="ht" label="${getTranslation(h, "height")}"></ha-selector><ha-selector class="wd" label="${getTranslation(h, "width")}"></ha-selector></div>
           <div class="row" style="margin-top:8px; align-items:center"><ha-formfield label="${getTranslation(h, "force_color")}"><ha-switch class="fc"></ha-switch></ha-formfield></div>
           <div class="cl-row ${hideColor}"><ha-textfield class="cl" label="${getTranslation(h, "color")}"></ha-textfield><input type="color" class="cp cl-p"></div>
+          <div class="cl-row"><ha-textfield class="bg-txt" label="${getTranslation(h, "button_bg")}"></ha-textfield><input type="color" class="cp bg-cp"></div>
         </div>
         <details class="tmpl-only tmpl-details ${showTemplate}" ${isTemplate ? "open" : ""}>
           <summary>${getTranslation(h, "type_template")}</summary>
@@ -3063,7 +3102,9 @@ class OneLineRoomCardEditor extends HTMLElement {
       const nm = box.querySelector(".nm"); if (nm) { nm.value = ctrl.name || ""; nm.addEventListener("change", e => upd("name", e.target.value)); }
       const fc = box.querySelector(".fc"); if (fc) { fc.checked = ctrl.force_color === true; fc.addEventListener("change", e => { upd("force_color", e.target.checked); this.renBtn(); }); }
       const cl = box.querySelector(".cl"); if (cl) { cl.value = ctrl.color || ""; cl.addEventListener("change", e => upd("color", e.target.value)); }
-      const clp = box.querySelector(".cl-p"); if (clp) { clp.value = ctrl.color || "#000000"; clp.addEventListener("change", e => upd("color", e.target.value)); }
+      const clp = box.querySelector(".cl-p"); if (clp) { clp.value = parseColorToPickerHex(ctrl.color || "#000000"); clp.addEventListener("input", e => { if (cl) cl.value = e.target.value; upd("color", e.target.value); }); }
+      const bgTxt = box.querySelector(".bg-txt"); if (bgTxt) { bgTxt.value = ctrl.button_background || ""; bgTxt.addEventListener("change", e => { upd("button_background", e.target.value); this.renBtn(); }); }
+      const bgCp = box.querySelector(".bg-cp"); if (bgCp) { bgCp.value = parseColorToPickerHex(ctrl.button_background || "#ffffff"); bgCp.addEventListener("input", e => { if (bgTxt) bgTxt.value = e.target.value; upd("button_background", e.target.value); this.renBtn(); }); }
       const isz = box.querySelector(".isz"); if (isz) {
         const rawIsz = trimStr(ctrl.icon_size) || "";
         isz.value = /^\d+(\.\d+)?(px)?$/.test(rawIsz) ? rawIsz.replace("px", "") : rawIsz;
