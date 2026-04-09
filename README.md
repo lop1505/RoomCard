@@ -9,6 +9,8 @@ Developed with a focus on stability, simple design, and maximum flexibility.
 ![Preview](preview.png)
 ![Preview](preview_dark.png)
 
+![Preview](RoomCard%20Collapsed.png)
+
 ## ✨ Features
 
 * 🖱️ **Full Visual Editor:** No YAML required. The optimized editor ensures smooth configuration without focus loss.
