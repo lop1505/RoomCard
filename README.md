@@ -9,6 +9,8 @@ Developed with a focus on stability, simple design, and maximum flexibility.
 ![Preview](preview.png)
 ![Preview](preview_dark.png)
 
+**Collapsed**
+
 ![Preview](RoomCard%20Collapsed.png)
 
 ## ✨ Features
