@@ -1,8 +1,10 @@
 # OneLine Room Card
 
+[![Home Assistant](https://img.shields.io/badge/Home%20Assistant-%2341BDF5.svg?logo=home-assistant&logoColor=white)](https://www.home-assistant.io)
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
 [![version](https://img.shields.io/github/v/release/lop1505/RoomCard)](https://github.com/lop1505/RoomCard/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/lop1505/RoomCard)](https://github.com/lop1505/RoomCard/stargazers)
 
 A clean, performant, and fully visually configurable room card for Home Assistant.
 Developed with a focus on stability, simple design, and maximum flexibility.
