@@ -6,6 +6,8 @@ All notable changes to OneLine Room Card are documented here.
 
 ## [1.2.5]
 
+* Refactor Editor UI: **Simplified Manual Color Logic** — removed the `force_color` (header) and `force_color` (buttons) toggle. Manual colors are now applied automatically whenever a value is present in the `color` field. Closes [#59](https://github.com/lop1505/RoomCard/issues/59).
+* Refactor Editor UI: **Compact "Card Behavior" section** — merged Name/Title Visibility into one row and combined Collapsible/Default State into a single unified "Behavior" dropdown.
 * Editor UX: **Fix scroll jump in button editor** — the editor dialog no longer scrolls back to the top of the button section after every config change (toggle, dropdown, text input). Closes [#68](https://github.com/lop1505/RoomCard/issues/68).
 
 ---

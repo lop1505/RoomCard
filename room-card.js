@@ -56,7 +56,8 @@ const TRANSLATIONS = {
     header_height: "Header Height (px)",
     typography: "Header Typography", name_font: "Room Name Font", info_font: "Info Line Font",
     font_size: "Size (px)", font_weight: "Weight", font_style: "Style", font_color: "Color", badge_bg: "Badge Background",
-    card_behavior: "Card Behavior", header: "Header", configuration: "Configuration",
+    card_behavior: "Card Behavior", behavior: "Collapse Mode", behavior_fixed: "Disabled", behavior_collapsed: "Collapsed", behavior_expanded: "Expanded",
+    header: "Header", configuration: "Configuration",
     color_map: "State Colors", color_map_add: "Add State Color", color_map_state: "State",
     window_always_show: "Always Show (incl. closed)", window_open_color: "Open Color", window_closed_color: "Closed Color",
     sensors: "Sensors",
@@ -117,7 +118,11 @@ const TRANSLATIONS = {
     header_height: "Kopfzeilenhöhe (px)",
     typography: "Header Typografie", name_font: "Raumname Schrift", info_font: "Info-Zeile Schrift",
     font_size: "Größe (px)", font_weight: "Gewicht", font_style: "Stil", font_color: "Farbe", badge_bg: "Badge Hintergrund",
-    card_behavior: "Kartenverhalten", header: "Header", configuration: "Konfiguration",
+    card_behavior: "Kartenverhalten", behavior: "Einklapp-Modus",
+    behavior_fixed: "Deaktiviert",
+    behavior_collapsed: "Eingeklappt",
+    behavior_expanded: "Ausgeklappt",
+    header: "Header", configuration: "Konfiguration",
     color_map: "Zustandsfarben", color_map_add: "Farbe hinzufügen", color_map_state: "Zustand",
     window_always_show: "Immer anzeigen (auch geschlossen)", window_open_color: "Farbe geöffnet", window_closed_color: "Farbe geschlossen",
     sensors: "Sensoren",
@@ -344,11 +349,7 @@ const isEntityActive = (stateObj, entityId) => {
   return false;
 };
 
-const isHeaderForceColorEnabled = (config) => {
-  if (typeof config?.header_force_color === "boolean") return config.header_force_color;
-  // Backward-compat: legacy header color behaved as always-forced.
-  return !!trimStr(config?.color);
-};
+const isHeaderManualColorEnabled = (config) => !!trimStr(config?.color);
 
 const resolveLabelPosition = (btn, config) => {
   const globalPos = config?.global_label_position ?? config?.buttons_label_position ?? "right";
@@ -722,11 +723,11 @@ class OneLineRoomCard extends HTMLElement {
     const ico = this.shadowRoot.getElementById("icon");
     ico.icon = c.icon || "mdi:home";
     // Priority: force/manual > dynamic state color > default/theme fallback.
-    const headerForceColor = isHeaderForceColorEnabled(c);
+    const headerManualColor = isHeaderManualColorEnabled(c);
     const headerColors = this._resolveEntityIconColors(effectiveEntity, h, {
       defaultColor: "",
       defaultBg: "transparent",
-      forceColor: headerForceColor ? c.color : ""
+      forceColor: headerManualColor ? c.color : ""
     });
     if (headerColors.color) ico.style.setProperty("--icon-color", headerColors.color);
     else ico.style.removeProperty("--icon-color");
@@ -995,13 +996,13 @@ class OneLineRoomCard extends HTMLElement {
       const resolved = this._resolveEntityIconColors(ctrl.entity, h, {
         defaultColor: "grey",
         defaultBg: "rgba(128,128,128,0.1)",
-        forceColor: ctrl.force_color ? ctrl.color : ""
+        forceColor: ctrl.color || ""
       });
       col = resolved.color;
       bg = resolved.bg;
       isUnavail = resolved.isUnavailable;
-      // color_map: per-state color override (lower priority than force_color)
-      if (!ctrl.force_color && ctrl.color_map && !isUnavail) {
+      // color_map: per-state color override (lower priority than manual color)
+      if (!ctrl.color && ctrl.color_map && !isUnavail) {
         const normMap = Object.fromEntries(
           Object.entries(ctrl.color_map).map(([k, v]) => [
             k === true ? "on" : k === false ? "off" : String(k), v
@@ -1951,6 +1952,23 @@ class OneLineRoomCardEditor extends HTMLElement {
         .upload-hidden { display: none; }
         .cl-row { display: flex; gap: 8px; align-items: center; }
         .cp { width: 50px; height: 40px; border: 1px solid var(--divider-color); background: none; padding: 2px; border-radius: 4px; cursor: pointer; flex-shrink: 0; }
+        .color-container { position: relative; display: flex; align-items: flex-end; }
+        .color-popover {
+          position: absolute;
+          bottom: 100%;
+          right: 0;
+          background: #2c2c2c;
+          color: white;
+          padding: 8px;
+          border-radius: 6px;
+          box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+          display: none;
+          z-index: 1000;
+          margin-bottom: 10px;
+          border: 1px solid #444;
+          width: 90px;
+        }
+        .color-container:hover .color-popover, .color-container:focus-within .color-popover { display: block; }
         .hidden { display: none !important; }
         .qa-native-select { width: 100%; height: 56px; padding: 0 36px 0 16px; border: 1px solid var(--divider-color, rgba(0,0,0,0.38)); border-radius: 4px; background: transparent; color: var(--primary-text-color); font-size: 16px; font-family: var(--mdc-typography-body1-font-family, var(--mdc-typography-font-family, Roboto, sans-serif)); cursor: pointer; box-sizing: border-box; appearance: auto; -webkit-appearance: auto; outline: none; transition: border-color 0.15s ease; }
         .qa-native-select:hover { border-color: var(--primary-text-color, rgba(0,0,0,0.87)); }
@@ -1973,22 +1991,18 @@ class OneLineRoomCardEditor extends HTMLElement {
           <ha-icon id="card-beh-chev" icon="mdi:chevron-right" style="--mdc-icon-size:18px;opacity:0.7;transition:transform 0.15s ease"></ha-icon>
         </div>
         <div id="card-beh-content">
-        <div class="row" style="margin-top:8px; align-items:center">
+        <div class="row" style="margin-bottom:12px; align-items:center">
           <ha-formfield label="${getTranslation(h, "live_preview")}">
             <ha-switch id="live-preview-toggle" checked></ha-switch>
           </ha-formfield>
         </div>
-        <ha-textfield label="${getTranslation(h, "name")}" cfg="name" class="i"></ha-textfield>
-        <div class="row" style="margin-top:4px; align-items:center; margin-bottom:8px">
-          <ha-formfield label="${getTranslation(h, "show_name")}">
-            <ha-switch id="show-name-toggle" checked></ha-switch>
-          </ha-formfield>
-          <ha-formfield label="${getTranslation(h, "collapsible")}">
-            <ha-switch id="collapsible-toggle"></ha-switch>
-          </ha-formfield>
-        </div>
-        <div id="default-state-row" class="row hidden">
-          <ha-selector id="default-state-sel" label="${getTranslation(h, "default_state")}"></ha-selector>
+        <div style="display: flex; align-items: flex-end; gap: 12px;">
+          <div style="position: relative; flex: 1.2; display: flex; align-items: flex-end;">
+            <ha-textfield label="${getTranslation(h, "name")}" cfg="name" class="i" style="width: 100%;"></ha-textfield>
+            <ha-switch id="show-name-toggle" checked title="${getTranslation(h, "show_name")}" 
+                       style="position: absolute; right: 8px; bottom: 28px; --mdc-switch-size: 20px; z-index: 1; transform: scale(0.8);"></ha-switch>
+          </div>
+          <ha-selector id="behavior-sel" label="${getTranslation(h, "behavior")}" style="flex: 1;"></ha-selector>
         </div>
         <ha-selector id="nav-path" label="${getTranslation(h, "path")}" style="margin-top:12px"></ha-selector>
         </div>
@@ -1999,8 +2013,20 @@ class OneLineRoomCardEditor extends HTMLElement {
           <ha-icon id="header-sec-chev" icon="mdi:chevron-right" style="--mdc-icon-size:18px;opacity:0.7;transition:transform 0.15s ease"></ha-icon>
         </div>
         <div id="header-sec-content">
-        <ha-textfield label="${getTranslation(h, "header_height")}" cfg="header_height" class="i" type="number" min="0" max="400" style="width:100%;margin-top:4px" placeholder="120"></ha-textfield>
-        <div id="typo-sec" class="manual-sec" style="margin-top:8px">
+        <div class="row" style="margin-top:4px; align-items: flex-end; gap: 12px;">
+          <ha-textfield label="${getTranslation(h, "header_height")}" cfg="header_height" class="i" type="number" min="0" max="400" style="flex:1" placeholder="120"></ha-textfield>
+          <div style="position: relative; flex: 1.2; display: flex; align-items: flex-end;">
+            <ha-icon-picker label="${getTranslation(h, "icon")}" cfg="icon" class="i" style="width: 100%;"></ha-icon-picker>
+            <div class="color-container" style="position: absolute; right: 8px; bottom: 8px; z-index: 1;">
+               <div class="color-popover">
+                  <ha-textfield cfg="color" class="i" placeholder="#hex" style="width: 100%; margin-bottom: 0; --mdc-text-field-fill-color: rgba(255,255,255,0.1); --mdc-text-field-ink-color: white;"></ha-textfield>
+               </div>
+               <input type="color" class="cp i-cp" cfg="color" title="${getTranslation(h, "color")}" 
+                      style="width: 24px; height: 24px; padding: 0; border: 1px solid var(--divider-color); cursor: pointer; border-radius: 4px; background: none;">
+            </div>
+          </div>
+        </div>
+        <div id="typo-sec" class="manual-sec" style="margin-top:12px">
           <div id="typo-head" class="manual-head">
             <span id="typo-title" class="manual-title" style="display:flex;align-items:center;gap:6px"><ha-icon icon="mdi:format-text" style="--mdc-icon-size:16px;opacity:0.7"></ha-icon>${getTranslation(h, "typography")}</span>
             <ha-icon id="typo-chev" class="manual-chev" icon="mdi:chevron-right"></ha-icon>
@@ -2011,11 +2037,16 @@ class OneLineRoomCardEditor extends HTMLElement {
               <ha-textfield label="${getTranslation(h, "font_size")}" cfg="header_name_size" class="i" type="number" placeholder="14"></ha-textfield>
               <ha-selector id="header-name-weight-sel" label="${getTranslation(h, "font_weight")}"></ha-selector>
             </div>
-            <div class="row">
-              <ha-selector id="header-name-style-sel" label="${getTranslation(h, "font_style")}"></ha-selector>
-              <div class="cl-row">
-                <ha-textfield id="header-name-color" label="${getTranslation(h, "font_color")}" placeholder="#ffffff"></ha-textfield>
-                <input type="color" id="header-name-color-picker" class="cp" value="#ffffff">
+            <div class="row" style="align-items: flex-end;">
+              <div style="position: relative; flex: 1; display: flex; align-items: flex-end;">
+                <ha-selector id="header-name-style-sel" label="${getTranslation(h, "font_style")}" style="width: 100%;"></ha-selector>
+                <div class="color-container" style="position: absolute; right: 8px; bottom: 8px; z-index: 1;">
+                   <div class="color-popover">
+                      <ha-textfield id="header-name-color" class="i" placeholder="#hex" style="width: 100%; margin-bottom: 0; --mdc-text-field-fill-color: rgba(255,255,255,0.1); --mdc-text-field-ink-color: white;"></ha-textfield>
+                   </div>
+                   <input type="color" id="header-name-color-picker" class="cp cl-p" title="${getTranslation(h, "color")}" 
+                          style="width: 24px; height: 24px; padding: 0; border: 1px solid var(--divider-color); cursor: pointer; border-radius: 4px; background: none;">
+                </div>
               </div>
             </div>
             <div class="image-title" style="margin:12px 0 8px">${getTranslation(h, "info_font")}</div>
@@ -2023,21 +2054,32 @@ class OneLineRoomCardEditor extends HTMLElement {
               <ha-textfield label="${getTranslation(h, "font_size")}" cfg="header_info_size" class="i" type="number" placeholder="12"></ha-textfield>
               <ha-selector id="header-info-weight-sel" label="${getTranslation(h, "font_weight")}"></ha-selector>
             </div>
-            <div class="row">
-              <ha-selector id="header-info-style-sel" label="${getTranslation(h, "font_style")}"></ha-selector>
-              <div class="cl-row">
-                <ha-textfield id="header-info-color" label="${getTranslation(h, "font_color")}" placeholder="#ffffff"></ha-textfield>
-                <input type="color" id="header-info-color-picker" class="cp" value="#ffffff">
+            <div class="row" style="align-items: flex-end;">
+              <div style="position: relative; flex: 1; display: flex; align-items: flex-end;">
+                <ha-selector id="header-info-style-sel" label="${getTranslation(h, "font_style")}" style="width: 100%;"></ha-selector>
+                <div class="color-container" style="position: absolute; right: 8px; bottom: 8px; z-index: 1;">
+                   <div class="color-popover">
+                      <ha-textfield id="header-info-color" class="i" placeholder="#hex" style="width: 100%; margin-bottom: 0; --mdc-text-field-fill-color: rgba(255,255,255,0.1); --mdc-text-field-ink-color: white;"></ha-textfield>
+                   </div>
+                   <input type="color" id="header-info-color-picker" class="cp cl-p" title="${getTranslation(h, "color")}" 
+                          style="width: 24px; height: 24px; padding: 0; border: 1px solid var(--divider-color); cursor: pointer; border-radius: 4px; background: none;">
+                </div>
               </div>
             </div>
             <div class="image-title" style="margin:12px 0 8px">${getTranslation(h, "badge_bg")}</div>
-            <div class="cl-row">
-              <ha-textfield id="standard-badge-bg" label="${getTranslation(h, "standard_badge_background")}"></ha-textfield>
-              <input type="color" id="standard-badge-bg-picker" class="cp">
+            <div style="position: relative; display: flex; align-items: flex-end;">
+              <ha-textfield id="standard-badge-bg" label="${getTranslation(h, "standard_badge_background")}" style="width: 100%"></ha-textfield>
+              <div class="color-container" style="position: absolute; right: 8px; bottom: 8px; z-index: 1;">
+                 <div class="color-popover">
+                    <ha-textfield id="standard-badge-bg-popover" class="i" placeholder="#hex" style="width: 100%; margin-bottom: 0; --mdc-text-field-fill-color: rgba(255,255,255,0.1); --mdc-text-field-ink-color: white;"></ha-textfield>
+                 </div>
+                 <input type="color" id="standard-badge-bg-picker" class="cp cl-p" title="${getTranslation(h, "color")}" 
+                        style="width: 24px; height: 24px; padding: 0; border: 1px solid var(--divider-color); cursor: pointer; border-radius: 4px; background: none;">
+              </div>
             </div>
           </div>
         </div>
-        <div class="row" style="margin-top:10px; align-items:center; margin-bottom: 4px;">
+        <div class="row" style="margin-top:12px; align-items:center; margin-bottom: 4px;">
           <ha-formfield label="${getTranslation(h, "header_sync_offsets")}">
             <ha-switch id="sync-offsets-toggle"></ha-switch>
           </ha-formfield>
@@ -2062,19 +2104,7 @@ class OneLineRoomCardEditor extends HTMLElement {
             <span style="flex:1;text-align:left">&#9664; Links</span><span style="flex:1;text-align:center">Mitte</span><span style="flex:1;text-align:right">Rechts &#9654;</span>
           </div>
         </div>
-        <ha-entity-picker label="${getTranslation(h, "main_climate")}" cfg="entity" class="i" include-domains='["climate"]' style="margin-top:8px"></ha-entity-picker>
-        <div class="row" style="margin-top:8px; align-items:center">
-          <ha-formfield label="${getTranslation(h, "force_color")}">
-            <ha-switch id="header-force-color"></ha-switch>
-          </ha-formfield>
-        </div>
-        <div class="row">
-          <ha-icon-picker label="${getTranslation(h, "icon")}" cfg="icon" class="i"></ha-icon-picker>
-          <div id="header-color-row" class="cl-row">
-            <ha-textfield label="${getTranslation(h, "color")}" cfg="color" class="i"></ha-textfield>
-            <input type="color" class="cp i-cp" cfg="color">
-          </div>
-        </div>
+        <ha-entity-picker label="${getTranslation(h, "main_climate")}" cfg="entity" class="i" include-domains='["climate"]' style="margin-top:12px"></ha-entity-picker>
         <div id="badges-sec" class="badges-sec">
           <div id="badges-head" class="badges-head">
             <span id="badges-title" class="badges-title"></span>
@@ -2121,13 +2151,25 @@ class OneLineRoomCardEditor extends HTMLElement {
             <ha-formfield id="window-always-show-field" label="${getTranslation(h, "window_always_show")}" style="display:flex;align-items:center;margin:4px 0">
               <ha-switch id="window-always-show"></ha-switch>
             </ha-formfield>
-            <div style="display:flex;gap:8px;align-items:center;margin-top:4px">
-              <ha-textfield id="window-open-color" cfg="window_open_color" class="i" label="${getTranslation(h, "window_open_color")}" style="flex:1" placeholder="#FFA000"></ha-textfield>
-              <input type="color" id="window-open-color-picker" class="cp">
+            <div id="window-open-color-row" style="position: relative; display: flex; align-items: flex-end; margin-top: 8px;">
+              <ha-textfield label="${getTranslation(h, "window_open_color")}" id="window-open-color" cfg="window_open_color" style="width: 100%"></ha-textfield>
+              <div class="color-container" style="position: absolute; right: 8px; bottom: 8px; z-index: 1;">
+                 <div class="color-popover">
+                    <ha-textfield id="window-open-color-popover" class="i" cfg="window_open_color" placeholder="#hex" style="width: 100%; margin-bottom: 0; --mdc-text-field-fill-color: rgba(255,255,255,0.1); --mdc-text-field-ink-color: white;"></ha-textfield>
+                 </div>
+                 <input type="color" id="window-open-color-picker" class="cp cl-p" title="${getTranslation(h, "color")}" 
+                        style="width: 24px; height: 24px; padding: 0; border: 1px solid var(--divider-color); cursor: pointer; border-radius: 4px; background: none;">
+              </div>
             </div>
-            <div id="window-closed-color-row" style="display:flex;gap:8px;align-items:center;margin-top:4px">
-              <ha-textfield id="window-closed-color" cfg="window_closed_color" class="i" label="${getTranslation(h, "window_closed_color")}" style="flex:1" placeholder="#9E9E9E"></ha-textfield>
-              <input type="color" id="window-closed-color-picker" class="cp">
+            <div id="window-closed-color-row" style="position: relative; display: flex; align-items: flex-end; margin-top: 8px;">
+              <ha-textfield label="${getTranslation(h, "window_closed_color")}" id="window-closed-color" cfg="window_closed_color" style="width: 100%"></ha-textfield>
+              <div class="color-container" style="position: absolute; right: 8px; bottom: 8px; z-index: 1;">
+                 <div class="color-popover">
+                    <ha-textfield id="window-closed-color-popover" class="i" cfg="window_closed_color" placeholder="#hex" style="width: 100%; margin-bottom: 0; --mdc-text-field-fill-color: rgba(255,255,255,0.1); --mdc-text-field-ink-color: white;"></ha-textfield>
+                 </div>
+                 <input type="color" id="window-closed-color-picker" class="cp cl-p" title="${getTranslation(h, "color")}" 
+                        style="width: 24px; height: 24px; padding: 0; border: 1px solid var(--divider-color); cursor: pointer; border-radius: 4px; background: none;">
+              </div>
             </div>
             <div style="border-top:1px solid var(--divider-color);margin:10px 0 8px"></div>
             <div class="image-title" style="font-size:11px;font-weight:600;opacity:0.6;margin-bottom:6px">${getTranslation(h, "battery_label")}</div>
@@ -2492,48 +2534,43 @@ class OneLineRoomCardEditor extends HTMLElement {
         if (enabled && !wasEnabled) this._flushPendingConfig();
       });
     }
-    const showNameToggleEl = this.shadowRoot.getElementById("show-name-toggle");
-    if (showNameToggleEl) {
-      showNameToggleEl.checked = this._config?.show_name !== false;
-      showNameToggleEl.addEventListener("change", (ev) => {
+    const showNameToggle = this.shadowRoot.getElementById("show-name-toggle");
+    if (showNameToggle) {
+      showNameToggle.checked = this._config?.show_name !== false;
+      showNameToggle.addEventListener("change", (ev) => {
         ev.stopPropagation();
         this._fire({ ...this._config, show_name: ev.target.checked !== false });
       });
     }
-    const collapsibleToggle = this.shadowRoot.getElementById("collapsible-toggle");
-    const defaultStateRow = this.shadowRoot.getElementById("default-state-row");
-    const defaultStateSel = this.shadowRoot.getElementById("default-state-sel");
-    const updateDefaultStateVisibility = () => {
-      if (!defaultStateRow) return;
-      defaultStateRow.classList.toggle("hidden", !(this._config?.collapsible === true));
-    };
-    if (collapsibleToggle) {
-      collapsibleToggle.checked = this._config?.collapsible === true;
-      updateDefaultStateVisibility();
-      collapsibleToggle.addEventListener("change", (ev) => {
-        ev.stopPropagation();
-        const enabled = ev.target.checked === true;
-        this._fire({ ...this._config, collapsible: enabled || undefined });
-        updateDefaultStateVisibility();
-      });
-    }
-    if (defaultStateSel) {
-      defaultStateSel.hass = h;
-      defaultStateSel.selector = {
+    const behaviorSel = this.shadowRoot.getElementById("behavior-sel");
+    if (behaviorSel) {
+      behaviorSel.hass = h;
+      behaviorSel.selector = {
         select: {
           mode: "dropdown", options: [
-            { value: "expanded", label: getTranslation(h, "state_expanded") },
-            { value: "collapsed", label: getTranslation(h, "state_collapsed") }
+            { value: "fixed", label: getTranslation(h, "behavior_fixed") },
+            { value: "collapsed", label: getTranslation(h, "behavior_collapsed") },
+            { value: "expanded", label: getTranslation(h, "behavior_expanded") }
           ]
         }
       };
-      defaultStateSel.value = this._config?.default_state || "expanded";
-      defaultStateSel.addEventListener("value-changed", (ev) => {
+      const isCollapsible = this._config?.collapsible === true;
+      const isCollapsed = this._config?.default_state === "collapsed";
+      behaviorSel.value = !isCollapsible ? "fixed" : (isCollapsed ? "collapsed" : "expanded");
+      behaviorSel.addEventListener("value-changed", (ev) => {
         ev.stopPropagation();
         const v = ev.detail?.value || "expanded";
         const next = { ...this._config };
-        if (v === "collapsed") next.default_state = "collapsed";
-        else delete next.default_state;
+        if (v === "fixed") {
+          delete next.collapsible;
+          delete next.default_state;
+        } else if (v === "collapsed") {
+          next.collapsible = true;
+          next.default_state = "collapsed";
+        } else {
+          next.collapsible = true;
+          delete next.default_state;
+        }
         this._fire(next);
       });
     }
@@ -2560,23 +2597,6 @@ class OneLineRoomCardEditor extends HTMLElement {
         const next = { ...this._config, header_info_background: value };
         this._fire(next);
         if (standardBadgeBg) standardBadgeBg.value = value;
-      });
-    }
-    const headerForceToggle = this.shadowRoot.getElementById("header-force-color");
-    const headerColorRow = this.shadowRoot.getElementById("header-color-row");
-    const updateHeaderColorUi = () => {
-      if (!headerForceToggle) return;
-      const enabled = headerForceToggle.checked === true;
-      if (headerColorRow) headerColorRow.classList.toggle("hidden", !enabled);
-    };
-    if (headerForceToggle) {
-      headerForceToggle.checked = isHeaderForceColorEnabled(this._config);
-      updateHeaderColorUi();
-      headerForceToggle.addEventListener("change", (ev) => {
-        ev.stopPropagation();
-        const enabled = ev.target.checked === true;
-        this._fire({ ...this._config, header_force_color: enabled });
-        updateHeaderColorUi();
       });
     }
     this._applyNavSelectorOptions();
@@ -2898,27 +2918,40 @@ class OneLineRoomCardEditor extends HTMLElement {
       bgField.label = getTranslation(h, "badge_background");
       bgField.placeholder = "rgba(255,255,255,0.25)";
       bgField.value = badge.background || "";
-      bgField.style.flex = "1";
       bgField.addEventListener("change", (ev) => {
         ev.stopPropagation();
-        const v = trimStr(ev.target.value || "");
-        const arr = [...(this._config?.header_badges || [])];
-        const next = { ...arr[idx] };
-        if (v) next.background = v; else delete next.background;
-        arr[idx] = next;
-        this._fire({ ...this._config, header_badges: arr });
+        updBadge(idx, "background", trimStr(ev.target.value || ""));
       });
       bgRow.appendChild(bgField);
 
+      const colorContainer = document.createElement("div");
+      colorContainer.className = "color-container";
+      colorContainer.style.cssText = "position: absolute; right: 8px; bottom: 8px; z-index: 1;";
+
+      const popover = document.createElement("div");
+      popover.className = "color-popover";
+      const popoverField = document.createElement("ha-textfield");
+      popoverField.placeholder = "#hex";
+      popoverField.style.cssText = "width: 100%; margin-bottom: 0; --mdc-text-field-fill-color: rgba(255,255,255,0.1); --mdc-text-field-ink-color: white;";
+      popoverField.value = badge.background || "";
+      popoverField.addEventListener("change", (ev) => {
+        ev.stopPropagation();
+        updBadge(idx, "background", trimStr(ev.target.value || ""));
+      });
+      popover.appendChild(popoverField);
+      colorContainer.appendChild(popover);
+
       const bgPicker = document.createElement("input");
       bgPicker.type = "color";
-      bgPicker.className = "cp";
+      bgPicker.className = "cp cl-p";
+      bgPicker.style.cssText = "width: 24px; height: 24px; padding: 0; border: 1px solid var(--divider-color); cursor: pointer; border-radius: 4px; background: none;";
       bgPicker.value = parseColorToPickerHex(badge.background);
       bgPicker.addEventListener("change", (ev) => {
         ev.stopPropagation();
         updBadge(idx, "background", hexToRgba(ev.target.value, 0.35));
       });
-      bgRow.appendChild(bgPicker);
+      colorContainer.appendChild(bgPicker);
+      bgRow.appendChild(colorContainer);
 
       box.appendChild(bgRow);
 
@@ -3028,7 +3061,7 @@ class OneLineRoomCardEditor extends HTMLElement {
       const isTemplate = ctrl.type === "template";
       const hideEntity = isTemplate ? "hidden" : "";
       const showTemplate = isTemplate ? "" : "hidden";
-      const hideColor = !ctrl.force_color ? "hidden" : "";
+      const hideColor = "";
       const showNav = ctrl.tap_action?.action === "navigate" ? "" : "hidden";
       const key = this._controlIds[i] || this._makeControlId();
       this._controlIds[i] = key;
@@ -3052,11 +3085,30 @@ class OneLineRoomCardEditor extends HTMLElement {
         <div class="entity-only ${hideEntity}">
           <div class="dv-wrap"></div>
           <ha-entity-picker class="ep" label="${getTranslation(h, "entity")}"></ha-entity-picker>
-          <div class="row"><ha-textfield class="nm" label="${getTranslation(h, "name")}"></ha-textfield><ha-icon-picker class="ic" label="${getTranslation(h, "icon")}"></ha-icon-picker></div>
-          <div class="row"><ha-selector class="ht" label="${getTranslation(h, "height")}"></ha-selector><ha-selector class="wd" label="${getTranslation(h, "width")}"></ha-selector></div>
-          <div class="row" style="margin-top:8px; align-items:center"><ha-formfield label="${getTranslation(h, "force_color")}"><ha-switch class="fc"></ha-switch></ha-formfield></div>
-          <div class="cl-row ${hideColor}"><ha-textfield class="cl" label="${getTranslation(h, "color")}"></ha-textfield><input type="color" class="cp cl-p"></div>
-          <div class="cl-row"><ha-textfield class="bg-txt" label="${getTranslation(h, "button_bg")}"></ha-textfield><input type="color" class="cp bg-cp"></div>
+          <div class="row" style="align-items: flex-end;">
+            <ha-textfield class="nm" label="${getTranslation(h, "name")}"></ha-textfield>
+            <div style="position: relative; flex: 1; display: flex; align-items: flex-end;">
+              <ha-icon-picker class="ic" label="${getTranslation(h, "icon")}" style="width: 100%;"></ha-icon-picker>
+              <div class="color-container" style="position: absolute; right: 8px; bottom: 8px; z-index: 1;">
+                 <div class="color-popover">
+                    <ha-textfield class="cl-pop" placeholder="#hex" style="width: 100%; margin-bottom: 0; --mdc-text-field-fill-color: rgba(255,255,255,0.1); --mdc-text-field-ink-color: white;"></ha-textfield>
+                 </div>
+                 <input type="color" class="cp cl-p" title="${getTranslation(h, "color")}" 
+                        style="width: 24px; height: 24px; padding: 0; border: 1px solid var(--divider-color); cursor: pointer; border-radius: 4px; background: none;">
+              </div>
+            </div>
+          </div>
+          <div class="row" style="align-items: flex-end;"><ha-selector class="ht" label="${getTranslation(h, "height")}"></ha-selector><ha-selector class="wd" label="${getTranslation(h, "width")}"></ha-selector></div>
+          <div style="position: relative; display: flex; align-items: flex-end; margin-top: 8px;">
+            <ha-textfield class="bg-txt" label="${getTranslation(h, "button_bg")}" style="width: 100%"></ha-textfield>
+            <div class="color-container" style="position: absolute; right: 8px; bottom: 8px; z-index: 1;">
+               <div class="color-popover">
+                  <ha-textfield class="bg-txt-pop" placeholder="#hex" style="width: 100%; margin-bottom: 0; --mdc-text-field-fill-color: rgba(255,255,255,0.1); --mdc-text-field-ink-color: white;"></ha-textfield>
+               </div>
+               <input type="color" class="cp bg-cp" title="${getTranslation(h, "color")}" 
+                      style="width: 24px; height: 24px; padding: 0; border: 1px solid var(--divider-color); cursor: pointer; border-radius: 4px; background: none;">
+            </div>
+          </div>
         </div>
         <details class="tmpl-only tmpl-details ${showTemplate}" ${isTemplate ? "open" : ""}>
           <summary>${getTranslation(h, "type_template")}</summary>
@@ -3235,11 +3287,59 @@ class OneLineRoomCardEditor extends HTMLElement {
         dvWrap.appendChild(dv);
       }
       const nm = box.querySelector(".nm"); if (nm) { nm.value = ctrl.name || ""; nm.addEventListener("change", e => upd("name", e.target.value)); }
-      const fc = box.querySelector(".fc"); if (fc) { fc.checked = ctrl.force_color === true; fc.addEventListener("change", e => { upd("force_color", e.target.checked); this.renBtn(); }); }
-      const cl = box.querySelector(".cl"); if (cl) { cl.value = ctrl.color || ""; cl.addEventListener("change", e => upd("color", e.target.value)); }
-      const clp = box.querySelector(".cl-p"); if (clp) { clp.value = parseColorToPickerHex(ctrl.color || "#000000"); clp.addEventListener("input", e => { if (cl) cl.value = e.target.value; upd("color", e.target.value); }); }
-      const bgTxt = box.querySelector(".bg-txt"); if (bgTxt) { bgTxt.value = ctrl.button_background || ""; bgTxt.addEventListener("change", e => { upd("button_background", e.target.value); this.renBtn(); }); }
-      const bgCp = box.querySelector(".bg-cp"); if (bgCp) { bgCp.value = parseColorToPickerHex(ctrl.button_background || "#ffffff"); bgCp.addEventListener("input", e => { if (bgTxt) bgTxt.value = e.target.value; upd("button_background", e.target.value); this.renBtn(); }); }
+      
+      const clPop = box.querySelector(".cl-pop");
+      const clp = box.querySelector(".cl-p");
+      if (clPop) {
+        clPop.value = ctrl.color || "";
+        clPop.addEventListener("change", e => {
+          const val = e.target.value;
+          upd("color", val);
+          if (clp) clp.value = parseColorToPickerHex(val);
+        });
+      }
+      if (clp) {
+        clp.value = parseColorToPickerHex(ctrl.color || "#000000");
+        clp.addEventListener("input", e => {
+          const val = e.target.value;
+          upd("color", val);
+          if (clPop) clPop.value = val;
+        });
+      }
+
+      const bgTxt = box.querySelector(".bg-txt");
+      const bgPop = box.querySelector(".bg-txt-pop");
+      const bgCp = box.querySelector(".bg-cp");
+      if (bgTxt) {
+        bgTxt.value = ctrl.button_background || "";
+        bgTxt.addEventListener("change", e => {
+          const val = trimStr(e.target.value || "");
+          upd("button_background", val);
+          if (bgPop) bgPop.value = val;
+          if (bgCp) bgCp.value = parseColorToPickerHex(val);
+          this.renBtn();
+        });
+      }
+      if (bgPop) {
+        bgPop.value = ctrl.button_background || "";
+        bgPop.addEventListener("change", e => {
+          const val = trimStr(e.target.value || "");
+          upd("button_background", val);
+          if (bgTxt) bgTxt.value = val;
+          if (bgCp) bgCp.value = parseColorToPickerHex(val);
+          this.renBtn();
+        });
+      }
+      if (bgCp) {
+        bgCp.value = parseColorToPickerHex(ctrl.button_background || "#ffffff");
+        bgCp.addEventListener("input", e => {
+          const val = e.target.value;
+          upd("button_background", val);
+          if (bgTxt) bgTxt.value = val;
+          if (bgPop) bgPop.value = val;
+          this.renBtn();
+        });
+      }
       const isz = box.querySelector(".isz"); if (isz) {
         const rawIsz = trimStr(ctrl.icon_size) || "";
         isz.value = /^\d+(\.\d+)?(px)?$/.test(rawIsz) ? rawIsz.replace("px", "") : rawIsz;
@@ -3642,26 +3742,13 @@ class OneLineRoomCardEditor extends HTMLElement {
       const v = parseColorToPickerHex(this._config?.header_info_background);
       if (standardBadgeBgPicker.value !== v) standardBadgeBgPicker.value = v;
     }
-    const headerForceToggle = this.shadowRoot.getElementById("header-force-color");
-    const headerColorRow = this.shadowRoot.getElementById("header-color-row");
-    const headerForceEnabled = isHeaderForceColorEnabled(this._config);
-    if (headerForceToggle && headerForceToggle.checked !== headerForceEnabled) {
-      headerForceToggle.checked = headerForceEnabled;
-    }
-    if (headerColorRow) {
-      headerColorRow.classList.toggle("hidden", !headerForceEnabled);
-    }
-    const collapsibleToggle = this.shadowRoot.getElementById("collapsible-toggle");
-    if (collapsibleToggle) {
-      const v = this._config?.collapsible === true;
-      if (collapsibleToggle.checked !== v) collapsibleToggle.checked = v;
-    }
-    const defaultStateRow = this.shadowRoot.getElementById("default-state-row");
-    if (defaultStateRow) defaultStateRow.classList.toggle("hidden", !(this._config?.collapsible === true));
-    const defaultStateSel = this.shadowRoot.getElementById("default-state-sel");
-    if (defaultStateSel) {
-      const v = this._config?.default_state || "expanded";
-      if (defaultStateSel.value !== v) defaultStateSel.value = v;
+
+    const behaviorSel = this.shadowRoot.getElementById("behavior-sel");
+    if (behaviorSel) {
+      const isCollapsible = this._config?.collapsible === true;
+      const isCollapsed = this._config?.default_state === "collapsed";
+      const v = !isCollapsible ? "fixed" : (isCollapsed ? "collapsed" : "expanded");
+      if (behaviorSel.value !== v) behaviorSel.value = v;
     }
     ["name", "info"].forEach(type => {
       const w = this.shadowRoot.getElementById(`header-${type}-weight-sel`);
