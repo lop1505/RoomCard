@@ -1,4 +1,4 @@
-const VERSION = "1.2.4";
+const VERSION = "1.2.5";
 const LOG_FLAG = `customCards_RoomCard_Logged_${VERSION}`;
 
 if (!window[LOG_FLAG]) {
@@ -308,16 +308,16 @@ const STATE_DEFINITIONS = Object.freeze({
 
 // Built-in state-dependent icon maps per domain — used when no static icon is configured
 const DOMAIN_STATE_ICON_MAPS = Object.freeze({
-  light:         { on: "mdi:lightbulb",              off: "mdi:lightbulb-outline" },
-  switch:        { on: "mdi:toggle-switch",           off: "mdi:toggle-switch-off-outline" },
-  input_boolean: { on: "mdi:toggle-switch",           off: "mdi:toggle-switch-off-outline" },
-  fan:           { on: "mdi:fan",                     off: "mdi:fan-off" },
-  lock:          { locked: "mdi:lock",                unlocked: "mdi:lock-open-outline" },
+  light: { on: "mdi:lightbulb", off: "mdi:lightbulb-outline" },
+  switch: { on: "mdi:toggle-switch", off: "mdi:toggle-switch-off-outline" },
+  input_boolean: { on: "mdi:toggle-switch", off: "mdi:toggle-switch-off-outline" },
+  fan: { on: "mdi:fan", off: "mdi:fan-off" },
+  lock: { locked: "mdi:lock", unlocked: "mdi:lock-open-outline" },
   cover: {
-    open: "mdi:window-shutter-open",    closed: "mdi:window-shutter",
+    open: "mdi:window-shutter-open", closed: "mdi:window-shutter",
     opening: "mdi:window-shutter-open", closing: "mdi:window-shutter"
   },
-  media_player:  { playing: "mdi:cast-connected", paused: "mdi:cast-connected", idle: "mdi:cast", off: "mdi:cast-off" },
+  media_player: { playing: "mdi:cast-connected", paused: "mdi:cast-connected", idle: "mdi:cast", off: "mdi:cast-off" },
 });
 
 const getEntityDomain = (entityId) => (typeof entityId === "string" && entityId.includes(".") ? entityId.split(".")[0] : "");
@@ -837,7 +837,7 @@ class OneLineRoomCard extends HTMLElement {
     if (cardEl) {
       cardEl.classList.toggle("warning-battery", batteryWarn);
       cardEl.classList.toggle("warning-humidity", !batteryWarn && humidityWarn);
-      
+
       const setPxProp = (k, v, def) => {
         if (v !== undefined && v !== null && v !== "") {
           const num = Number(v);
@@ -1015,7 +1015,7 @@ class OneLineRoomCard extends HTMLElement {
         }
       }
     }
-    
+
     // Override with manual background configuration if provided
     const manualBg = ctrl.button_background || this.config?.global_button_background || "";
     if (manualBg) bg = manualBg;
@@ -1033,13 +1033,13 @@ class OneLineRoomCard extends HTMLElement {
       ? (tpl?.state || "")
       : (typ === "climate"
         ? (() => {
-            const cur = st?.attributes?.current_temperature;
-            const tar = st?.attributes?.temperature;
-            if (climateHasSlider && cur != null && tar != null) return `${cur}${unit} → ${tar}${unit}`;
-            if (climateHasSlider && tar != null) return tar + unit;
-            if (cur != null) return cur + unit;
-            return s;
-          })()
+          const cur = st?.attributes?.current_temperature;
+          const tar = st?.attributes?.temperature;
+          if (climateHasSlider && cur != null && tar != null) return `${cur}${unit} → ${tar}${unit}`;
+          if (climateHasSlider && tar != null) return tar + unit;
+          if (cur != null) return cur + unit;
+          return s;
+        })()
         : s);
     const showState = isTemplate ? ctrl.show_state === true : ctrl.show_state !== false;
     const showLabel = ctrl.show_label !== false;
@@ -1060,18 +1060,18 @@ class OneLineRoomCard extends HTMLElement {
     const resolvedIcon = isTemplate
       ? (tpl?.icon || ctrl.icon || "mdi:circle")
       : (() => {
-          if (ctrl.icon_map) {
-            // YAML parses unquoted `on`/`off` as booleans — normalise keys to strings
-            const normMap = Object.fromEntries(
-              Object.entries(ctrl.icon_map).map(([k, v]) => [
-                k === true ? "on" : k === false ? "off" : String(k), v
-              ])
-            );
-            const mapped = normMap[s] ?? normMap.default;
-            if (mapped) return mapped;
-          }
-          return ctrl.icon || DOMAIN_STATE_ICON_MAPS[domain]?.[s] || st?.attributes?.icon || "mdi:circle";
-        })();
+        if (ctrl.icon_map) {
+          // YAML parses unquoted `on`/`off` as booleans — normalise keys to strings
+          const normMap = Object.fromEntries(
+            Object.entries(ctrl.icon_map).map(([k, v]) => [
+              k === true ? "on" : k === false ? "off" : String(k), v
+            ])
+          );
+          const mapped = normMap[s] ?? normMap.default;
+          if (mapped) return mapped;
+        }
+        return ctrl.icon || DOMAIN_STATE_ICON_MAPS[domain]?.[s] || st?.attributes?.icon || "mdi:circle";
+      })();
     const iconSizePx = (() => {
       const raw = trimStr(ctrl.icon_size) || trimStr(this.config?.global_icon_size) || "";
       if (!raw) return "20px";
@@ -1096,7 +1096,7 @@ class OneLineRoomCard extends HTMLElement {
     btn.setAttribute("aria-disabled", isUnavail ? "true" : "false");
     if (isUnavail) btn.title = unavailableText;
     else btn.removeAttribute("title");
-    
+
     // Apply dynamic colors via CSS custom properties
     btn.style.setProperty("--icon-color", col);
     btn.style.setProperty("--btn-bg", bg);
@@ -1195,7 +1195,7 @@ class OneLineRoomCard extends HTMLElement {
       if (domain === "cover" && ctrl.show_cover_presets === true) {
         const rawPresets = Array.isArray(ctrl.cover_presets) ? ctrl.cover_presets
           : typeof ctrl.cover_presets === "string" ? ctrl.cover_presets.split(",").map(v => parseFloat(v.trim())).filter(v => !isNaN(v))
-          : [0, 50, 100];
+            : [0, 50, 100];
         const currentPos = st?.attributes?.current_position ?? -1;
         const presetsDiv = document.createElement("div");
         presetsDiv.className = "btn-cover-presets";
@@ -1223,11 +1223,11 @@ class OneLineRoomCard extends HTMLElement {
         const rawPresets = Array.isArray(ctrl.climate_presets) ? ctrl.climate_presets
           : typeof ctrl.climate_presets === "string"
             ? ctrl.climate_presets.split(",").map(v => {
-                const t = v.trim().toLowerCase();
-                if (t === "auto" || t === "max") return t;
-                const n = parseFloat(t);
-                return isNaN(n) ? null : n;
-              }).filter(v => v !== null)
+              const t = v.trim().toLowerCase();
+              if (t === "auto" || t === "max") return t;
+              const n = parseFloat(t);
+              return isNaN(n) ? null : n;
+            }).filter(v => v !== null)
             : [0, 18, 20, 22];
         const currentTarget = st?.attributes?.temperature ?? -999;
         const maxTemp = st?.attributes?.max_temp ?? null;
@@ -1282,7 +1282,7 @@ class OneLineRoomCard extends HTMLElement {
           if (typeof raw === "string") {
             const t = raw.trim();
             if (/^#[0-9a-f]{6}$/i.test(t)) {
-              const r = parseInt(t.slice(1,3),16), g = parseInt(t.slice(3,5),16), b = parseInt(t.slice(5,7),16);
+              const r = parseInt(t.slice(1, 3), 16), g = parseInt(t.slice(3, 5), 16), b = parseInt(t.slice(5, 7), 16);
               return [r, g, b];
             }
             const parts = t.split(",").map(v => parseInt(v.trim())).filter(v => !isNaN(v) && v >= 0 && v <= 255);
@@ -1310,9 +1310,9 @@ class OneLineRoomCard extends HTMLElement {
             sw.className = "color-swatch";
             sw.style.background = `rgb(${rgb.join(",")})`;
             const isActive = Array.isArray(currentRgb)
-              && Math.abs(currentRgb[0]-rgb[0]) < 8
-              && Math.abs(currentRgb[1]-rgb[1]) < 8
-              && Math.abs(currentRgb[2]-rgb[2]) < 8;
+              && Math.abs(currentRgb[0] - rgb[0]) < 8
+              && Math.abs(currentRgb[1] - rgb[1]) < 8
+              && Math.abs(currentRgb[2] - rgb[2]) < 8;
             if (isActive) sw.classList.add("active");
             sw.addEventListener("pointerdown", e => e.stopPropagation());
             sw.addEventListener("click", e => {
@@ -2519,10 +2519,14 @@ class OneLineRoomCardEditor extends HTMLElement {
     }
     if (defaultStateSel) {
       defaultStateSel.hass = h;
-      defaultStateSel.selector = { select: { mode: "dropdown", options: [
-        { value: "expanded", label: getTranslation(h, "state_expanded") },
-        { value: "collapsed", label: getTranslation(h, "state_collapsed") }
-      ] } };
+      defaultStateSel.selector = {
+        select: {
+          mode: "dropdown", options: [
+            { value: "expanded", label: getTranslation(h, "state_expanded") },
+            { value: "collapsed", label: getTranslation(h, "state_collapsed") }
+          ]
+        }
+      };
       defaultStateSel.value = this._config?.default_state || "expanded";
       defaultStateSel.addEventListener("value-changed", (ev) => {
         ev.stopPropagation();
@@ -2588,12 +2592,16 @@ class OneLineRoomCardEditor extends HTMLElement {
     }
     if (globalLabelPos) {
       globalLabelPos.hass = h;
-      globalLabelPos.selector = { select: { mode: "dropdown", options: [
-        { value: "right", label: getTranslation(h, "pos_right") },
-        { value: "bottom", label: getTranslation(h, "pos_bottom") },
-        { value: "top", label: getTranslation(h, "pos_top") },
-        { value: "left", label: getTranslation(h, "pos_left") }
-      ] } };
+      globalLabelPos.selector = {
+        select: {
+          mode: "dropdown", options: [
+            { value: "right", label: getTranslation(h, "pos_right") },
+            { value: "bottom", label: getTranslation(h, "pos_bottom") },
+            { value: "top", label: getTranslation(h, "pos_top") },
+            { value: "left", label: getTranslation(h, "pos_left") }
+          ]
+        }
+      };
       globalLabelPos.value = this._config?.global_label_position ?? this._config?.buttons_label_position ?? "right";
       globalLabelPos.addEventListener("value-changed", (ev) => {
         ev.stopPropagation();
@@ -2998,7 +3006,7 @@ class OneLineRoomCardEditor extends HTMLElement {
           }
           if (node.shadowRoot) scan(node.shadowRoot);
         }
-      } catch (_e) {}
+      } catch (_e) { }
     };
     scan(document.body);
     return saved;
@@ -3161,10 +3169,14 @@ class OneLineRoomCardEditor extends HTMLElement {
       const rt = box.querySelector(".rt");
       if (rt) {
         rt.hass = h;
-        rt.selector = { select: { mode: "dropdown", options: [
-          { value: "entity", label: getTranslation(h, "type_entity") },
-          { value: "template", label: getTranslation(h, "type_template") }
-        ] } };
+        rt.selector = {
+          select: {
+            mode: "dropdown", options: [
+              { value: "entity", label: getTranslation(h, "type_entity") },
+              { value: "template", label: getTranslation(h, "type_template") }
+            ]
+          }
+        };
         rt.value = isTemplate ? "template" : "entity";
         rt.addEventListener("value-changed", e => {
           e.stopPropagation();
@@ -3182,18 +3194,20 @@ class OneLineRoomCardEditor extends HTMLElement {
           c[i] = next; this._fire({ ...this._config, controls: c }); this.renBtn();
         });
       }
-      const ep = box.querySelector(".ep"); if (ep) { ep.hass = h; ep.value = ctrl.entity; ep.addEventListener("value-changed", e => {
-        const val = e.detail.value; const st = h.states[val]; const c = [...this._config.controls];
-        const epDomain = val?.split(".")[0] || "";
-        let next = { ...c[i], entity: val };
-        if (st?.attributes?.friendly_name) next.name = st.attributes.friendly_name;
-        if (DOMAIN_STATE_ICON_MAPS[epDomain]) {
-          delete next.icon; // clear static icon — let domain state map resolve dynamically
-        } else {
-          next.icon = st?.attributes?.icon || this._iconForEntity(val);
-        }
-        keepOpen(); c[i] = next; this._fire({ ...this._config, controls: c }); this.renBtn();
-      }); }
+      const ep = box.querySelector(".ep"); if (ep) {
+        ep.hass = h; ep.value = ctrl.entity; ep.addEventListener("value-changed", e => {
+          const val = e.detail.value; const st = h.states[val]; const c = [...this._config.controls];
+          const epDomain = val?.split(".")[0] || "";
+          let next = { ...c[i], entity: val };
+          if (st?.attributes?.friendly_name) next.name = st.attributes.friendly_name;
+          if (DOMAIN_STATE_ICON_MAPS[epDomain]) {
+            delete next.icon; // clear static icon — let domain state map resolve dynamically
+          } else {
+            next.icon = st?.attributes?.icon || this._iconForEntity(val);
+          }
+          keepOpen(); c[i] = next; this._fire({ ...this._config, controls: c }); this.renBtn();
+        });
+      }
       const dvWrap = box.querySelector(".dv-wrap");
       if (dvWrap) {
         const dv = document.createElement("ha-selector");
@@ -3509,22 +3523,30 @@ class OneLineRoomCardEditor extends HTMLElement {
       al.value = ctrl.align || "center"; al.addEventListener("value-changed", e => { e.stopPropagation(); upd("align", e.detail.value); });
       const lp = box.querySelector(".lp"); if (lp) {
         lp.hass = h;
-        lp.selector = { select: { mode: "dropdown", options: [
-          { value: "global", label: getTranslation(h, "use_global") },
-          { value: "right", label: getTranslation(h, "pos_right") },
-          { value: "bottom", label: getTranslation(h, "pos_bottom") },
-          { value: "top", label: getTranslation(h, "pos_top") },
-          { value: "left", label: getTranslation(h, "pos_left") }
-        ] } };
+        lp.selector = {
+          select: {
+            mode: "dropdown", options: [
+              { value: "global", label: getTranslation(h, "use_global") },
+              { value: "right", label: getTranslation(h, "pos_right") },
+              { value: "bottom", label: getTranslation(h, "pos_bottom") },
+              { value: "top", label: getTranslation(h, "pos_top") },
+              { value: "left", label: getTranslation(h, "pos_left") }
+            ]
+          }
+        };
         lp.value = ctrl.label_position || "global";
         lp.addEventListener("value-changed", e => { e.stopPropagation(); upd("label_position", e.detail.value || "global"); this.renBtn(); });
       }
       const tl = box.querySelector(".tl"); if (tl) {
         tl.hass = h;
-        tl.selector = { select: { mode: "dropdown", options: [
-          { value: "state", label: getTranslation(h, "primary_state") },
-          { value: "name", label: getTranslation(h, "primary_name") }
-        ] } };
+        tl.selector = {
+          select: {
+            mode: "dropdown", options: [
+              { value: "state", label: getTranslation(h, "primary_state") },
+              { value: "name", label: getTranslation(h, "primary_name") }
+            ]
+          }
+        };
         tl.value = ctrl.state_first === true ? "state" : "name";
         tl.addEventListener("value-changed", e => { e.stopPropagation(); upd("state_first", e.detail.value === "state"); });
       }
@@ -3532,8 +3554,10 @@ class OneLineRoomCardEditor extends HTMLElement {
       const sl = box.querySelector(".sl"); sl.checked = ctrl.show_label !== false; sl.addEventListener("change", e => { e.stopPropagation(); upd("show_label", e.target.checked); });
       const si = box.querySelector(".si"); si.checked = ctrl.show_icon !== false; si.addEventListener("change", e => { e.stopPropagation(); upd("show_icon", e.target.checked); });
       const hd = box.querySelector(".hd"); hd.checked = !ctrl.hide; hd.addEventListener("change", e => { e.stopPropagation(); upd("hide", !e.target.checked); });
-      const tap = box.querySelector(".tap"); if (tap) { tap.hass = h; tap.selector = { select: { mode: "dropdown", options: actOpts } };
-      tap.value = ctrl.tap_action?.action || "more-info"; tap.addEventListener("value-changed", e => { e.stopPropagation(); updAct("tap_action", e.detail.value); }); }
+      const tap = box.querySelector(".tap"); if (tap) {
+        tap.hass = h; tap.selector = { select: { mode: "dropdown", options: actOpts } };
+        tap.value = ctrl.tap_action?.action || "more-info"; tap.addEventListener("value-changed", e => { e.stopPropagation(); updAct("tap_action", e.detail.value); });
+      }
       const tapNav = box.querySelector(".tap-nav"); if (tapNav) {
         tapNav.value = ctrl.tap_action?.navigation_path || ""; tapNav.addEventListener("change", e => {
           const c = [...this._config.controls];
@@ -3542,16 +3566,26 @@ class OneLineRoomCardEditor extends HTMLElement {
           this._fire({ ...this._config, controls: c });
         });
       }
-      const hold = box.querySelector(".hold"); if (hold) { hold.hass = h; hold.selector = { select: { mode: "dropdown", options: actOpts } };
-      hold.value = ctrl.hold_action?.action || "toggle"; hold.addEventListener("value-changed", e => { e.stopPropagation(); updAct("hold_action", e.detail.value); }); }
-      const dbl = box.querySelector(".dbl"); if (dbl) { dbl.hass = h; dbl.selector = { select: { mode: "dropdown", options: actOpts } };
-      dbl.value = ctrl.double_tap_action?.action || "none"; dbl.addEventListener("value-changed", e => { e.stopPropagation(); updAct("double_tap_action", e.detail.value); }); }
-      const cm = box.querySelector(".cm"); if (cm) { cm.hass = h; cm.selector = { select: { mode: "dropdown", options: [
-        { value: "none", label: getTranslation(h, "ctrl_default") },
-        { value: "slider", label: getTranslation(h, "ctrl_slider") },
-        { value: "buttons", label: getTranslation(h, "ctrl_buttons") }
-      ] } };
-      cm.value = ctrl.control_mode || "none"; cm.addEventListener("value-changed", e => { e.stopPropagation(); const v = e.detail.value; const cc = [...this._config.controls]; const nn = { ...cc[i] }; if (v && v !== "none") nn.control_mode = v; else delete nn.control_mode; cc[i] = nn; keepOpen(); this._fire({ ...this._config, controls: cc }); }); }
+      const hold = box.querySelector(".hold"); if (hold) {
+        hold.hass = h; hold.selector = { select: { mode: "dropdown", options: actOpts } };
+        hold.value = ctrl.hold_action?.action || "toggle"; hold.addEventListener("value-changed", e => { e.stopPropagation(); updAct("hold_action", e.detail.value); });
+      }
+      const dbl = box.querySelector(".dbl"); if (dbl) {
+        dbl.hass = h; dbl.selector = { select: { mode: "dropdown", options: actOpts } };
+        dbl.value = ctrl.double_tap_action?.action || "none"; dbl.addEventListener("value-changed", e => { e.stopPropagation(); updAct("double_tap_action", e.detail.value); });
+      }
+      const cm = box.querySelector(".cm"); if (cm) {
+        cm.hass = h; cm.selector = {
+          select: {
+            mode: "dropdown", options: [
+              { value: "none", label: getTranslation(h, "ctrl_default") },
+              { value: "slider", label: getTranslation(h, "ctrl_slider") },
+              { value: "buttons", label: getTranslation(h, "ctrl_buttons") }
+            ]
+          }
+        };
+        cm.value = ctrl.control_mode || "none"; cm.addEventListener("value-changed", e => { e.stopPropagation(); const v = e.detail.value; const cc = [...this._config.controls]; const nn = { ...cc[i] }; if (v && v !== "none") nn.control_mode = v; else delete nn.control_mode; cc[i] = nn; keepOpen(); this._fire({ ...this._config, controls: cc }); });
+      }
       const tpIcon = box.querySelector(".tp-ic");
       const tpText = box.querySelector(".tp-tx");
       if (tpIcon && tpText && isTemplate) {
@@ -3630,14 +3664,14 @@ class OneLineRoomCardEditor extends HTMLElement {
       if (defaultStateSel.value !== v) defaultStateSel.value = v;
     }
     ["name", "info"].forEach(type => {
-        const w = this.shadowRoot.getElementById(`header-${type}-weight-sel`);
-        if (w) w.value = this._config[`header_${type}_weight`] || (type === "name" ? "bold" : "normal");
-        const s = this.shadowRoot.getElementById(`header-${type}-style-sel`);
-        if (s) s.value = this._config[`header_${type}_style`] || "normal";
-        const cf = this.shadowRoot.getElementById(`header-${type}-color`);
-        if (cf) { const v = this._config[`header_${type}_color`] || ""; if (cf.value !== v) cf.value = v; }
-        const cp = this.shadowRoot.getElementById(`header-${type}-color-picker`);
-        if (cp) { const v = parseColorToPickerHex(this._config[`header_${type}_color`] || "#ffffff"); if (cp.value !== v) cp.value = v; }
+      const w = this.shadowRoot.getElementById(`header-${type}-weight-sel`);
+      if (w) w.value = this._config[`header_${type}_weight`] || (type === "name" ? "bold" : "normal");
+      const s = this.shadowRoot.getElementById(`header-${type}-style-sel`);
+      if (s) s.value = this._config[`header_${type}_style`] || "normal";
+      const cf = this.shadowRoot.getElementById(`header-${type}-color`);
+      if (cf) { const v = this._config[`header_${type}_color`] || ""; if (cf.value !== v) cf.value = v; }
+      const cp = this.shadowRoot.getElementById(`header-${type}-color-picker`);
+      if (cp) { const v = parseColorToPickerHex(this._config[`header_${type}_color`] || "#ffffff"); if (cp.value !== v) cp.value = v; }
     });
     const windowAlwaysShowToggle = this.shadowRoot.getElementById("window-always-show");
     if (windowAlwaysShowToggle) {

@@ -14,7 +14,7 @@ Developed with a focus on stability, simple design, and maximum flexibility.
 
 **Collapsed**
 
-![Preview](RoomCard%20Collapsed.png)
+![Preview](preview_collapsed.png)
 
 ---
 
