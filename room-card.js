@@ -1,4 +1,4 @@
-const VERSION = "1.2.5";
+const VERSION = "1.2.6";
 const LOG_FLAG = `customCards_RoomCard_Logged_${VERSION}`;
 
 if (!window[LOG_FLAG]) {
@@ -48,7 +48,8 @@ const TRANSLATIONS = {
     act_more: "Details (Default)", act_toggle: "Toggle", act_none: "None",
     live_preview: "Live preview",
     upload_btn: "Upload Image", uploading: "Uploading...", upload_success: "Done!",
-    show_name: "Show Title", header_badges: "Extra Header Info", badge_add: "Add Info Entry", badge_label: "Label (optional)", badge_background: "Background (rgba)", standard_badge_background: "Main Climate Badge Background (rgba)",
+    show_name: "Show Title", header_badges: "Badge", badge_add: "Add Info Entry", badge_label: "Label (optional)", badge_background: "Background (rgba)", standard_badge_background: "Standard Badge Background (rgba)", badge_auto_climate_btn: "Automatically add climate control button",
+    visibility: "Visibility", visibility_cond: "Conditional Visibility", vis_entity: "Condition Entity", vis_state: "Show if state is", vis_invert: "Invert Logic (Hide if state corresponds)",
     migration_title: "Action Required",
     migration_text: "Card renamed to <b>oneline-room-card</b> to avoid conflicts.<br>Please change <code>type: custom:room-card</code> to <code>type: custom:oneline-room-card</code> in your YAML.",
     control_mode: "Control Mode", ctrl_default: "Default", ctrl_slider: "Inline Slider", ctrl_buttons: "Inline Buttons (Cover)",
@@ -77,7 +78,7 @@ const TRANSLATIONS = {
   de: {
     empty: "Leer", low: "Niedrig", critical: "Kritisch", window: "Fenster", general: "Allgemein",
     sensors_manual: "Sensoren (Manuell)", buttons: "Buttons", button: "Button", add_button: "Button hinzufügen",
-    main_climate: "Haupt-Klima-Gerät (Optional)", climate_info: "Füllt Temp/Feuchtigkeit automatisch, wenn unten leer.",
+    main_climate: "Haupt-Klima-Gerät", climate_info: "Füllt Temp/Feuchtigkeit automatisch, wenn unten leer.",
     temp_label: "Temperatur (überschreibt Klima)", target_temp_label: "Soll-Temperatur", humid_label: "Luftfeuchtigkeit (überschreibt Klima)",
     window_label: "Fenster (Liste)", battery_label: "Batterien (Liste)", name: "Name", icon: "Icon", color: "Iconfarbe",
     humid_warn_threshold: "Feuchte-Warnschwelle (%)", high_humidity: "Hohe Luftfeuchtigkeit", device_unavailable: "Gerät nicht verfügbar",
@@ -102,7 +103,7 @@ const TRANSLATIONS = {
     pos_left: "Links",
     pos_top: "Oben",
     row_type: "Zeilentyp", type_entity: "Entität", type_template: "Template",
-    tmpl_content: "Text (Template)", tmpl_icon: "Icon (Template)", tmpl_color: "Farbe (Template)", tmpl_state: "Status (Template)", tmpl_preview: "Vorschau",
+    tmpl_content: "Text (Template)", tmpl_icon: "Icon (Template)", tmpl_color: "Farbe (Template)", tmpl_status: "Status (Template)", tmpl_preview: "Vorschau",
     tmpl_light: "Licht", tmpl_switch: "Schalter / Steckdose", tmpl_climate: "Klima", tmpl_cover: "Rollladen / Abdeckung", tmpl_media: "Media Player",
     show_state: "Status anzeigen", show_label: "Bezeichnung anzeigen", show_icon: "Icon anzeigen", state_first: "Wert zuerst", text_layout: "Text-Reihenfolge", primary_text: "Erste Zeile", primary_state: "Wert zuerst", primary_name: "Name zuerst",
     height: "Höhe", width: "Breite", align: "Ausrichtung", visible: "Sichtbar", left: "Links", center: "Mitte", right: "Rechts",
@@ -110,7 +111,8 @@ const TRANSLATIONS = {
     act_more: "Details (Standard)", act_toggle: "Umschalten", act_none: "Nichts",
     live_preview: "Live-Vorschau",
     upload_btn: "Bild hochladen", uploading: "Wird hochgeladen...", upload_success: "Fertig!",
-    show_name: "Titel anzeigen", header_badges: "Zusätzliche Header-Info", badge_add: "Info-Eintrag hinzufügen", badge_label: "Bezeichnung (optional)", badge_background: "Hintergrund (rgba)", standard_badge_background: "Hauptklima-Badge-Hintergrund (rgba)",
+    show_name: "Titel anzeigen", header_badges: "Badge", badge_add: "Info-Eintrag hinzufügen", badge_label: "Bezeichnung (optional)", badge_background: "Hintergrund (rgba)", standard_badge_background: "Standard Badge Hintergrund (rgba)", badge_auto_climate_btn: "Klima-Steuerungs-Button automatisch hinzufügen",
+    visibility: "Sichtbarkeit", visibility_cond: "Bedingte Sichtbarkeit", vis_entity: "Bedingungs-Entität", vis_state: "Anzeigen falls Status gleich", vis_invert: "Logik umkehren (Ausblenden falls entsprechend)",
     migration_title: "Handlung erforderlich",
     migration_text: "Karte wurde in <b>oneline-room-card</b> umbenannt.<br>Bitte ändere <code>type: custom:room-card</code> zu <code>type: custom:oneline-room-card</code> in deiner YAML-Konfiguration.",
     control_mode: "Steuerungsmodus", ctrl_default: "Standard", ctrl_slider: "Inline-Slider", ctrl_buttons: "Inline-Buttons (Rollladen)",
@@ -478,13 +480,20 @@ class OneLineRoomCard extends HTMLElement {
     this._captureStateSnapshot(hass);
   }
 
+  _getCollapseUniqueId(config) {
+    if (config.entity) return config.entity;
+    if (config.name) return config.name;
+    const sig = (config.controls || []).map(c => c.entity || "").join("");
+    return sig || "default";
+  }
+
   setConfig(config) {
     const prevKey = this._collapseKey;
     this.config = config;
-    this._collapseKey = `oneline-room-card-collapsed:${config.name || config.entity || ""}`;
+    this._collapseKey = `oneline-room-card-collapsed:${this._getCollapseUniqueId(config)}`;
     if (this._collapseKey !== prevKey) {
       const stored = localStorage.getItem(this._collapseKey);
-      this._collapsed = stored !== null ? stored === "1" : config.default_state === "collapsed";
+      this._collapsed = stored !== null ? stored === "1" : (config.default_state === "collapsed");
     }
     this._configChanged = true;
     this._lastStates = new Map();
@@ -500,7 +509,7 @@ class OneLineRoomCard extends HTMLElement {
   }
 
   static getStubConfig(hass) {
-    return { name: "", entity: "", controls: [] };
+    return { name: "", entity: "", collapsible: true, controls: [] };
   }
 
   render() {
@@ -640,7 +649,10 @@ class OneLineRoomCard extends HTMLElement {
     add(cfg.humid_sensor);
     (Array.isArray(cfg.window_sensors) ? cfg.window_sensors : []).forEach(add);
     (Array.isArray(cfg.battery_sensors) ? cfg.battery_sensors : []).forEach(add);
-    (Array.isArray(cfg.controls) ? cfg.controls : []).forEach((ctrl) => add(ctrl?.entity));
+    (Array.isArray(cfg.controls) ? cfg.controls : []).forEach((ctrl) => {
+        add(ctrl?.entity);
+        add(ctrl?.visibility_entity);
+    });
     (Array.isArray(cfg.header_badges) ? cfg.header_badges : []).forEach((b) => add(b?.entity));
     return Array.from(ids);
   }
@@ -766,7 +778,7 @@ class OneLineRoomCard extends HTMLElement {
         text: showBadgeName
           ? `${displayLabel}: ${val}${unit ? " " + unit : ""}`
           : `${val}${unit ? " " + unit : ""}`,
-        background: trimStr(badge.background)
+        background: trimStr(badge.background) || standardHeaderBadgeBackground
       });
     });
     infoEl.replaceChildren();
@@ -866,9 +878,29 @@ class OneLineRoomCard extends HTMLElement {
       this.controls.classList.toggle("collapsed", isCollapsible && this._collapsed);
     }
 
-    const visibleCtrls = (c.controls || []).filter(ctrl => !ctrl.hide && (ctrl.entity || ctrl.type === "template"));
+    let visibleCtrls = (c.controls || []).filter(ctrl => {
+      if (ctrl.hide) return false;
+      if (ctrl.visibility_entity && ctrl.visibility_state !== undefined) {
+        const st = h.states[ctrl.visibility_entity]?.state;
+        const match = String(st) === String(ctrl.visibility_state);
+        if (ctrl.visibility_invert) { if (match) return false; }
+        else { if (!match) return false; }
+      }
+      return (ctrl.entity || ctrl.type === "template");
+    });
 
-    if (this._configChanged) {
+    if (c.auto_climate_button && c.entity && getEntityDomain(c.entity) === "climate") {
+      const alreadyPresent = visibleCtrls.some(ctrl => ctrl.entity === c.entity);
+      if (!alreadyPresent) {
+        const climateState = h.states[c.entity];
+        visibleCtrls = [{ entity: c.entity, name: climateState?.attributes?.friendly_name || "", width: 60, height: 60 }, ...visibleCtrls];
+      }
+    }
+
+    const controlsSig = JSON.stringify(visibleCtrls.map(ct => ct.entity + (ct.type || "")));
+
+    if (this._configChanged || this._lastControlsSig !== controlsSig) {
+      this._lastControlsSig = controlsSig;
       this.controls.replaceChildren();
       visibleCtrls.forEach(ctrl => {
         const btn = this._createBtn(ctrl);
@@ -1436,6 +1468,7 @@ class OneLineRoomCardEditor extends HTMLElement {
     this._badgesSectionOpen = false;
     this._cardBehaviorOpen = true;
     this._headerSectionOpen = true;
+    this._layoutSectionOpen = false;
     this._activeTab = "config";
     this._controlIds = [];
     this._nextControlId = 1;
@@ -1952,6 +1985,19 @@ class OneLineRoomCardEditor extends HTMLElement {
         .upload-hidden { display: none; }
         .cl-row { display: flex; gap: 8px; align-items: center; }
         .cp { width: 50px; height: 40px; border: 1px solid var(--divider-color); background: none; padding: 2px; border-radius: 4px; cursor: pointer; flex-shrink: 0; }
+        .cp-preview {
+          width: 24px;
+          height: 24px;
+          border-radius: 4px;
+          border: 1px solid var(--divider-color);
+          position: relative;
+          background-image: linear-gradient(45deg, #888 25%, transparent 25%), linear-gradient(-45deg, #888 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #888 75%), linear-gradient(-45deg, transparent 75%, #888 75%);
+          background-size: 8px 8px;
+          background-position: 0 0, 0 4px, 4px -4px, -4px 0px;
+          background-color: white;
+          cursor: pointer;
+        }
+        .cp-preview div, .cp-inner { position: absolute; inset: 0; border-radius: 3px; pointer-events: none; }
         .color-container { position: relative; display: flex; align-items: flex-end; }
         .color-popover {
           position: absolute;
@@ -2021,8 +2067,63 @@ class OneLineRoomCardEditor extends HTMLElement {
                <div class="color-popover">
                   <ha-textfield cfg="color" class="i" placeholder="#hex" style="width: 100%; margin-bottom: 0; --mdc-text-field-fill-color: rgba(255,255,255,0.1); --mdc-text-field-ink-color: white;"></ha-textfield>
                </div>
-               <input type="color" class="cp i-cp" cfg="color" title="${getTranslation(h, "color")}" 
-                      style="width: 24px; height: 24px; padding: 0; border: 1px solid var(--divider-color); cursor: pointer; border-radius: 4px; background: none;">
+               <div class="cp-preview">
+                 <div></div>
+                 <input type="color" class="cl-p i" cfg="color" title="${getTranslation(h, "color")}" 
+                        style="position: absolute; inset: 0; opacity: 0; cursor: pointer; border: none; padding: 0; width: 100%; height: 100%;">
+               </div>
+            </div>
+          </div>
+        </div>
+        <div id="badges-sec" class="badges-sec">
+          <div id="badges-head" class="badges-head">
+            <span id="badges-title" class="badges-title"></span>
+            <ha-icon id="badges-chev" class="badges-chev" icon="mdi:chevron-right" style="--mdc-icon-size:18px;opacity:0.7;transition:transform 0.15s ease"></ha-icon>
+          </div>
+          <div id="badges-content" class="badges-content" hidden>
+            <div class="image-title" style="margin-bottom:8px">${getTranslation(h, "main_climate")}</div>
+            <ha-entity-picker label="${getTranslation(h, "entity")}" cfg="entity" class="i" include-domains='["climate"]' style="width:100%"></ha-entity-picker>
+            <div class="row" style="margin-top:8px; align-items:center;">
+              <ha-formfield label="${getTranslation(h, "badge_auto_climate_btn")}">
+                <ha-switch id="auto-climate-btn-toggle"></ha-switch>
+              </ha-formfield>
+            </div>
+            
+            <div class="image-title" style="margin:12px 0 8px">${getTranslation(h, "badge_bg")}</div>
+            <div style="position: relative; display: flex; align-items: flex-end;">
+              <ha-textfield id="standard-badge-bg" label="${getTranslation(h, "standard_badge_background")}" cfg="header_info_background" class="i" style="width: 100%"></ha-textfield>
+              <div class="color-container" style="position: absolute; right: 8px; bottom: 8px; z-index: 1;">
+                 <div class="color-popover">
+                    <ha-textfield id="standard-badge-bg-popover" class="i" placeholder="#hex" style="width: 100%; margin-bottom: 0; --mdc-text-field-fill-color: rgba(255,255,255,0.1); --mdc-text-field-ink-color: white;"></ha-textfield>
+                 </div>
+                 <div class="cp-preview">
+                    <div></div>
+                    <input type="color" id="standard-badge-bg-picker" class="cl-p i" cfg="header_info_background" title="${getTranslation(h, "color")}" 
+                           style="position: absolute; inset: 0; opacity: 0; cursor: pointer; border: none; padding: 0; width: 100%; height: 100%;">
+                 </div>
+              </div>
+            </div>
+
+            <div style="border-top:1px solid var(--divider-color);margin:16px 0 12px"></div>
+            <div id="badges-list"></div>
+            <mwc-button id="add-badge" raised>
+              <ha-icon icon="mdi:plus" slot="icon"></ha-icon>
+            </mwc-button>
+          </div>
+        </div>
+        <div id="image-sec" class="image-sec">
+          <div id="image-head" class="image-head">
+            <span id="image-title" class="image-title"></span>
+            <ha-icon id="image-chev" class="image-chev" icon="mdi:chevron-right"></ha-icon>
+          </div>
+          <div id="image-content" class="image-content" hidden>
+            <img id="prev-img" class="preview">
+            <ha-textfield id="img-url-field" cfg="image" class="i" icon="mdi:image"></ha-textfield>
+            <div class="upload-row">
+              <input type="file" id="file-upload" class="upload-hidden" accept="image/*">
+              <mwc-button id="upload-btn" raised label="${getTranslation(h, "upload_btn")}">
+                <ha-icon icon="mdi:upload" slot="icon"></ha-icon>
+              </mwc-button>
             </div>
           </div>
         </div>
@@ -2044,8 +2145,11 @@ class OneLineRoomCardEditor extends HTMLElement {
                    <div class="color-popover">
                       <ha-textfield id="header-name-color" class="i" placeholder="#hex" style="width: 100%; margin-bottom: 0; --mdc-text-field-fill-color: rgba(255,255,255,0.1); --mdc-text-field-ink-color: white;"></ha-textfield>
                    </div>
-                   <input type="color" id="header-name-color-picker" class="cp cl-p" title="${getTranslation(h, "color")}" 
-                          style="width: 24px; height: 24px; padding: 0; border: 1px solid var(--divider-color); cursor: pointer; border-radius: 4px; background: none;">
+                   <div class="cp-preview">
+                     <div></div>
+                     <input type="color" id="header-name-color-picker" class="cl-p i" cfg="header_name_color" title="${getTranslation(h, "color")}" 
+                            style="position: absolute; inset: 0; opacity: 0; cursor: pointer; border: none; padding: 0; width: 100%; height: 100%;">
+                   </div>
                 </div>
               </div>
             </div>
@@ -2061,75 +2165,46 @@ class OneLineRoomCardEditor extends HTMLElement {
                    <div class="color-popover">
                       <ha-textfield id="header-info-color" class="i" placeholder="#hex" style="width: 100%; margin-bottom: 0; --mdc-text-field-fill-color: rgba(255,255,255,0.1); --mdc-text-field-ink-color: white;"></ha-textfield>
                    </div>
-                   <input type="color" id="header-info-color-picker" class="cp cl-p" title="${getTranslation(h, "color")}" 
-                          style="width: 24px; height: 24px; padding: 0; border: 1px solid var(--divider-color); cursor: pointer; border-radius: 4px; background: none;">
+                   <div class="cp-preview">
+                     <div></div>
+                     <input type="color" id="header-info-color-picker" class="cl-p i" cfg="header_info_color" title="${getTranslation(h, "color")}" 
+                            style="position: absolute; inset: 0; opacity: 0; cursor: pointer; border: none; padding: 0; width: 100%; height: 100%;">
+                   </div>
                 </div>
               </div>
             </div>
-            <div class="image-title" style="margin:12px 0 8px">${getTranslation(h, "badge_bg")}</div>
-            <div style="position: relative; display: flex; align-items: flex-end;">
-              <ha-textfield id="standard-badge-bg" label="${getTranslation(h, "standard_badge_background")}" style="width: 100%"></ha-textfield>
-              <div class="color-container" style="position: absolute; right: 8px; bottom: 8px; z-index: 1;">
-                 <div class="color-popover">
-                    <ha-textfield id="standard-badge-bg-popover" class="i" placeholder="#hex" style="width: 100%; margin-bottom: 0; --mdc-text-field-fill-color: rgba(255,255,255,0.1); --mdc-text-field-ink-color: white;"></ha-textfield>
-                 </div>
-                 <input type="color" id="standard-badge-bg-picker" class="cp cl-p" title="${getTranslation(h, "color")}" 
-                        style="width: 24px; height: 24px; padding: 0; border: 1px solid var(--divider-color); cursor: pointer; border-radius: 4px; background: none;">
+          </div>
+        </div>
+        <div id="layout-sec" class="manual-sec" style="margin-top:12px">
+          <div id="layout-head" class="manual-head">
+            <span id="layout-title" class="manual-title" style="display:flex;align-items:center;gap:6px"><ha-icon icon="mdi:move-resize" style="--mdc-icon-size:16px;opacity:0.7"></ha-icon>${getTranslation(h, "layout_position")}</span>
+            <ha-icon id="layout-chev" class="manual-chev" icon="mdi:chevron-right"></ha-icon>
+          </div>
+          <div id="layout-content" class="manual-content" hidden>
+            <div class="row" style="margin-top:4px; align-items:center; margin-bottom: 4px;">
+              <ha-formfield label="${getTranslation(h, "header_sync_offsets")}">
+                <ha-switch id="sync-offsets-toggle"></ha-switch>
+              </ha-formfield>
+            </div>
+            <div style="margin-top:10px">
+              <div class="image-title" style="margin-bottom:4px">${getTranslation(h, "header_name_offset")}</div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <input type="range" id="name-offset-slider" min="0" max="100" step="1" style="flex:1;cursor:pointer;accent-color:var(--primary-color)">
+                <span id="name-offset-value" style="min-width:30px;text-align:right;font-size:12px;opacity:0.8;"></span>
+              </div>
+              <div style="display:flex;font-size:10px;opacity:0.55;margin-top:2px;pointer-events:none;margin-right:38px">
+                <span style="flex:1;text-align:left">&#9664; Links</span><span style="flex:1;text-align:center">Mitte</span><span style="flex:1;text-align:right">Rechts &#9654;</span>
               </div>
             </div>
-          </div>
-        </div>
-        <div class="row" style="margin-top:12px; align-items:center; margin-bottom: 4px;">
-          <ha-formfield label="${getTranslation(h, "header_sync_offsets")}">
-            <ha-switch id="sync-offsets-toggle"></ha-switch>
-          </ha-formfield>
-        </div>
-        <div style="margin-top:10px">
-          <div class="image-title" style="margin-bottom:4px">${getTranslation(h, "header_name_offset")}</div>
-          <div style="display:flex;align-items:center;gap:8px;">
-            <input type="range" id="name-offset-slider" min="0" max="100" step="1" style="flex:1;cursor:pointer;accent-color:var(--primary-color)">
-            <span id="name-offset-value" style="min-width:30px;text-align:right;font-size:12px;opacity:0.8;"></span>
-          </div>
-          <div style="display:flex;font-size:10px;opacity:0.55;margin-top:2px;pointer-events:none;margin-right:38px">
-            <span style="flex:1;text-align:left">&#9664; Links</span><span style="flex:1;text-align:center">Mitte</span><span style="flex:1;text-align:right">Rechts &#9654;</span>
-          </div>
-        </div>
-        <div style="margin-top:10px">
-          <div class="image-title" style="margin-bottom:4px">${getTranslation(h, "header_info_offset")}</div>
-          <div style="display:flex;align-items:center;gap:8px;">
-            <input type="range" id="info-offset-slider" min="0" max="100" step="1" style="flex:1;cursor:pointer;accent-color:var(--primary-color)">
-            <span id="info-offset-value" style="min-width:30px;text-align:right;font-size:12px;opacity:0.8;"></span>
-          </div>
-          <div style="display:flex;font-size:10px;opacity:0.55;margin-top:2px;pointer-events:none;margin-right:38px">
-            <span style="flex:1;text-align:left">&#9664; Links</span><span style="flex:1;text-align:center">Mitte</span><span style="flex:1;text-align:right">Rechts &#9654;</span>
-          </div>
-        </div>
-        <ha-entity-picker label="${getTranslation(h, "main_climate")}" cfg="entity" class="i" include-domains='["climate"]' style="margin-top:12px"></ha-entity-picker>
-        <div id="badges-sec" class="badges-sec">
-          <div id="badges-head" class="badges-head">
-            <span id="badges-title" class="badges-title"></span>
-            <ha-icon id="badges-chev" class="badges-chev" icon="mdi:chevron-right"></ha-icon>
-          </div>
-          <div id="badges-content" class="badges-content" hidden>
-            <div id="badges-list"></div>
-            <mwc-button id="add-badge" raised>
-              <ha-icon icon="mdi:plus" slot="icon"></ha-icon>
-            </mwc-button>
-          </div>
-        </div>
-        <div id="image-sec" class="image-sec">
-          <div id="image-head" class="image-head">
-            <span id="image-title" class="image-title"></span>
-            <ha-icon id="image-chev" class="image-chev" icon="mdi:chevron-right"></ha-icon>
-          </div>
-          <div id="image-content" class="image-content" hidden>
-            <img id="prev-img" class="preview">
-            <ha-textfield id="img-url-field" cfg="image" class="i" icon="mdi:image"></ha-textfield>
-            <div class="upload-row">
-              <input type="file" id="file-upload" class="upload-hidden" accept="image/*">
-              <mwc-button id="upload-btn" raised label="${getTranslation(h, "upload_btn")}">
-                <ha-icon icon="mdi:upload" slot="icon"></ha-icon>
-              </mwc-button>
+            <div style="margin-top:10px">
+              <div class="image-title" style="margin-bottom:4px">${getTranslation(h, "header_info_offset")}</div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <input type="range" id="info-offset-slider" min="0" max="100" step="1" style="flex:1;cursor:pointer;accent-color:var(--primary-color)">
+                <span id="info-offset-value" style="min-width:30px;text-align:right;font-size:12px;opacity:0.8;"></span>
+              </div>
+              <div style="display:flex;font-size:10px;opacity:0.55;margin-top:2px;pointer-events:none;margin-right:38px">
+                <span style="flex:1;text-align:left">&#9664; Links</span><span style="flex:1;text-align:center">Mitte</span><span style="flex:1;text-align:right">Rechts &#9654;</span>
+              </div>
             </div>
           </div>
         </div>
@@ -2157,8 +2232,11 @@ class OneLineRoomCardEditor extends HTMLElement {
                  <div class="color-popover">
                     <ha-textfield id="window-open-color-popover" class="i" cfg="window_open_color" placeholder="#hex" style="width: 100%; margin-bottom: 0; --mdc-text-field-fill-color: rgba(255,255,255,0.1); --mdc-text-field-ink-color: white;"></ha-textfield>
                  </div>
-                 <input type="color" id="window-open-color-picker" class="cp cl-p" title="${getTranslation(h, "color")}" 
-                        style="width: 24px; height: 24px; padding: 0; border: 1px solid var(--divider-color); cursor: pointer; border-radius: 4px; background: none;">
+                 <div class="cp-preview">
+                    <div></div>
+                    <input type="color" id="window-open-color-picker" class="cl-p i" cfg="window_open_color" title="${getTranslation(h, "color")}" 
+                           style="position: absolute; inset: 0; opacity: 0; cursor: pointer; border: none; padding: 0; width: 100%; height: 100%;">
+                 </div>
               </div>
             </div>
             <div id="window-closed-color-row" style="position: relative; display: flex; align-items: flex-end; margin-top: 8px;">
@@ -2167,8 +2245,11 @@ class OneLineRoomCardEditor extends HTMLElement {
                  <div class="color-popover">
                     <ha-textfield id="window-closed-color-popover" class="i" cfg="window_closed_color" placeholder="#hex" style="width: 100%; margin-bottom: 0; --mdc-text-field-fill-color: rgba(255,255,255,0.1); --mdc-text-field-ink-color: white;"></ha-textfield>
                  </div>
-                 <input type="color" id="window-closed-color-picker" class="cp cl-p" title="${getTranslation(h, "color")}" 
-                        style="width: 24px; height: 24px; padding: 0; border: 1px solid var(--divider-color); cursor: pointer; border-radius: 4px; background: none;">
+                 <div class="cp-preview">
+                    <div></div>
+                    <input type="color" id="window-closed-color-picker" class="cl-p i" cfg="window_closed_color" title="${getTranslation(h, "color")}" 
+                           style="position: absolute; inset: 0; opacity: 0; cursor: pointer; border: none; padding: 0; width: 100%; height: 100%;">
+                 </div>
               </div>
             </div>
             <div style="border-top:1px solid var(--divider-color);margin:10px 0 8px"></div>
@@ -2189,7 +2270,7 @@ class OneLineRoomCardEditor extends HTMLElement {
         </div>
         <div class="cl-row" style="margin-top: 8px">
           <ha-textfield id="global-btn-bg" cfg="global_button_background" label="${getTranslation(h, "global_button_bg")}" class="i"></ha-textfield>
-          <input type="color" id="global-btn-bg-picker" class="cp i-cp" cfg="global_button_background" style="margin-right: 0px">
+          <input type="color" id="global-btn-bg-picker" class="cl-p" cfg="global_button_background" style="margin-right: 0px">
         </div>
         <details id="quick-add" class="qa" ${this._quickAddOpen ? "open" : ""}>
           <summary class="qa-summary">
@@ -2342,7 +2423,7 @@ class OneLineRoomCardEditor extends HTMLElement {
       if (k === "window_sensors") e.selector = { entity: { domain: "binary_sensor", device_class: ["window", "door", "garage_door"], multiple: true } };
       else if (k === "battery_sensors") e.selector = { entity: { device_class: "battery", multiple: true } };
       if (this._hass) e.hass = this._hass;
-      const evType = e.localName === "ha-textfield" ? "change" : "value-changed";
+      const evType = (e.localName === "ha-textfield" || e.localName === "input") ? "change" : "value-changed";
       e.addEventListener(evType, (ev) => {
         ev.stopPropagation();
         const v = ev.detail?.value !== undefined ? ev.detail.value : ev.target.value;
@@ -2441,6 +2522,13 @@ class OneLineRoomCardEditor extends HTMLElement {
       badgesHead.addEventListener("click", () => {
         this._badgesSectionOpen = !this._badgesSectionOpen;
         this._updateBadgesUI();
+      });
+    }
+    const layoutHead = this.shadowRoot.getElementById("layout-head");
+    if (layoutHead) {
+      layoutHead.addEventListener("click", () => {
+        this._layoutSectionOpen = !this._layoutSectionOpen;
+        this._updateHeaderSectionUI();
       });
     }
     const nameOffsetSlider = this.shadowRoot.getElementById("name-offset-slider");
@@ -2796,6 +2884,11 @@ class OneLineRoomCardEditor extends HTMLElement {
     const chev = this.shadowRoot?.getElementById("header-sec-chev");
     if (content) content.hidden = !this._headerSectionOpen;
     if (chev) chev.style.transform = this._headerSectionOpen ? "rotate(90deg)" : "";
+
+    const layoutC = this.shadowRoot?.getElementById("layout-content");
+    const layoutCh = this.shadowRoot?.getElementById("layout-chev");
+    if (layoutC) layoutC.hidden = !this._layoutSectionOpen;
+    if (layoutCh) layoutCh.style.transform = this._layoutSectionOpen ? "rotate(90deg)" : "";
   }
 
   _updateImageSectionUI() {
@@ -2844,6 +2937,65 @@ class OneLineRoomCardEditor extends HTMLElement {
     if (addBtn) addBtn.label = getTranslation(h, "badge_add");
 
     if (!this._badgesSectionOpen) return;
+
+    // Sync Primary Climate Entity
+    const climatePicker = content.querySelector('ha-entity-picker[cfg="entity"]');
+    if (climatePicker) {
+      climatePicker.hess = h;
+      climatePicker.value = this._config?.entity || "";
+      climatePicker.onclick = (e) => e.stopPropagation();
+      climatePicker.onvaluechanged = (e) => {
+        e.stopPropagation();
+        this._fire({ ...this._config, entity: e.detail?.value || "" });
+      };
+    }
+
+    // Sync Auto Climate Button Toggle
+    const autoToggle = content.querySelector("#auto-climate-btn-toggle");
+    if (autoToggle) {
+      autoToggle.checked = !!this._config?.auto_climate_button;
+      autoToggle.onclick = (e) => e.stopPropagation();
+      autoToggle.onchange = (e) => {
+        e.stopPropagation();
+        this._fire({ ...this._config, auto_climate_button: e.target.checked });
+      };
+    }
+
+    // Sync Badge Background
+    const bgField = content.querySelector("#standard-badge-bg");
+    const bgPop = content.querySelector("#standard-badge-bg-popover");
+    const bgPicker = content.querySelector("#standard-badge-bg-picker");
+    const bgPrv = bgPicker?.closest(".cp-preview")?.querySelector("div");
+    const bgVal = this._config?.header_info_background || "";
+
+    if (bgField) {
+      bgField.value = bgVal;
+      bgField.onclick = (e) => e.stopPropagation();
+      bgField.onchange = (e) => {
+        e.stopPropagation();
+        const v = trimStr(e.target.value || "");
+        this._fire({ ...this._config, header_info_background: v });
+      };
+    }
+    if (bgPop) {
+      bgPop.value = bgVal;
+      bgPop.onclick = (e) => e.stopPropagation();
+      bgPop.onchange = (e) => {
+        e.stopPropagation();
+        const v = trimStr(e.target.value || "");
+        this._fire({ ...this._config, header_info_background: v });
+      };
+    }
+    if (bgPicker) {
+      bgPicker.value = parseColorToPickerHex(bgVal);
+      if (bgPrv) bgPrv.style.backgroundColor = bgVal || "transparent";
+      bgPicker.onclick = (e) => e.stopPropagation();
+      bgPicker.onchange = (e) => {
+        e.stopPropagation();
+        const rgba = hexToRgba(e.target.value, 0.25);
+        this._fire({ ...this._config, header_info_background: rgba });
+      };
+    }
 
     const list = content.querySelector("#badges-list");
     if (!list) return;
@@ -2894,29 +3046,42 @@ class OneLineRoomCardEditor extends HTMLElement {
       });
       box.appendChild(ep);
 
+      // Combined Label + Toggle
+      const labelRow = document.createElement("div");
+      labelRow.style.cssText = "position: relative; display:flex; align-items: flex-end; margin-bottom:8px;";
+
       const lf = document.createElement("ha-textfield");
       lf.label = getTranslation(h, "badge_label");
       lf.placeholder = h?.states[badge.entity]?.attributes?.friendly_name || "";
       lf.value = badge.label || "";
-      lf.style.cssText = "width:100%;display:block;margin-bottom:8px;";
+      lf.style.width = "100%";
       lf.addEventListener("change", (ev) => {
         ev.stopPropagation();
-        const v = ev.target.value || "";
-        const arr = [...(this._config?.header_badges || [])];
-        const next = { ...arr[idx] };
-        if (v) next.label = v; else delete next.label;
-        arr[idx] = next;
-        this._fire({ ...this._config, header_badges: arr });
+        updBadge(idx, "label", ev.target.value || "");
       });
-      box.appendChild(lf);
+      labelRow.appendChild(lf);
 
+      const toggleWrap = document.createElement("div");
+      toggleWrap.style.cssText = "position: absolute; right: 8px; bottom: 28px; z-index: 1;";
+      const nameSwitch = document.createElement("ha-switch");
+      nameSwitch.checked = badge.show_name !== false;
+      nameSwitch.title = getTranslation(h, "show_name");
+      nameSwitch.style.cssText = "transform: scale(0.8); cursor: pointer;";
+      nameSwitch.addEventListener("change", (ev) => {
+        ev.stopPropagation();
+        updBadge(idx, "show_name", ev.target.checked !== false);
+      });
+      toggleWrap.appendChild(nameSwitch);
+      labelRow.appendChild(toggleWrap);
+      box.appendChild(labelRow);
+
+      // Compact Background Color Row
       const bgRow = document.createElement("div");
-      bgRow.className = "cl-row";
-      bgRow.style.marginBottom = "8px";
+      bgRow.style.cssText = "position: relative; display: flex; align-items: flex-end; margin-bottom: 8px;";
 
       const bgField = document.createElement("ha-textfield");
       bgField.label = getTranslation(h, "badge_background");
-      bgField.placeholder = "rgba(255,255,255,0.25)";
+      bgField.style.width = "100%";
       bgField.value = badge.background || "";
       bgField.addEventListener("change", (ev) => {
         ev.stopPropagation();
@@ -2931,43 +3096,43 @@ class OneLineRoomCardEditor extends HTMLElement {
       const popover = document.createElement("div");
       popover.className = "color-popover";
       const popoverField = document.createElement("ha-textfield");
-      popoverField.placeholder = "#hex";
+      popoverField.placeholder = "#hex / rgba";
       popoverField.style.cssText = "width: 100%; margin-bottom: 0; --mdc-text-field-fill-color: rgba(255,255,255,0.1); --mdc-text-field-ink-color: white;";
       popoverField.value = badge.background || "";
       popoverField.addEventListener("change", (ev) => {
         ev.stopPropagation();
-        updBadge(idx, "background", trimStr(ev.target.value || ""));
+        const v = trimStr(ev.target.value || "");
+        updBadge(idx, "background", v);
+        // Visual sync
+        cpInner.style.backgroundColor = v;
       });
       popover.appendChild(popoverField);
       colorContainer.appendChild(popover);
 
+      const cpPreview = document.createElement("div");
+      cpPreview.className = "cp-preview";
+      const cpInner = document.createElement("div");
+      cpInner.style.backgroundColor = badge.background || "transparent";
+      cpPreview.appendChild(cpInner);
+
       const bgPicker = document.createElement("input");
       bgPicker.type = "color";
-      bgPicker.className = "cp cl-p";
-      bgPicker.style.cssText = "width: 24px; height: 24px; padding: 0; border: 1px solid var(--divider-color); cursor: pointer; border-radius: 4px; background: none;";
+      bgPicker.style.cssText = "position: absolute; inset: 0; opacity: 0; cursor: pointer; border: none; padding: 0; width: 100%; height: 100%;";
       bgPicker.value = parseColorToPickerHex(badge.background);
       bgPicker.addEventListener("change", (ev) => {
         ev.stopPropagation();
-        updBadge(idx, "background", hexToRgba(ev.target.value, 0.35));
+        const hex = ev.target.value;
+        const rgba = hexToRgba(hex, 0.25); // Default transparency as requested for badges
+        updBadge(idx, "background", rgba);
+        cpInner.style.backgroundColor = rgba;
+        popoverField.value = rgba;
+        bgField.value = rgba;
       });
-      colorContainer.appendChild(bgPicker);
+      cpPreview.appendChild(bgPicker);
+      colorContainer.appendChild(cpPreview);
       bgRow.appendChild(colorContainer);
 
       box.appendChild(bgRow);
-
-      const showNameWrap = document.createElement("div");
-      showNameWrap.style.cssText = "margin-top:4px;";
-      const showNameField = document.createElement("ha-formfield");
-      showNameField.label = getTranslation(h, "show_name");
-      const showNameToggle = document.createElement("ha-switch");
-      showNameToggle.checked = badge.show_name !== false;
-      showNameToggle.addEventListener("change", (ev) => {
-        ev.stopPropagation();
-        updBadge(idx, "show_name", ev.target.checked !== false);
-      });
-      showNameField.appendChild(showNameToggle);
-      showNameWrap.appendChild(showNameField);
-      box.appendChild(showNameWrap);
 
       list.appendChild(box);
     });
@@ -3093,8 +3258,11 @@ class OneLineRoomCardEditor extends HTMLElement {
                  <div class="color-popover">
                     <ha-textfield class="cl-pop" placeholder="#hex" style="width: 100%; margin-bottom: 0; --mdc-text-field-fill-color: rgba(255,255,255,0.1); --mdc-text-field-ink-color: white;"></ha-textfield>
                  </div>
-                 <input type="color" class="cp cl-p" title="${getTranslation(h, "color")}" 
-                        style="width: 24px; height: 24px; padding: 0; border: 1px solid var(--divider-color); cursor: pointer; border-radius: 4px; background: none;">
+                 <div class="cp-preview">
+                    <div></div>
+                    <input type="color" class="cp cl-p" title="${getTranslation(h, "color")}" 
+                           style="position: absolute; inset: 0; opacity: 0; cursor: pointer; border: none; padding: 0; width: 100%; height: 100%;">
+                 </div>
               </div>
             </div>
           </div>
@@ -3105,8 +3273,11 @@ class OneLineRoomCardEditor extends HTMLElement {
                <div class="color-popover">
                   <ha-textfield class="bg-txt-pop" placeholder="#hex" style="width: 100%; margin-bottom: 0; --mdc-text-field-fill-color: rgba(255,255,255,0.1); --mdc-text-field-ink-color: white;"></ha-textfield>
                </div>
-               <input type="color" class="cp bg-cp" title="${getTranslation(h, "color")}" 
-                      style="width: 24px; height: 24px; padding: 0; border: 1px solid var(--divider-color); cursor: pointer; border-radius: 4px; background: none;">
+               <div class="cp-preview">
+                  <div></div>
+                  <input type="color" class="cp bg-cp" title="${getTranslation(h, "color")}" 
+                         style="position: absolute; inset: 0; opacity: 0; cursor: pointer; border: none; padding: 0; width: 100%; height: 100%;">
+               </div>
             </div>
           </div>
         </div>
@@ -3131,10 +3302,14 @@ class OneLineRoomCardEditor extends HTMLElement {
             <ha-textfield class="ctpv" label="${getTranslation(h, "climate_presets_label")}" placeholder="0, 18, 20, auto, max" style="flex:1;min-width:160px"></ha-textfield>
           </div>
         </div>
-        <div class="entity-only light-only ${hideEntity}" style="margin-top:8px; border-top:1px solid var(--divider-color); padding-top:8px">
-          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-            <ha-formfield label="${getTranslation(h, "show_color_favorites")}"><ha-switch class="scf"></ha-switch></ha-formfield>
-            <div class="cfv-swatches" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;min-height:28px;flex:1"></div>
+          </div>
+        </div>
+        <div style="margin-top:8px; border-top:1px solid var(--divider-color); padding-top:8px">
+          <div class="image-title" style="margin-bottom:8px; font-weight:bold">${getTranslation(h, "visibility_cond")}</div>
+          <ha-entity-picker class="ve" label="${getTranslation(h, "vis_entity")}"></ha-entity-picker>
+          <div class="row" style="align-items:center; margin-top:8px; gap: 12px">
+            <ha-textfield class="vs" label="${getTranslation(h, "vis_state")}" style="flex:1"></ha-textfield>
+            <ha-formfield label="${getTranslation(h, "vis_invert")}"><ha-switch class="vi"></ha-switch></ha-formfield>
           </div>
         </div>
         </div>`;
@@ -3287,29 +3462,34 @@ class OneLineRoomCardEditor extends HTMLElement {
         dvWrap.appendChild(dv);
       }
       const nm = box.querySelector(".nm"); if (nm) { nm.value = ctrl.name || ""; nm.addEventListener("change", e => upd("name", e.target.value)); }
-      
+
       const clPop = box.querySelector(".cl-pop");
       const clp = box.querySelector(".cl-p");
+      const clPrv = clp?.closest(".cp-preview")?.querySelector("div");
       if (clPop) {
         clPop.value = ctrl.color || "";
         clPop.addEventListener("change", e => {
           const val = e.target.value;
           upd("color", val);
           if (clp) clp.value = parseColorToPickerHex(val);
+          if (clPrv) clPrv.style.backgroundColor = val;
         });
       }
       if (clp) {
         clp.value = parseColorToPickerHex(ctrl.color || "#000000");
+        if (clPrv) clPrv.style.backgroundColor = ctrl.color || "#000000";
         clp.addEventListener("input", e => {
           const val = e.target.value;
           upd("color", val);
           if (clPop) clPop.value = val;
+          if (clPrv) clPrv.style.backgroundColor = val;
         });
       }
 
       const bgTxt = box.querySelector(".bg-txt");
       const bgPop = box.querySelector(".bg-txt-pop");
       const bgCp = box.querySelector(".bg-cp");
+      const bgPrv = bgCp?.closest(".cp-preview")?.querySelector("div");
       if (bgTxt) {
         bgTxt.value = ctrl.button_background || "";
         bgTxt.addEventListener("change", e => {
@@ -3317,6 +3497,7 @@ class OneLineRoomCardEditor extends HTMLElement {
           upd("button_background", val);
           if (bgPop) bgPop.value = val;
           if (bgCp) bgCp.value = parseColorToPickerHex(val);
+          if (bgPrv) bgPrv.style.backgroundColor = val;
           this.renBtn();
         });
       }
@@ -3327,16 +3508,19 @@ class OneLineRoomCardEditor extends HTMLElement {
           upd("button_background", val);
           if (bgTxt) bgTxt.value = val;
           if (bgCp) bgCp.value = parseColorToPickerHex(val);
+          if (bgPrv) bgPrv.style.backgroundColor = val;
           this.renBtn();
         });
       }
       if (bgCp) {
         bgCp.value = parseColorToPickerHex(ctrl.button_background || "#ffffff");
+        if (bgPrv) bgPrv.style.backgroundColor = ctrl.button_background || "#ffffff";
         bgCp.addEventListener("input", e => {
           const val = e.target.value;
           upd("button_background", val);
           if (bgTxt) bgTxt.value = val;
           if (bgPop) bgPop.value = val;
+          if (bgPrv) bgPrv.style.backgroundColor = val;
           this.renBtn();
         });
       }
@@ -3686,6 +3870,12 @@ class OneLineRoomCardEditor extends HTMLElement {
         };
         cm.value = ctrl.control_mode || "none"; cm.addEventListener("value-changed", e => { e.stopPropagation(); const v = e.detail.value; const cc = [...this._config.controls]; const nn = { ...cc[i] }; if (v && v !== "none") nn.control_mode = v; else delete nn.control_mode; cc[i] = nn; keepOpen(); this._fire({ ...this._config, controls: cc }); });
       }
+
+      // Visibility listeners
+      const ve = box.querySelector(".ve"); if (ve) { ve.hass = h; ve.value = ctrl.visibility_entity || ""; ve.addEventListener("value-changed", e => { e.stopPropagation(); upd("visibility_entity", e.detail.value); }); }
+      const vs = box.querySelector(".vs"); if (vs) { vs.value = ctrl.visibility_state || ""; vs.addEventListener("change", e => { e.stopPropagation(); upd("visibility_state", e.target.value); }); }
+      const vi = box.querySelector(".vi"); if (vi) { vi.checked = ctrl.visibility_invert === true; vi.addEventListener("change", e => { e.stopPropagation(); upd("visibility_invert", e.target.checked); }); }
+
       const tpIcon = box.querySelector(".tp-ic");
       const tpText = box.querySelector(".tp-tx");
       if (tpIcon && tpText && isTemplate) {
@@ -3732,16 +3922,6 @@ class OneLineRoomCardEditor extends HTMLElement {
       const v = this._config?.show_name !== false;
       if (showNameToggle.checked !== v) showNameToggle.checked = v;
     }
-    const standardBadgeBg = this.shadowRoot.getElementById("standard-badge-bg");
-    if (standardBadgeBg) {
-      const v = this._config?.header_info_background || "";
-      if (standardBadgeBg.value !== v) standardBadgeBg.value = v;
-    }
-    const standardBadgeBgPicker = this.shadowRoot.getElementById("standard-badge-bg-picker");
-    if (standardBadgeBgPicker) {
-      const v = parseColorToPickerHex(this._config?.header_info_background);
-      if (standardBadgeBgPicker.value !== v) standardBadgeBgPicker.value = v;
-    }
 
     const behaviorSel = this.shadowRoot.getElementById("behavior-sel");
     if (behaviorSel) {
@@ -3751,32 +3931,12 @@ class OneLineRoomCardEditor extends HTMLElement {
       if (behaviorSel.value !== v) behaviorSel.value = v;
     }
     ["name", "info"].forEach(type => {
-      const w = this.shadowRoot.getElementById(`header-${type}-weight-sel`);
-      if (w) w.value = this._config[`header_${type}_weight`] || (type === "name" ? "bold" : "normal");
-      const s = this.shadowRoot.getElementById(`header-${type}-style-sel`);
-      if (s) s.value = this._config[`header_${type}_style`] || "normal";
-      const cf = this.shadowRoot.getElementById(`header-${type}-color`);
-      if (cf) { const v = this._config[`header_${type}_color`] || ""; if (cf.value !== v) cf.value = v; }
-      const cp = this.shadowRoot.getElementById(`header-${type}-color-picker`);
-      if (cp) { const v = parseColorToPickerHex(this._config[`header_${type}_color`] || "#ffffff"); if (cp.value !== v) cp.value = v; }
+      const weightSel = this.shadowRoot.getElementById(`header-${type}-weight-sel`);
+      if (weightSel) weightSel.value = this._config[`header_${type}_weight`] || (type === "name" ? "bold" : "normal");
+      const styleSel = this.shadowRoot.getElementById(`header-${type}-style-sel`);
+      if (styleSel) styleSel.value = this._config[`header_${type}_style`] || "normal";
     });
-    const windowAlwaysShowToggle = this.shadowRoot.getElementById("window-always-show");
-    if (windowAlwaysShowToggle) {
-      const v = this._config?.window_always_show === true;
-      if (windowAlwaysShowToggle.checked !== v) windowAlwaysShowToggle.checked = v;
-      const cr = this.shadowRoot.getElementById("window-closed-color-row");
-      if (cr) cr.style.display = v ? "flex" : "none";
-    }
-    const windowOpenColorPicker = this.shadowRoot.getElementById("window-open-color-picker");
-    if (windowOpenColorPicker) {
-      const v = parseColorToPickerHex(this._config?.window_open_color || "#FFA000");
-      if (windowOpenColorPicker.value !== v) windowOpenColorPicker.value = v;
-    }
-    const windowClosedColorPicker = this.shadowRoot.getElementById("window-closed-color-picker");
-    if (windowClosedColorPicker) {
-      const v = parseColorToPickerHex(this._config?.window_closed_color || "#9E9E9E");
-      if (windowClosedColorPicker.value !== v) windowClosedColorPicker.value = v;
-    }
+
     const infoOffsetSlider = this.shadowRoot.getElementById("info-offset-slider");
     if (infoOffsetSlider) {
       const infoOffsetValue = this.shadowRoot.getElementById("info-offset-value");
@@ -3791,14 +3951,44 @@ class OneLineRoomCardEditor extends HTMLElement {
       if (nameOffsetSlider.value !== v) nameOffsetSlider.value = v;
       if (nameOffsetValue) nameOffsetValue.textContent = `${v}%`;
     }
+
+    const syncOffsetsToggle = this.shadowRoot.getElementById("sync-offsets-toggle");
+    if (syncOffsetsToggle) {
+      syncOffsetsToggle.checked = !!this._config?.header_sync_offsets;
+    }
+
+    this.updCp();
   }
 
   updCp() {
     if (!this._config) return;
-    this.shadowRoot.querySelectorAll(".i-cp").forEach(e => {
+    this.shadowRoot.querySelectorAll(".cl-p").forEach(e => {
       const k = e.getAttribute("cfg");
-      const v = this._config[k] || "#000000";
-      if (e.value !== v) e.value = v;
+      if (!k) return;
+      const v = this._config[k] || "";
+      const hex = parseColorToPickerHex(v);
+      if (e.value !== hex) e.value = hex;
+      
+      const container = e.closest(".color-container");
+      if (container) {
+        const prev = container.querySelector(".cp-preview div");
+        if (prev) prev.style.backgroundColor = v || "transparent";
+        const popField = container.querySelector(".color-popover ha-textfield");
+        if (popField && popField.value !== v) popField.value = v;
+        const mainField = container.closest(".row")?.querySelector(`ha-textfield[cfg="${k}"]`);
+        if (mainField && mainField.value !== v) mainField.value = v;
+        // Fallback for fields like standard-badge-bg which might not be inside a .row with cfg
+        if (k === "header_info_background") {
+            const bgF = this.shadowRoot.getElementById("standard-badge-bg");
+            if (bgF && bgF.value !== v) bgF.value = v;
+        }
+      } else {
+        // Fallback for pickers not in a color-container (like global-button-bg in old structure)
+        const prev = e.closest(".cp-preview")?.querySelector("div");
+        if (prev) prev.style.backgroundColor = v;
+        const mainField = this.shadowRoot.querySelector(`ha-textfield[cfg="${k}"]`);
+        if (mainField && mainField.value !== v) mainField.value = v;
+      }
     });
   }
 }

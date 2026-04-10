@@ -2,6 +2,13 @@
 
 All notable changes to OneLine Room Card are documented here.
 
+## [1.2.6]
+
+* Runtime: **Conditional Visibility for Buttons** — Buttons can now be shown or hidden based on the state of any entity. Supports "Show if" and "Hide if" (inverted) logic.
+* Runtime: **Badge Background Inheritance** — Individual badges now automatically inherit the global background color (Standard-Badge-Hintergrund) if no specific background is defined.
+* Editor UX: **Unified Color Picker Synchronization** — Standardized all color fields to use native pickers + hex fields with real-time synchronization. Fixed bugs where color changes were not always reflected immediately.
+* Editor UX: **Layout Reorganization** — "Badge" and "Image" sections have been moved up for better accessibility. Added a new **Layout & Position** section for header alignment and offset settings.
+
 ---
 
 ## [1.2.5]
