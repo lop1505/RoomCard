@@ -1537,85 +1537,6 @@ class OneLineRoomCardEditor extends HTMLElement {
     if (this._controlIds.length > len) this._controlIds.length = len;
   }
 
-  _getScrollParents() {
-    const out = [];
-    const seen = new Set();
-    const queue = [this];
-    while (queue.length > 0) {
-      const el = queue.shift();
-      if (!el || seen.has(el)) continue;
-      seen.add(el);
-      if (el !== this && el instanceof Element) {
-        const oy = getComputedStyle(el).overflowY;
-        if (oy === "auto" || oy === "scroll") out.push(el);
-      }
-      if (el.parentElement) queue.push(el.parentElement);
-      if (el.assignedSlot) queue.push(el.assignedSlot);
-      if (!el.parentElement && !el.assignedSlot) {
-        const root = el.getRootNode?.();
-        if (root instanceof ShadowRoot && root.host && !seen.has(root.host)) {
-          queue.push(root.host);
-        }
-      }
-    }
-    const docScroller = this.ownerDocument?.scrollingElement;
-    if (docScroller && !seen.has(docScroller)) out.push(docScroller);
-    return out;
-  }
-
-  _withScrollRestore(fn) {
-    const scrollParents = this._getScrollParents();
-    const primaryScroller = scrollParents[0] || null;
-    const scrollTops = scrollParents.map((el) => ({ el, top: el.scrollTop }));
-    const activeEl = this.shadowRoot?.activeElement;
-    const activeBox = activeEl?.closest?.(".box");
-    const anchorId = activeBox?.dataset?.controlId || this._lastInteractedControlId || "";
-    const anchorBox = anchorId
-      ? this.shadowRoot?.querySelector(`.box[data-control-id="${anchorId}"]`)
-      : activeBox;
-    const anchorOffset = (primaryScroller && activeBox)
-      ? activeBox.getBoundingClientRect().top - primaryScroller.getBoundingClientRect().top
-      : (primaryScroller && anchorBox)
-        ? anchorBox.getBoundingClientRect().top - primaryScroller.getBoundingClientRect().top
-      : null;
-
-    // Verhindert das Einklappen des Editors während des Renderings
-    const oldHeight = this.offsetHeight;
-    if (oldHeight > 0) this.style.minHeight = `${oldHeight}px`;
-
-    fn();
-
-    if (scrollParents.length > 0) {
-      const restoreTop = () => {
-        const primaryTop = scrollTops[0]?.top ?? 0;
-        if (!anchorId || anchorOffset === null || !primaryScroller) return primaryTop;
-        const nextBox = this.shadowRoot?.querySelector(`.box[data-control-id="${anchorId}"]`);
-        if (!nextBox) return primaryTop;
-        const nextOffset = nextBox.getBoundingClientRect().top - primaryScroller.getBoundingClientRect().top;
-        return primaryTop + (nextOffset - anchorOffset);
-      };
-      const restoreScrollParents = () => {
-        scrollTops.forEach(({ el, top }, idx) => {
-          el.scrollTop = idx === 0 ? restoreTop() : top;
-        });
-        if (anchorId) {
-          const nextBox = this.shadowRoot?.querySelector(`.box[data-control-id="${anchorId}"]`);
-          nextBox?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
-        }
-      };
-      restoreScrollParents();
-      let frames = 6;
-      const restore = () => {
-        restoreScrollParents();
-        if (--frames > 0) requestAnimationFrame(restore);
-        else this.style.minHeight = ""; // Zurücksetzen, wenn fertig
-      };
-      requestAnimationFrame(restore);
-    } else {
-      this.style.minHeight = "";
-    }
-  }
-
   _areAllButtonsExpanded() {
     const controls = Array.isArray(this._config?.controls) ? this._config.controls : [];
     if (controls.length === 0) return false;
@@ -1943,7 +1864,7 @@ class OneLineRoomCardEditor extends HTMLElement {
     if (!this._config) return;
     const alreadyRendered = !!this.shadowRoot.innerHTML;
     const domVersion = this.shadowRoot.querySelector("[data-rc-version]")?.dataset?.rcVersion;
-    if (alreadyRendered && domVersion === VERSION) { this.updVal(); this.renBtn(); this._applyNavSelectorOptions(); this._ensureNavOptions(); this._updateSensorsSectionUI(); this._updateImageSectionUI(); this._updateBadgesUI(); this._updateTypographyUI(); this._updateCardBehaviorUI(); this._updateHeaderSectionUI(); this._updateTabUI(); return; }
+    if (alreadyRendered && domVersion === VERSION) { this.updVal(); if (JSON.stringify(this._config?.controls || []) !== this._lastRenderedControlsSig) this.renBtn(); this._applyNavSelectorOptions(); this._ensureNavOptions(); this._updateSensorsSectionUI(); this._updateImageSectionUI(); this._updateBadgesUI(); this._updateTypographyUI(); this._updateCardBehaviorUI(); this._updateHeaderSectionUI(); this._updateTabUI(); return; }
     // Force full re-render if DOM is stale or from old version
     this.shadowRoot.innerHTML = "";
     const h = this._hass;
@@ -3062,18 +2983,38 @@ class OneLineRoomCardEditor extends HTMLElement {
     } else { img.classList.remove("show"); }
   }
 
+  _saveAllScrollPositions() {
+    const saved = [];
+    const seen = new WeakSet();
+    const scan = (root) => {
+      try {
+        const iter = document.createNodeIterator(root, NodeFilter.SHOW_ELEMENT);
+        let node;
+        while ((node = iter.nextNode())) {
+          if (seen.has(node)) continue;
+          seen.add(node);
+          if (node.scrollTop > 0 || node.scrollLeft > 0) {
+            saved.push({ el: node, top: node.scrollTop, left: node.scrollLeft });
+          }
+          if (node.shadowRoot) scan(node.shadowRoot);
+        }
+      } catch (_e) {}
+    };
+    scan(document.body);
+    return saved;
+  }
+
   renBtn() {
     if (!this._config?.controls) return;
     const div = this.shadowRoot.getElementById("b"); if (!div) return;
     const h = this._hass;
     this._syncControlIds();
-    this._withScrollRestore(() => {
-      div.replaceChildren();
     const actOpts = [
       { value: "more-info", label: getTranslation(h, "act_more") },
       { value: "toggle", label: getTranslation(h, "act_toggle") },
       { value: "none", label: getTranslation(h, "act_none") }
     ];
+    const boxes = [];
     this._config.controls.forEach((ctrl, i) => {
       const box = document.createElement("details"); box.className = "box";
       const isTemplate = ctrl.type === "template";
@@ -3620,8 +3561,19 @@ class OneLineRoomCardEditor extends HTMLElement {
         const previewText = [prev.content || "—", prev.state || ""].filter(Boolean).join(" | ");
         tpText.textContent = previewText || "—";
       }
-      div.appendChild(box);
+      boxes.push(box);
     });
+    const _scrollState = this._saveAllScrollPositions();
+    const _oldH = div.offsetHeight;
+    if (_oldH > 0) div.style.minHeight = `${_oldH}px`;
+    div.replaceChildren(...boxes);
+    this._lastRenderedControlsSig = JSON.stringify(this._config?.controls || []);
+    requestAnimationFrame(() => {
+      div.style.minHeight = "";
+      _scrollState.forEach(({ el, top, left }) => {
+        if (el.scrollTop !== top) el.scrollTop = top;
+        if (el.scrollLeft !== left) el.scrollLeft = left;
+      });
     });
   }
 

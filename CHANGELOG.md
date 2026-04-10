@@ -4,6 +4,12 @@ All notable changes to OneLine Room Card are documented here.
 
 ---
 
+## [1.2.5]
+
+* Editor UX: **Fix scroll jump in button editor** — the editor dialog no longer scrolls back to the top of the button section after every config change (toggle, dropdown, text input). Closes [#68](https://github.com/lop1505/RoomCard/issues/68).
+
+---
+
 ## [1.2.4]
 
 * Runtime: **Climate Inline Slider** — `control_mode: slider` now works for `climate` entities. Drag to set the target temperature; the button state shows current → setpoint and updates live while dragging. Closes [#44](https://github.com/lop1505/RoomCard/issues/44).
