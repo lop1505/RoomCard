@@ -75,7 +75,8 @@ const TRANSLATIONS = {
     show_color_favorites: "Color Favorites",
     color_favorites_label: "Colors ('#hex' or 'r,g,b', comma-separated)",
     sub_chips: "Sub-Chips", chip_add: "Add Chip", chip_entity: "Entity", chip_attribute: "Attribute (optional)", chip_icon: "Icon (optional)", chip_label: "Label (optional)", chips_position: "Chip Position", chips_top: "Above title", chips_bottom: "Below title",
-    vis_add: "Add Condition", vis_eq: "State is equal", vis_neq: "State is not equal", vis_above: "State is strictly greater than", vis_below: "State is strictly less than"
+    vis_add: "Add Condition", vis_eq: "State is equal", vis_neq: "State is not equal", vis_above: "State is strictly greater than", vis_below: "State is strictly less than",
+    info_line_position: "Info Line Position", info_position_header: "Inside header (default)", info_position_below: "Below header"
   },
   de: {
     empty: "Leer", low: "Niedrig", critical: "Kritisch", window: "Fenster", general: "Allgemein",
@@ -143,7 +144,8 @@ const TRANSLATIONS = {
     show_color_favorites: "Lieblings-Farben",
     color_favorites_label: "Farben ('#hex' oder 'r,g,b', kommagetrennt)",
     sub_chips: "Sub-Chips", chip_add: "Chip hinzufügen", chip_entity: "Entität", chip_attribute: "Attribut (optional)", chip_icon: "Icon (optional)", chip_label: "Bezeichnung (optional)", chips_position: "Chip-Position", chips_top: "Über dem Titel", chips_bottom: "Unter dem Titel",
-    vis_add: "Bedingung hinzufügen", vis_eq: "Zustand ist gleich", vis_neq: "Zustand ist nicht gleich", vis_above: "Numerisch größer als", vis_below: "Numerisch kleiner als"
+    vis_add: "Bedingung hinzufügen", vis_eq: "Zustand ist gleich", vis_neq: "Zustand ist nicht gleich", vis_above: "Numerisch größer als", vis_below: "Numerisch kleiner als",
+    info_line_position: "Info-Zeile Position", info_position_header: "Im Header (Standard)", info_position_below: "Unter dem Header"
   },
   fr: {
     empty: "Vide", low: "Faible", critical: "Critique", window: "Fenêtre", general: "Général",
@@ -204,7 +206,8 @@ const TRANSLATIONS = {
     show_climate_presets: "Préréglages de température",
     climate_presets_label: "Températures (séparées par virgule)",
     show_color_favorites: "Couleurs favorites",
-    color_favorites_label: "Couleurs ('#hex' ou 'r,g,b', virgule)"
+    color_favorites_label: "Couleurs ('#hex' ou 'r,g,b', virgule)",
+    info_line_position: "Position ligne info", info_position_header: "Dans l'en-tête (défaut)", info_position_below: "Sous l'en-tête"
   }
 };
 
@@ -605,6 +608,8 @@ class OneLineRoomCard extends HTMLElement {
         .btn-chip { display: inline-flex; align-items: center; gap: 2px; padding: 2px 5px; background: rgba(var(--rgb-primary-text-color, 0, 0, 0), 0.12); color: var(--secondary-text-color, rgba(0,0,0,0.6)); border-radius: 6px; max-width: 100%; box-sizing: border-box; }
         .btn-chip span { font-size: 9px; line-height: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .btn-chip ha-icon { --mdc-icon-size: 11px; }
+        .info-bar { display: none; flex-wrap: nowrap; gap: 6px; padding: 4px 12px 6px; align-items: center; overflow: hidden; font-size: var(--rc-header-info-size, 12px); font-weight: var(--rc-header-info-weight, normal); font-style: var(--rc-header-info-style, normal); color: var(--rc-header-info-color, var(--secondary-text-color)); }
+        .info-bar.active { display: flex; }
       </style>
       <ha-card>
         <div class="container">
@@ -620,6 +625,7 @@ class OneLineRoomCard extends HTMLElement {
             <div id="chips" class="chips"></div>
             <div id="collapse-btn" class="collapse-btn"><ha-icon icon="mdi:chevron-down"></ha-icon></div>
           </div>
+          <div id="info-bar" class="info-bar"></div>
           <div id="ctrls" class="controls"></div>
         </div>
       </ha-card>`;
@@ -776,7 +782,9 @@ class OneLineRoomCard extends HTMLElement {
     if (effectiveHumidSensor && h.states[effectiveHumidSensor]) hm = h.states[effectiveHumidSensor].state;
     else if (effectiveEntity && h.states[effectiveEntity]?.attributes?.current_humidity !== undefined) hm = h.states[effectiveEntity].attributes.current_humidity;
 
+    const infoPos = c.info_line_position || "header";
     const infoEl = this.shadowRoot.getElementById("info");
+    const infoBarEl = this.shadowRoot.getElementById("info-bar");
     const infoParts = [];
     const standardHeaderBadgeBackground = trimStr(c.header_info_background);
     if (t != null && t !== "-" && !isNaN(parseFloat(t))) {
@@ -804,30 +812,35 @@ class OneLineRoomCard extends HTMLElement {
       });
     });
     infoEl.replaceChildren();
+    if (infoBarEl) infoBarEl.replaceChildren();
+
+    const target = (infoPos === "below_header" && infoBarEl) ? infoBarEl : infoEl;
     infoParts.forEach((part, idx) => {
       const span = document.createElement("span");
       span.className = `info-item${part.background ? " badge" : ""}`;
       span.textContent = part.text;
       if (part.background) span.style.background = part.background;
-      infoEl.appendChild(span);
+      target.appendChild(span);
       if (idx < infoParts.length - 1) {
         const sep = document.createElement("span");
         sep.className = "info-item";
         sep.textContent = "|";
-        infoEl.appendChild(sep);
+        target.appendChild(sep);
       }
     });
 
+    if (infoBarEl) infoBarEl.classList.toggle("active", infoPos === "below_header" && infoParts.length > 0);
+
     const textEl = this.shadowRoot.querySelector(".text");
     const nameOffset = Number(c.header_name_offset ?? 0);
-    const infoOffset = Number(c.header_info_offset ?? 0);
+    const infoOffset = infoPos === "header" ? Number(c.header_info_offset ?? 0) : 0;
     if (textEl) textEl.style.flex = (nameOffset > 0 || infoOffset > 0) ? "1" : "";
 
     // Title horizontal offset
     this._applyHeaderOffset(nameEl, nameOffset, textEl);
 
-    // Info line horizontal offset
-    this._applyHeaderOffset(infoEl, infoOffset, textEl);
+    // Info line horizontal offset (only relevant when inside the header)
+    if (infoPos === "header") this._applyHeaderOffset(infoEl, infoOffset, textEl);
 
     const ch = this.shadowRoot.getElementById("chips");
     ch.innerHTML = "";
@@ -2208,6 +2221,13 @@ class OneLineRoomCardEditor extends HTMLElement {
               </ha-formfield>
             </div>
             
+            <div style="margin-bottom:8px">
+              <div style="font-size:12px;opacity:0.7;margin-bottom:4px">${getTranslation(h, "info_line_position")}</div>
+              <select class="info-line-pos-sel qa-native-select" style="height:42px;font-size:14px;width:100%">
+                <option value="header">${getTranslation(h, "info_position_header")}</option>
+                <option value="below_header">${getTranslation(h, "info_position_below")}</option>
+              </select>
+            </div>
             <div class="image-title" style="margin:12px 0 8px">${getTranslation(h, "badge_bg")}</div>
             <div style="position: relative; display: flex; align-items: flex-end;">
               <ha-textfield id="standard-badge-bg" label="${getTranslation(h, "standard_badge_background")}" cfg="header_info_background" class="i" style="width: 100%"></ha-textfield>
@@ -2641,6 +2661,17 @@ class OneLineRoomCardEditor extends HTMLElement {
       badgesHead.addEventListener("click", () => {
         this._badgesSectionOpen = !this._badgesSectionOpen;
         this._updateBadgesUI();
+      });
+    }
+    const infoLinePosSel = this.shadowRoot.querySelector(".info-line-pos-sel");
+    if (infoLinePosSel) {
+      infoLinePosSel.value = this._config?.info_line_position || "header";
+      infoLinePosSel.addEventListener("change", (e) => {
+        e.stopPropagation();
+        const next = { ...this._config };
+        if (e.target.value === "header") delete next.info_line_position;
+        else next.info_line_position = e.target.value;
+        this._fire(next);
       });
     }
     const layoutHead = this.shadowRoot.getElementById("layout-head");

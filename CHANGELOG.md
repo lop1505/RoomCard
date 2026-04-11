@@ -17,6 +17,7 @@ All notable changes to OneLine Room Card are documented here.
 * Bugfix: **Unvollständige Bedingungen** — Bedingungen ohne konfigurierte Entität (z.B. direkt nach dem Hinzufügen) blenden den Button nicht mehr fälschlicherweise aus.
 * Bugfix: **Editor-Stabilität** — Der Editor-Re-Render-Zyklus wurde komplett überarbeitet (Config-Signatur-Vergleich statt fragiler Boolean-Flags), sodass komplexe Editoren wie der Bedingungseditor nicht mehr beim Bearbeiten zerstört werden.
 * Bugfix: **NOT-Bedingung** — Die NOT-Bedingung wertet jetzt korrekt ein `conditions`-Array aus (statt einem einzelnen `condition`-Objekt).
+* Runtime: **Info-Zeile Position** — Neue Option `info_line_position: header | below_header`. Steuert, ob die Info-Zeile (Temperatur, Luftfeuchtigkeit, Badges) im Header-Bild (Standard) oder als separate Leiste zwischen Header und Button-Raster angezeigt wird. Closes [#51](https://github.com/lop1505/RoomCard/issues/51).
 
 ---
 
