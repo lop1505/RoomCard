@@ -1,4 +1,4 @@
-const VERSION = "1.2.6";
+const VERSION = "1.2.5";
 const LOG_FLAG = `customCards_RoomCard_Logged_${VERSION}`;
 
 if (!window[LOG_FLAG]) {
@@ -73,7 +73,9 @@ const TRANSLATIONS = {
     show_climate_presets: "Temperature Presets",
     climate_presets_label: "Temperatures (comma-separated)",
     show_color_favorites: "Color Favorites",
-    color_favorites_label: "Colors ('#hex' or 'r,g,b', comma-separated)"
+    color_favorites_label: "Colors ('#hex' or 'r,g,b', comma-separated)",
+    sub_chips: "Sub-Chips", chip_add: "Add Chip", chip_entity: "Entity", chip_attribute: "Attribute (optional)", chip_icon: "Icon (optional)", chip_label: "Label (optional)", chips_position: "Chip Position", chips_top: "Above title", chips_bottom: "Below title",
+    vis_add: "Add Condition", vis_eq: "State is equal", vis_neq: "State is not equal", vis_above: "State is strictly greater than", vis_below: "State is strictly less than"
   },
   de: {
     empty: "Leer", low: "Niedrig", critical: "Kritisch", window: "Fenster", general: "Allgemein",
@@ -139,7 +141,9 @@ const TRANSLATIONS = {
     show_climate_presets: "Temperatur-Voreinstellungen",
     climate_presets_label: "Temperaturen (kommagetrennt)",
     show_color_favorites: "Lieblings-Farben",
-    color_favorites_label: "Farben ('#hex' oder 'r,g,b', kommagetrennt)"
+    color_favorites_label: "Farben ('#hex' oder 'r,g,b', kommagetrennt)",
+    sub_chips: "Sub-Chips", chip_add: "Chip hinzufügen", chip_entity: "Entität", chip_attribute: "Attribut (optional)", chip_icon: "Icon (optional)", chip_label: "Bezeichnung (optional)", chips_position: "Chip-Position", chips_top: "Über dem Titel", chips_bottom: "Unter dem Titel",
+    vis_add: "Bedingung hinzufügen", vis_eq: "Zustand ist gleich", vis_neq: "Zustand ist nicht gleich", vis_above: "Numerisch größer als", vis_below: "Numerisch kleiner als"
   },
   fr: {
     empty: "Vide", low: "Faible", critical: "Critique", window: "Fenêtre", general: "Général",
@@ -594,6 +598,13 @@ class OneLineRoomCard extends HTMLElement {
         .collapse-btn { position: absolute; bottom: 8px; right: 8px; z-index: 3; width: 28px; height: 28px; border-radius: 50%; background: rgba(0,0,0,0.38); display: none; align-items: center; justify-content: center; cursor: pointer; }
         .collapse-btn ha-icon { --mdc-icon-size: 18px; color: white; transition: transform 0.35s ease; }
         .collapse-btn.open ha-icon { transform: rotate(180deg); }
+        .btn-chips { display: flex; flex-direction: row; flex-wrap: wrap; gap: 2px; align-items: center; max-width: 100%; margin-top: 2px; }
+        .btn-chips.chips-top { margin-top: 0; margin-bottom: 2px; }
+        .btn.has-inline-ctrl .btn-chips { margin-top: 4px; padding-bottom: 2px; }
+        .btn.has-inline-ctrl .btn-chips.chips-top { margin-top: 0; margin-bottom: 4px; padding-bottom: 0; padding-top: 2px; }
+        .btn-chip { display: inline-flex; align-items: center; gap: 2px; padding: 2px 5px; background: rgba(var(--rgb-primary-text-color, 0, 0, 0), 0.12); color: var(--secondary-text-color, rgba(0,0,0,0.6)); border-radius: 6px; max-width: 100%; box-sizing: border-box; }
+        .btn-chip span { font-size: 9px; line-height: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .btn-chip ha-icon { --mdc-icon-size: 11px; }
       </style>
       <ha-card>
         <div class="container">
@@ -651,7 +662,18 @@ class OneLineRoomCard extends HTMLElement {
     (Array.isArray(cfg.battery_sensors) ? cfg.battery_sensors : []).forEach(add);
     (Array.isArray(cfg.controls) ? cfg.controls : []).forEach((ctrl) => {
         add(ctrl?.entity);
-        add(ctrl?.visibility_entity);
+        if (Array.isArray(ctrl.visibility)) {
+            const extract = (conds) => {
+                conds.forEach(c => {
+                    if (c.entity) add(c.entity);
+                    if (Array.isArray(c.conditions)) extract(c.conditions);
+                });
+            };
+            extract(ctrl.visibility);
+        }
+        if (Array.isArray(ctrl.sub_chips)) {
+            ctrl.sub_chips.forEach(chip => add(chip.entity));
+        }
     });
     (Array.isArray(cfg.header_badges) ? cfg.header_badges : []).forEach((b) => add(b?.entity));
     return Array.from(ids);
@@ -880,11 +902,8 @@ class OneLineRoomCard extends HTMLElement {
 
     let visibleCtrls = (c.controls || []).filter(ctrl => {
       if (ctrl.hide) return false;
-      if (ctrl.visibility_entity && ctrl.visibility_state !== undefined) {
-        const st = h.states[ctrl.visibility_entity]?.state;
-        const match = String(st) === String(ctrl.visibility_state);
-        if (ctrl.visibility_invert) { if (match) return false; }
-        else { if (!match) return false; }
+      if (Array.isArray(ctrl.visibility) && ctrl.visibility.length > 0) {
+        if (!this._checkConditions(ctrl.visibility, h)) return false;
       }
       return (ctrl.entity || ctrl.type === "template");
     });
@@ -926,6 +945,7 @@ class OneLineRoomCard extends HTMLElement {
     if (ctrl.align === "right") justify = "flex-end";
     btn.style.setProperty("--btn-justify", justify);
     this._attachActions(btn, ctrl);
+
     return btn;
   }
 
@@ -998,6 +1018,59 @@ class OneLineRoomCard extends HTMLElement {
     };
     apply();
     requestAnimationFrame(() => requestAnimationFrame(apply));
+  }
+
+  _checkConditions(conditions, h) {
+    if (!Array.isArray(conditions) || conditions.length === 0) return true;
+    return conditions.every(c => this._checkCondition(c, h));
+  }
+
+  _checkCondition(c, h) {
+    if (!c || !c.condition) return true;
+    const type = c.condition;
+
+    if (type === "state") {
+      if (!c.entity) return true; // Incomplete condition — treat as always visible
+      const st = h.states[c.entity]?.state;
+      if (c.state_not !== undefined) return st !== c.state_not;
+      return st === c.state;
+    }
+
+    if (type === "numeric_state") {
+      if (!c.entity) return true; // Incomplete condition
+      const val = parseFloat(h.states[c.entity]?.state);
+      if (isNaN(val)) return false;
+      if (c.above !== undefined && val <= parseFloat(c.above)) return false;
+      if (c.below !== undefined && val >= parseFloat(c.below)) return false;
+      return true;
+    }
+
+    if (type === "screen") {
+      if (!c.media_query) return true;
+      return window.matchMedia(c.media_query).matches;
+    }
+
+    if (type === "user") {
+      if (!Array.isArray(c.users) || !h.user) return true;
+      return c.users.includes(h.user.id);
+    }
+
+    if (type === "and") {
+      if (!Array.isArray(c.conditions)) return true;
+      return c.conditions.every(cond => this._checkCondition(cond, h));
+    }
+
+    if (type === "or") {
+      if (!Array.isArray(c.conditions)) return true;
+      return c.conditions.some(cond => this._checkCondition(cond, h));
+    }
+
+    if (type === "not") {
+      if (!Array.isArray(c.conditions)) return true;
+      return c.conditions.every(cond => !this._checkCondition(cond, h));
+    }
+
+    return true;
   }
 
   _updateBtnState(btn, ctrl, h) {
@@ -1115,12 +1188,39 @@ class OneLineRoomCard extends HTMLElement {
         <ha-icon icon="${resolvedIcon}" style="--mdc-icon-size:${iconSizePx}"></ha-icon>
       </div>`
       : "";
-    btn.innerHTML = `
-      ${iconHtml}
-      <div class="btn-txt">
-        ${textHtml}
-      </div>
-      ${badge}`;
+
+    const chipsPos = ctrl.chips_position === "top" ? "top" : "bottom";
+    let chipsHtml = "";
+    if (Array.isArray(ctrl.sub_chips) && ctrl.sub_chips.length > 0) {
+      chipsHtml = `<div class="btn-chips${chipsPos === "top" ? " chips-top" : ""}">`;
+      for (const chip of ctrl.sub_chips) {
+        if (!chip.entity || !h?.states?.[chip.entity]) continue;
+        const chipSt = h.states[chip.entity];
+        let val;
+        if (chip.attribute) {
+          val = chipSt.attributes[chip.attribute];
+        } else {
+          val = h.formatEntityState ? h.formatEntityState(chipSt) : chipSt.state;
+        }
+        const displayVal = val != null ? String(val) : "";
+        let label = chip.label || "";
+        if (label && label.includes("{state}")) {
+          label = label.replace("{state}", displayVal);
+        } else if (label && displayVal) {
+          label = `${label}: ${displayVal}`;
+        } else if (!chip.label && displayVal) {
+          label = displayVal;
+        }
+        const txtHtml = label ? `<span style="margin-left: ${chip.icon ? '4px' : '0'};">${label}</span>` : "";
+        const icnHtml = chip.icon ? `<ha-icon icon="${chip.icon}"></ha-icon>` : "";
+        chipsHtml += `<div class="btn-chip">${icnHtml}${txtHtml}</div>`;
+      }
+      chipsHtml += `</div>`;
+    }
+
+    btn.innerHTML = chipsPos === "top"
+      ? `${iconHtml}<div class="btn-txt">${chipsHtml}${textHtml}</div>${badge}`
+      : `${iconHtml}<div class="btn-txt">${textHtml}${chipsHtml}</div>${badge}`;
 
     btn.classList.toggle("state-unavailable", isUnavail);
     if (!isTemplate) {
@@ -1359,6 +1459,15 @@ class OneLineRoomCard extends HTMLElement {
           btn.appendChild(swatchRow);
         }
       }
+      // Move sub-chips out of btn-top to top or bottom of button based on chips_position
+      const chipsEl = topDiv.querySelector(".btn-chips");
+      if (chipsEl) {
+        if (chipsPos === "top") {
+          btn.insertBefore(chipsEl, topDiv);
+        } else {
+          btn.appendChild(chipsEl);
+        }
+      }
     } else {
       btn.classList.remove("has-inline-ctrl");
     }
@@ -1498,7 +1607,16 @@ class OneLineRoomCardEditor extends HTMLElement {
 
   setConfig(config) {
     this._ensureEditorState();
-    this._config = config || {};
+    const incoming = config || {};
+    const incomingSig = JSON.stringify(incoming);
+    // Skip re-render if the config hasn't actually changed (e.g. echoed back by HA after our own _fire)
+    if (this._lastFiredConfigSig && incomingSig === this._lastFiredConfigSig) {
+      this._config = incoming;
+      if (!Array.isArray(this._config.controls)) this._config = { ...this._config, controls: [] };
+      this._syncControlIds();
+      return;
+    }
+    this._config = incoming;
     if (!Array.isArray(this._config.controls)) this._config = { ...this._config, controls: [] };
     this._syncControlIds();
     this.render();
@@ -1509,7 +1627,7 @@ class OneLineRoomCardEditor extends HTMLElement {
     this._hass = hass;
     if (upd) { this._controlTemplatesCache = null; this._navOptionsLoaded = false; this.render(); return; }
     if (this.shadowRoot) {
-      this.shadowRoot.querySelectorAll("ha-selector,ha-entity-picker,ha-icon-picker,ha-textfield,ha-switch").forEach(e => {
+      this.shadowRoot.querySelectorAll("ha-selector,ha-entity-picker,ha-icon-picker,ha-textfield,ha-switch,ha-card-conditions-editor").forEach(e => {
         if (e.hass !== hass) e.hass = hass;
       });
       // After a hot-reload patch, new DOM elements may be missing from the old shadow DOM.
@@ -1526,6 +1644,7 @@ class OneLineRoomCardEditor extends HTMLElement {
     this._ensureEditorState();
     this._config = config;
     this._syncControlIds();
+    this._lastFiredConfigSig = JSON.stringify(config);
     if (!this._livePreview) {
       this._pendingConfig = config;
       return;
@@ -3304,13 +3423,24 @@ class OneLineRoomCardEditor extends HTMLElement {
         </div>
           </div>
         </div>
+        <div class="entity-only ${hideEntity}" style="margin-top:8px; border-top:1px solid var(--divider-color); padding-top:8px">
+          <div class="image-title" style="margin-bottom:8px; font-weight:bold">${getTranslation(h, "sub_chips")}</div>
+          <div style="margin-bottom:8px">
+            <div style="font-size:12px;opacity:0.7;margin-bottom:4px">${getTranslation(h, "chips_position")}</div>
+            <select class="chips-pos-sel qa-native-select" style="height:42px;font-size:14px">
+              <option value="bottom">${getTranslation(h, "chips_bottom")}</option>
+              <option value="top">${getTranslation(h, "chips_top")}</option>
+            </select>
+          </div>
+          <div class="chips-list"></div>
+          <mwc-button class="add-chip" style="margin-top:8px">
+            <ha-icon icon="mdi:plus" slot="icon"></ha-icon>
+            ${getTranslation(h, "chip_add")}
+          </mwc-button>
+        </div>
         <div style="margin-top:8px; border-top:1px solid var(--divider-color); padding-top:8px">
           <div class="image-title" style="margin-bottom:8px; font-weight:bold">${getTranslation(h, "visibility_cond")}</div>
-          <ha-entity-picker class="ve" label="${getTranslation(h, "vis_entity")}"></ha-entity-picker>
-          <div class="row" style="align-items:center; margin-top:8px; gap: 12px">
-            <ha-textfield class="vs" label="${getTranslation(h, "vis_state")}" style="flex:1"></ha-textfield>
-            <ha-formfield label="${getTranslation(h, "vis_invert")}"><ha-switch class="vi"></ha-switch></ha-formfield>
-          </div>
+          <ha-card-conditions-editor class="vis-cond-editor"></ha-card-conditions-editor>
         </div>
         </div>`;
 
@@ -3358,7 +3488,7 @@ class OneLineRoomCardEditor extends HTMLElement {
       });
 
       const keepOpen = () => { this._collapsedState[key] = false; };
-      const upd = (k, v) => { keepOpen(); const c = [...this._config.controls]; c[i] = { ...c[i], [k]: v }; this._fire({ ...this._config, controls: c }); };
+      const upd = (k, v, skipRender = false) => { keepOpen(); const c = [...this._config.controls]; c[i] = { ...c[i], [k]: v }; if(skipRender) { this._lastRenderedControlsSig = JSON.stringify(c); } this._fire({ ...this._config, controls: c }); };
       const updAct = (type, val) => { keepOpen(); const c = [...this._config.controls]; const old = c[i][type] || {}; c[i] = { ...c[i], [type]: { ...old, action: val } }; this._fire({ ...this._config, controls: c }); this.renBtn(); };
       box.querySelector(".u").onclick = (e) => {
         e.preventDefault(); e.stopPropagation();
@@ -3871,10 +4001,38 @@ class OneLineRoomCardEditor extends HTMLElement {
         cm.value = ctrl.control_mode || "none"; cm.addEventListener("value-changed", e => { e.stopPropagation(); const v = e.detail.value; const cc = [...this._config.controls]; const nn = { ...cc[i] }; if (v && v !== "none") nn.control_mode = v; else delete nn.control_mode; cc[i] = nn; keepOpen(); this._fire({ ...this._config, controls: cc }); });
       }
 
-      // Visibility listeners
-      const ve = box.querySelector(".ve"); if (ve) { ve.hass = h; ve.value = ctrl.visibility_entity || ""; ve.addEventListener("value-changed", e => { e.stopPropagation(); upd("visibility_entity", e.detail.value); }); }
-      const vs = box.querySelector(".vs"); if (vs) { vs.value = ctrl.visibility_state || ""; vs.addEventListener("change", e => { e.stopPropagation(); upd("visibility_state", e.target.value); }); }
-      const vi = box.querySelector(".vi"); if (vi) { vi.checked = ctrl.visibility_invert === true; vi.addEventListener("change", e => { e.stopPropagation(); upd("visibility_invert", e.target.checked); }); }
+      // Visibility conditions (Native HA conditions editor — same as card visibility tab)
+      const visCondEditor = box.querySelector(".vis-cond-editor");
+      if (visCondEditor) {
+        visCondEditor.hass = h;
+        visCondEditor.conditions = ctrl.visibility || [];
+        visCondEditor.addEventListener("value-changed", e => {
+          e.stopPropagation();
+          // Feed updated conditions back to the component so it can render the inline form
+          visCondEditor.conditions = e.detail.value;
+          upd("visibility", e.detail.value, true);
+        });
+      }
+
+      // Sub-Chips listeners
+      const chipsPosSel = box.querySelector(".chips-pos-sel");
+      if (chipsPosSel) {
+        chipsPosSel.value = ctrl.chips_position || "bottom";
+        chipsPosSel.addEventListener("change", e => { e.stopPropagation(); upd("chips_position", e.target.value); });
+      }
+
+      const chipsList = box.querySelector(".chips-list");
+      const addChipBtn = box.querySelector(".add-chip");
+      if (chipsList && addChipBtn) {
+        this._updateSubChipsUI(chipsList, ctrl, i, h);
+        addChipBtn.onclick = () => {
+          const c = [...this._config.controls];
+          const chips = [...(c[i].sub_chips || [])];
+          chips.push({ entity: "" });
+          c[i] = { ...c[i], sub_chips: chips };
+          keepOpen(); this._fire({ ...this._config, controls: c }); this.renBtn();
+        };
+      }
 
       const tpIcon = box.querySelector(".tp-ic");
       const tpText = box.querySelector(".tp-tx");
@@ -3989,6 +4147,84 @@ class OneLineRoomCardEditor extends HTMLElement {
         const mainField = this.shadowRoot.querySelector(`ha-textfield[cfg="${k}"]`);
         if (mainField && mainField.value !== v) mainField.value = v;
       }
+    });
+  }
+
+
+
+  _updateSubChipsUI(container, ctrl, ctrlIdx, h) {
+    container.replaceChildren();
+    const chips = ctrl.sub_chips || [];
+    const updChip = (chipIdx, k, v) => {
+      const c = [...this._config.controls];
+      const chs = [...(c[ctrlIdx].sub_chips || [])];
+      chs[chipIdx] = { ...chs[chipIdx], [k]: v };
+      if (!v && k !== "entity") delete chs[chipIdx][k];
+      c[ctrlIdx] = { ...c[ctrlIdx], sub_chips: chs };
+      this._lastRenderedControlsSig = JSON.stringify(c);
+      this._fire({ ...this._config, controls: c });
+    };
+
+    chips.forEach((chip, chipIdx) => {
+      const box = document.createElement("div");
+      box.className = "box";
+      box.style.cssText = "border:1px solid var(--divider-color); padding:10px; border-radius:8px; position:relative; margin-top:8px";
+      
+      const del = document.createElement("ha-icon");
+      del.icon = "mdi:delete";
+      del.style.cssText = "position:absolute; right:8px; top:8px; cursor:pointer; color:var(--error-color); --mdc-icon-size:18px";
+      del.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const c = [...this._config.controls];
+        const chs = [...(c[ctrlIdx].sub_chips || [])];
+        chs.splice(chipIdx, 1);
+        c[ctrlIdx] = { ...c[ctrlIdx], sub_chips: chs };
+        this._lastRenderedControlsSig = JSON.stringify(c);
+        this._fire({ ...this._config, controls: c });
+        this.renBtn();
+      };
+      box.appendChild(del);
+
+      const ep = document.createElement("ha-entity-picker");
+      ep.label = getTranslation(h, "chip_entity");
+      ep.hass = h;
+      ep.value = chip.entity || "";
+      ep.style.width = "100%";
+      ep.addEventListener("value-changed", e => { e.stopPropagation(); ep.value = e.detail.value; updChip(chipIdx, "entity", e.detail.value); });
+      box.appendChild(ep);
+
+      const row1 = document.createElement("div");
+      row1.className = "row";
+      row1.style.marginTop = "8px";
+
+      const ap = document.createElement("ha-selector");
+      ap.label = getTranslation(h, "chip_attribute");
+      ap.hass = h;
+      ap.selector = { attribute: { entity_id: chip.entity } };
+      ap.value = chip.attribute || "";
+      ap.style.flex = "1";
+      ap.addEventListener("value-changed", e => { e.stopPropagation(); ap.value = e.detail.value; updChip(chipIdx, "attribute", e.detail.value); });
+      row1.appendChild(ap);
+
+      const ip = document.createElement("ha-icon-picker");
+      ip.label = getTranslation(h, "chip_icon");
+      ip.hass = h;
+      ip.value = chip.icon || "";
+      ip.style.flex = "1";
+      ip.addEventListener("value-changed", e => { e.stopPropagation(); ip.value = e.detail.value; updChip(chipIdx, "icon", e.detail.value); });
+      row1.appendChild(ip);
+      box.appendChild(row1);
+
+      const lb = document.createElement("ha-textfield");
+      lb.label = getTranslation(h, "chip_label");
+      lb.value = chip.label || "";
+      lb.style.width = "100%";
+      lb.style.marginTop = "8px";
+      lb.addEventListener("change", e => { e.stopPropagation(); lb.value = e.target.value; updChip(chipIdx, "label", e.target.value); });
+      box.appendChild(lb);
+
+      container.appendChild(box);
     });
   }
 }

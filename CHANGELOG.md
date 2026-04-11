@@ -2,20 +2,21 @@
 
 All notable changes to OneLine Room Card are documented here.
 
-## [1.2.6]
-
-* Runtime: **Conditional Visibility for Buttons** — Buttons can now be shown or hidden based on the state of any entity. Supports "Show if" and "Hide if" (inverted) logic.
-* Runtime: **Badge Background Inheritance** — Individual badges now automatically inherit the global background color (Standard-Badge-Hintergrund) if no specific background is defined.
-* Editor UX: **Unified Color Picker Synchronization** — Standardized all color fields to use native pickers + hex fields with real-time synchronization. Fixed bugs where color changes were not always reflected immediately.
-* Editor UX: **Layout Reorganization** — "Badge" and "Image" sections have been moved up for better accessibility. Added a new **Layout & Position** section for header alignment and offset settings.
-
----
-
 ## [1.2.5]
 
+* Runtime: **Sub-Chips auf Buttons** — Buttons können nun kleine Overlay-Chips anzeigen (z. B. für Temperatur oder Status eigener Sensoren). Vollständig konfigurierbar mit Icon, Attribut und Label.
+* Runtime: **Sub-Chip Label + Status kombiniert** — Wenn ein Sub-Chip sowohl ein `label` als auch einen Statuswert hat, werden beide kombiniert angezeigt (z. B. „Fenster: offen"). `{state}` im Label wird weiterhin direkt ersetzt.
+* Runtime: **Sub-Chip Position** — Neue Option `chips_position: top | bottom` pro Button. Steuert, ob die Sub-Chips oberhalb oder unterhalb des Button-Titels angezeigt werden. Gilt für alle Chips eines Buttons gemeinsam.
+* Runtime: **Bedingte Sichtbarkeit für Buttons** — Buttons nutzen nun den nativen Home Assistant Bedingungseditor (`ha-card-conditions-editor`), identisch zum Sichtbarkeit-Tab der Gesamtkarte. Unterstützt State, Numeric State, Screen, User, Time, AND/OR/NOT etc.
+* Runtime: **Badge Background Inheritance** — Individuelle Badges erben automatisch die globale Hintergrundfarbe (Standard-Badge-Hintergrund), wenn keine eigene Hintergrundfarbe definiert ist.
 * Refactor Editor UI: **Simplified Manual Color Logic** — removed the `force_color` (header) and `force_color` (buttons) toggle. Manual colors are now applied automatically whenever a value is present in the `color` field. Closes [#59](https://github.com/lop1505/RoomCard/issues/59).
 * Refactor Editor UI: **Compact "Card Behavior" section** — merged Name/Title Visibility into one row and combined Collapsible/Default State into a single unified "Behavior" dropdown.
+* Editor UX: **Layout Reorganization** — "Badge" and "Image" sections have been moved up for better accessibility. Added a new **Layout & Position** section for header alignment and offset settings.
+* Editor UX: **Unified Color Picker Synchronization** — Standardized all color fields to use native pickers + hex fields with real-time synchronization. Fixed bugs where color changes were not always reflected immediately.
 * Editor UX: **Fix scroll jump in button editor** — the editor dialog no longer scrolls back to the top of the button section after every config change (toggle, dropdown, text input). Closes [#68](https://github.com/lop1505/RoomCard/issues/68).
+* Bugfix: **Unvollständige Bedingungen** — Bedingungen ohne konfigurierte Entität (z.B. direkt nach dem Hinzufügen) blenden den Button nicht mehr fälschlicherweise aus.
+* Bugfix: **Editor-Stabilität** — Der Editor-Re-Render-Zyklus wurde komplett überarbeitet (Config-Signatur-Vergleich statt fragiler Boolean-Flags), sodass komplexe Editoren wie der Bedingungseditor nicht mehr beim Bearbeiten zerstört werden.
+* Bugfix: **NOT-Bedingung** — Die NOT-Bedingung wertet jetzt korrekt ein `conditions`-Array aus (statt einem einzelnen `condition`-Objekt).
 
 ---
 
