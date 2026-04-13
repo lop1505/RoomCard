@@ -4,20 +4,22 @@ All notable changes to OneLine Room Card are documented here.
 
 ## [1.2.5]
 
-* Runtime: **Sub-Chips auf Buttons** — Buttons können nun kleine Overlay-Chips anzeigen (z. B. für Temperatur oder Status eigener Sensoren). Vollständig konfigurierbar mit Icon, Attribut und Label.
-* Runtime: **Sub-Chip Label + Status kombiniert** — Wenn ein Sub-Chip sowohl ein `label` als auch einen Statuswert hat, werden beide kombiniert angezeigt (z. B. „Fenster: offen"). `{state}` im Label wird weiterhin direkt ersetzt.
-* Runtime: **Sub-Chip Position** — Neue Option `chips_position: top | bottom` pro Button. Steuert, ob die Sub-Chips oberhalb oder unterhalb des Button-Titels angezeigt werden. Gilt für alle Chips eines Buttons gemeinsam.
-* Runtime: **Bedingte Sichtbarkeit für Buttons** — Buttons nutzen nun den nativen Home Assistant Bedingungseditor (`ha-card-conditions-editor`), identisch zum Sichtbarkeit-Tab der Gesamtkarte. Unterstützt State, Numeric State, Screen, User, Time, AND/OR/NOT etc.
-* Runtime: **Badge Background Inheritance** — Individuelle Badges erben automatisch die globale Hintergrundfarbe (Standard-Badge-Hintergrund), wenn keine eigene Hintergrundfarbe definiert ist.
+* Runtime: **Sub-Chips on Buttons** — Buttons can now display small overlay chips (e.g. for temperature or status of custom sensors). Fully configurable with icon, attribute, and label.
+* Runtime: **Sub-Chip Label + State combined** — When a sub-chip has both a `label` and a state value, both are combined in the display (e.g. "Window: open"). `{state}` in the label is still replaced directly.
+* Runtime: **Sub-Chip Position** — New per-button option `chips_position: top | bottom`. Controls whether sub-chips appear above or below the button title. Applies to all chips of a button together.
+* Runtime: **Conditional Visibility for Buttons** — Buttons now use the native Home Assistant conditions editor (`ha-card-conditions-editor`), identical to the visibility tab of the card itself. Supports State, Numeric State, Screen, User, Time, AND/OR/NOT, etc.
+* Runtime: **Badge Background Inheritance** — Individual badges automatically inherit the global background color (default badge background) when no custom background color is defined.
+* Runtime: **Info Line Position** — New option `info_line_position: header | below_header`. Controls whether the info line (temperature, humidity, badges) appears inside the header image (default) or as a separate bar between the header and button grid. Closes [#51](https://github.com/lop1505/RoomCard/issues/51).
 * Refactor Editor UI: **Simplified Manual Color Logic** — removed the `force_color` (header) and `force_color` (buttons) toggle. Manual colors are now applied automatically whenever a value is present in the `color` field. Closes [#59](https://github.com/lop1505/RoomCard/issues/59).
-* Refactor Editor UI: **Compact "Card Behavior" section** — merged Name/Title Visibility into one row and combined Collapsible/Default State into a single unified "Behavior" dropdown.
+* Refactor Editor UI: **Unified Collapse Mode dropdown** — The separate `collapsible` toggle, `default_state` dropdown, and `remember_state` toggle have been replaced by a single **Collapse Mode** dropdown with four options: **Disabled** (card is never collapsible), **Collapsed** (starts collapsed, ignores saved state), **Expanded** (starts expanded, ignores saved state), and **Remember** (collapsible, state persisted in `localStorage`). Closes [#65](https://github.com/lop1505/RoomCard/issues/65).
 * Editor UX: **Layout Reorganization** — "Badge" and "Image" sections have been moved up for better accessibility. Added a new **Layout & Position** section for header alignment and offset settings.
+* Editor UX: **Transparent Button Background Shortcuts** — added Editor presets (e.g. Transparent, Subtle, Tinted) to quickly apply pre-defined background colors to buttons. Applicable locally, and globally. Closes [#64](https://github.com/lop1505/RoomCard/issues/64).
+* Runtime: **Per-Button CSS Custom Property Targeting** — Buttons now render a `data-entity` attribute in the DOM, making it very easy to target specific buttons with `card-mod` (e.g., `.btn[data-entity="light.living_room"]`). Closes [#53](https://github.com/lop1505/RoomCard/issues/53).
 * Editor UX: **Unified Color Picker Synchronization** — Standardized all color fields to use native pickers + hex fields with real-time synchronization. Fixed bugs where color changes were not always reflected immediately.
 * Editor UX: **Fix scroll jump in button editor** — the editor dialog no longer scrolls back to the top of the button section after every config change (toggle, dropdown, text input). Closes [#68](https://github.com/lop1505/RoomCard/issues/68).
-* Bugfix: **Unvollständige Bedingungen** — Bedingungen ohne konfigurierte Entität (z.B. direkt nach dem Hinzufügen) blenden den Button nicht mehr fälschlicherweise aus.
-* Bugfix: **Editor-Stabilität** — Der Editor-Re-Render-Zyklus wurde komplett überarbeitet (Config-Signatur-Vergleich statt fragiler Boolean-Flags), sodass komplexe Editoren wie der Bedingungseditor nicht mehr beim Bearbeiten zerstört werden.
-* Bugfix: **NOT-Bedingung** — Die NOT-Bedingung wertet jetzt korrekt ein `conditions`-Array aus (statt einem einzelnen `condition`-Objekt).
-* Runtime: **Info-Zeile Position** — Neue Option `info_line_position: header | below_header`. Steuert, ob die Info-Zeile (Temperatur, Luftfeuchtigkeit, Badges) im Header-Bild (Standard) oder als separate Leiste zwischen Header und Button-Raster angezeigt wird. Closes [#51](https://github.com/lop1505/RoomCard/issues/51).
+* Bugfix: **Incomplete Conditions** — Conditions without a configured entity (e.g. immediately after adding one) no longer incorrectly hide the button.
+* Bugfix: **Editor Stability** — The editor re-render cycle has been completely reworked (config-signature comparison instead of fragile boolean flags), so complex editors like the conditions editor are no longer destroyed while editing.
+* Bugfix: **NOT Condition** — The NOT condition now correctly evaluates a `conditions` array (instead of a single `condition` object).
 
 ---
 

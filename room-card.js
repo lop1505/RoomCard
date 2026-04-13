@@ -57,7 +57,7 @@ const TRANSLATIONS = {
     header_height: "Header Height (px)",
     typography: "Header Typography", name_font: "Room Name Font", info_font: "Info Line Font",
     font_size: "Size (px)", font_weight: "Weight", font_style: "Style", font_color: "Color", badge_bg: "Badge Background",
-    card_behavior: "Card Behavior", behavior: "Collapse Mode", behavior_fixed: "Disabled", behavior_collapsed: "Collapsed", behavior_expanded: "Expanded",
+    card_behavior: "Card Behavior", behavior: "Collapse Mode", behavior_fixed: "Disabled", behavior_collapsed: "Collapsed", behavior_expanded: "Expanded", behavior_remember: "Remember",
     header: "Header", configuration: "Configuration",
     color_map: "State Colors", color_map_add: "Add State Color", color_map_state: "State",
     window_always_show: "Always Show (incl. closed)", window_open_color: "Open Color", window_closed_color: "Closed Color",
@@ -127,6 +127,7 @@ const TRANSLATIONS = {
     behavior_fixed: "Deaktiviert",
     behavior_collapsed: "Eingeklappt",
     behavior_expanded: "Ausgeklappt",
+    behavior_remember: "Remember",
     header: "Header", configuration: "Konfiguration",
     color_map: "Zustandsfarben", color_map_add: "Farbe hinzufügen", color_map_state: "Zustand",
     window_always_show: "Immer anzeigen (auch geschlossen)", window_open_color: "Farbe geöffnet", window_closed_color: "Farbe geschlossen",
@@ -191,7 +192,8 @@ const TRANSLATIONS = {
     header_height: "Hauteur de l'en-tête (px)",
     typography: "Typographie de l'en-tête", name_font: "Police du nom", info_font: "Police des infos",
     font_size: "Taille (px)", font_weight: "Poids", font_style: "Style", font_color: "Couleur", badge_bg: "Fond du badge",
-    card_behavior: "Comportement de la carte", header: "En-tête", configuration: "Configuration",
+    card_behavior: "Comportement de la carte", behavior: "Mode repli", behavior_fixed: "Désactivé", behavior_collapsed: "Replié", behavior_expanded: "Déplié", behavior_remember: "Remember",
+    header: "En-tête", configuration: "Configuration",
     color_map: "Couleurs par état", color_map_add: "Ajouter couleur", color_map_state: "État",
     window_always_show: "Toujours afficher (incl. fermé)", window_open_color: "Couleur ouvert", window_closed_color: "Couleur fermé",
     sensors: "Capteurs",
@@ -499,7 +501,7 @@ class OneLineRoomCard extends HTMLElement {
     this.config = config;
     this._collapseKey = `oneline-room-card-collapsed:${this._getCollapseUniqueId(config)}`;
     if (this._collapseKey !== prevKey) {
-      const stored = localStorage.getItem(this._collapseKey);
+      const stored = config.remember_state !== false ? localStorage.getItem(this._collapseKey) : null;
       this._collapsed = stored !== null ? stored === "1" : (config.default_state === "collapsed");
     }
     this._configChanged = true;
@@ -951,6 +953,7 @@ class OneLineRoomCard extends HTMLElement {
   _createBtn(ctrl) {
     const btn = document.createElement("div");
     btn.className = "btn";
+    if (ctrl.entity) btn.setAttribute("data-entity", ctrl.entity);
     btn.style.setProperty("--btn-flex-basis", `calc(${(clampNum(ctrl.width, 1, 60, 15) / 60) * 100}% - 6px)`);
     btn.style.setProperty("--btn-height", `${clampNum(ctrl.height, 40, 250, 60)}px`);
     let justify = "center";
@@ -1555,7 +1558,7 @@ class OneLineRoomCard extends HTMLElement {
 
   _toggleCollapse() {
     this._collapsed = !this._collapsed;
-    if (this._collapseKey) localStorage.setItem(this._collapseKey, this._collapsed ? "1" : "0");
+    if (this._collapseKey && this.config?.remember_state !== false) localStorage.setItem(this._collapseKey, this._collapsed ? "1" : "0");
     const collapseBtn = this.shadowRoot.getElementById("collapse-btn");
     if (collapseBtn) collapseBtn.classList.toggle("open", !this._collapsed);
     this.controls.classList.toggle("collapsed", this._collapsed);
@@ -2156,6 +2159,9 @@ class OneLineRoomCardEditor extends HTMLElement {
         .tab-btn.active { color: var(--primary-color); border-bottom-color: var(--primary-color); }
         #tab-buttons-panel[hidden] { display: none; }
         #tab-config-panel[hidden] { display: none; }
+        .bg-presets { display: flex; gap: 8px; margin-top: 4px; font-size: 11px; flex-wrap: wrap; }
+        .bg-preset { cursor: pointer; opacity: 0.7; text-decoration: underline; background: none; border: none; padding: 0; color: inherit; font: inherit; }
+        .bg-preset:hover { opacity: 1; text-decoration: none; }
       </style>
       <span data-rc-version="${VERSION}" style="display:none"></span>
       <div id="tab-bar" class="tab-bar">
@@ -2177,10 +2183,19 @@ class OneLineRoomCardEditor extends HTMLElement {
         <div style="display: flex; align-items: flex-end; gap: 12px;">
           <div style="position: relative; flex: 1.2; display: flex; align-items: flex-end;">
             <ha-textfield label="${getTranslation(h, "name")}" cfg="name" class="i" style="width: 100%;"></ha-textfield>
-            <ha-switch id="show-name-toggle" checked title="${getTranslation(h, "show_name")}" 
+            <ha-switch id="show-name-toggle" checked title="${getTranslation(h, "show_name")}"
                        style="position: absolute; right: 8px; bottom: 28px; --mdc-switch-size: 20px; z-index: 1; transform: scale(0.8);"></ha-switch>
           </div>
-          <ha-selector id="behavior-sel" label="${getTranslation(h, "behavior")}" style="flex: 1;"></ha-selector>
+          <div style="position:relative;width:180px;flex-shrink:0;">
+            <label style="position:absolute;top:-9px;left:12px;padding:0 4px;font-size:12px;line-height:1;color:var(--secondary-text-color);background:var(--ha-card-background,var(--card-background-color,#1c1c1c));z-index:1;pointer-events:none;">${getTranslation(h, "behavior")}</label>
+            <select id="behavior-sel" style="width:100%;height:56px;padding:0 36px 0 16px;border:1px solid var(--divider-color,rgba(255,255,255,0.12));border-radius:4px;background:transparent;color:var(--primary-text-color);font-size:16px;font-family:var(--mdc-typography-body1-font-family,Roboto,sans-serif);cursor:pointer;box-sizing:border-box;appearance:none;-webkit-appearance:none;outline:none;">
+              <option value="fixed">${getTranslation(h, "behavior_fixed")}</option>
+              <option value="collapsed">${getTranslation(h, "behavior_collapsed")}</option>
+              <option value="expanded">${getTranslation(h, "behavior_expanded")}</option>
+              <option value="remember">${getTranslation(h, "behavior_remember")}</option>
+            </select>
+            <ha-icon icon="mdi:menu-down" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);pointer-events:none;--mdc-icon-size:24px;opacity:0.7;color:var(--secondary-text-color);"></ha-icon>
+          </div>
         </div>
         <ha-selector id="nav-path" label="${getTranslation(h, "path")}" style="margin-top:12px"></ha-selector>
         </div>
@@ -2410,6 +2425,13 @@ class OneLineRoomCardEditor extends HTMLElement {
         <div class="cl-row" style="margin-top: 8px">
           <ha-textfield id="global-btn-bg" cfg="global_button_background" label="${getTranslation(h, "global_button_bg")}" class="i"></ha-textfield>
           <input type="color" id="global-btn-bg-picker" class="cl-p" cfg="global_button_background" style="margin-right: 0px">
+        </div>
+        <div class="bg-presets" id="global-btn-bg-presets">
+          <button type="button" class="bg-preset" data-val="">Default</button>
+          <button type="button" class="bg-preset" data-val="rgba(0,0,0,0)">Transparent</button>
+          <button type="button" class="bg-preset" data-val="rgba(128,128,128,0.08)">Subtle</button>
+          <button type="button" class="bg-preset" data-val="rgba(128,128,128,0.18)">Tinted</button>
+          <button type="button" class="bg-preset" data-val="var(--card-background-color)">Solid</button>
         </div>
         <details id="quick-add" class="qa" ${this._quickAddOpen ? "open" : ""}>
           <summary class="qa-summary">
@@ -2782,32 +2804,30 @@ class OneLineRoomCardEditor extends HTMLElement {
     }
     const behaviorSel = this.shadowRoot.getElementById("behavior-sel");
     if (behaviorSel) {
-      behaviorSel.hass = h;
-      behaviorSel.selector = {
-        select: {
-          mode: "dropdown", options: [
-            { value: "fixed", label: getTranslation(h, "behavior_fixed") },
-            { value: "collapsed", label: getTranslation(h, "behavior_collapsed") },
-            { value: "expanded", label: getTranslation(h, "behavior_expanded") }
-          ]
-        }
-      };
-      const isCollapsible = this._config?.collapsible === true;
-      const isCollapsed = this._config?.default_state === "collapsed";
-      behaviorSel.value = !isCollapsible ? "fixed" : (isCollapsed ? "collapsed" : "expanded");
-      behaviorSel.addEventListener("value-changed", (ev) => {
+      const isColl = this._config?.collapsible === true;
+      const noRem = this._config?.remember_state === false;
+      const isColld = this._config?.default_state === "collapsed";
+      behaviorSel.value = !isColl ? "fixed" : (!noRem ? "remember" : (isColld ? "collapsed" : "expanded"));
+      behaviorSel.addEventListener("change", (ev) => {
         ev.stopPropagation();
-        const v = ev.detail?.value || "expanded";
+        const v = ev.target.value;
         const next = { ...this._config };
         if (v === "fixed") {
           delete next.collapsible;
           delete next.default_state;
+          delete next.remember_state;
         } else if (v === "collapsed") {
           next.collapsible = true;
           next.default_state = "collapsed";
+          next.remember_state = false;
+        } else if (v === "expanded") {
+          next.collapsible = true;
+          delete next.default_state;
+          next.remember_state = false;
         } else {
           next.collapsible = true;
           delete next.default_state;
+          delete next.remember_state;
         }
         this._fire(next);
       });
@@ -2904,6 +2924,14 @@ class OneLineRoomCardEditor extends HTMLElement {
           this.renBtn();
         });
       }
+      const globalBtnBgPresets = this.shadowRoot.querySelectorAll("#global-btn-bg-presets .bg-preset");
+      globalBtnBgPresets.forEach(btn => {
+        btn.addEventListener("click", () => {
+          const val = btn.getAttribute("data-val");
+          globalBtnBg.value = val;
+          globalBtnBg.dispatchEvent(new Event("change"));
+        });
+      });
     }
     const updateQuickAddHints = () => {
       if (!tmplSelect || !tmplEntity) return;
@@ -3430,6 +3458,13 @@ class OneLineRoomCardEditor extends HTMLElement {
                </div>
             </div>
           </div>
+          <div class="bg-presets local-bg-presets">
+            <button type="button" class="bg-preset" data-val="">Default</button>
+            <button type="button" class="bg-preset" data-val="rgba(0,0,0,0)">Transparent</button>
+            <button type="button" class="bg-preset" data-val="rgba(128,128,128,0.08)">Subtle</button>
+            <button type="button" class="bg-preset" data-val="rgba(128,128,128,0.18)">Tinted</button>
+            <button type="button" class="bg-preset" data-val="var(--card-background-color)">Solid</button>
+          </div>
         </div>
         <details class="tmpl-only tmpl-details ${showTemplate}" ${isTemplate ? "open" : ""}>
           <summary>${getTranslation(h, "type_template")}</summary>
@@ -3685,6 +3720,17 @@ class OneLineRoomCardEditor extends HTMLElement {
           this.renBtn();
         });
       }
+      box.querySelectorAll(".local-bg-presets .bg-preset").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const val = btn.getAttribute("data-val");
+          if (bgTxt) bgTxt.value = val;
+          if (bgPop) bgPop.value = val;
+          if (bgCp) bgCp.value = parseColorToPickerHex(val || "#ffffff");
+          if (bgPrv) bgPrv.style.backgroundColor = val || "#ffffff";
+          upd("button_background", val);
+          this.renBtn();
+        });
+      });
       const isz = box.querySelector(".isz"); if (isz) {
         const rawIsz = trimStr(ctrl.icon_size) || "";
         isz.value = /^\d+(\.\d+)?(px)?$/.test(rawIsz) ? rawIsz.replace("px", "") : rawIsz;
@@ -4114,9 +4160,10 @@ class OneLineRoomCardEditor extends HTMLElement {
 
     const behaviorSel = this.shadowRoot.getElementById("behavior-sel");
     if (behaviorSel) {
-      const isCollapsible = this._config?.collapsible === true;
-      const isCollapsed = this._config?.default_state === "collapsed";
-      const v = !isCollapsible ? "fixed" : (isCollapsed ? "collapsed" : "expanded");
+      const isColl = this._config?.collapsible === true;
+      const noRem = this._config?.remember_state === false;
+      const isColld = this._config?.default_state === "collapsed";
+      const v = !isColl ? "fixed" : (!noRem ? "remember" : (isColld ? "collapsed" : "expanded"));
       if (behaviorSel.value !== v) behaviorSel.value = v;
     }
     ["name", "info"].forEach(type => {

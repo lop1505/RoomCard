@@ -130,7 +130,24 @@ covers all settings — no YAML required.
 | `hold_action` | `toggle` | — |
 | `double_tap_action` | `none` | — |
 
+## 🎨 Background Settings
+
+The button background can be customized on two levels. The specific per-button setting overrides the global setting, which in turn overrides the default theme background.
+
+```yaml
+# Card-level default for all buttons
+global_button_background: rgba(0,0,0,0)       # e.g., fully transparent
+
+# Per-button override
+controls:
+  - entity: light.living_room
+    button_background: rgba(128,128,128,0.18) # e.g., slightly tinted
+```
+
+Priority: `button_background` (per button) > `global_button_background` (all buttons) > *theme default*
+
 ---
+
 
 ## 🔧 CSS Custom Properties
 
@@ -150,7 +167,8 @@ Per-button targeting via `data-entity` attribute (set on each `.btn` element):
 card_mod:
   style: |
     .btn[data-entity="light.living_room"] {
-      --rc-icon-color: gold;
+      --rc-btn-bg: rgba(255, 0, 0, 0.5) !important;
+      --rc-icon-color: gold !important;
     }
 ```
 
