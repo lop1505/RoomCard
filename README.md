@@ -93,6 +93,8 @@ covers all settings — no YAML required.
 | `collapsible` | `false` | Enable click-to-collapse on header |
 | `default_state` | `expanded` | `expanded` · `collapsed` |
 | `tap_action` | — | Card tap action (e.g. `navigate`) |
+| `hold_action` | `none` | Card hold action |
+| `double_tap_action` | `none` | Card double tap action |
 | `global_label_position` | `right` | Default label position for all buttons |
 | `global_icon_size` | `20px` | Default icon size for all buttons |
 | `global_button_background` | — | Default button background (e.g. `rgba(0,0,0,0)`) |

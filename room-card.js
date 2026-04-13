@@ -45,7 +45,7 @@ const TRANSLATIONS = {
     show_state: "Show State", show_label: "Show Label", show_icon: "Show Icon", state_first: "State First", text_layout: "Text Order", primary_text: "First line", primary_state: "State / value first", primary_name: "Name first",
     height: "Height", width: "Width", align: "Align", visible: "Visible", left: "Left", center: "Center", right: "Right",
     tap_action: "Tap Action", hold_action: "Hold Action", double_tap_action: "Double Tap Action",
-    act_more: "Details (Default)", act_toggle: "Toggle", act_none: "None",
+    act_more: "Details (Default)", act_toggle: "Toggle", act_navigate: "Navigate", act_none: "None",
     live_preview: "Live preview",
     upload_btn: "Upload Image", uploading: "Uploading...", upload_success: "Done!",
     show_name: "Show Title", header_badges: "Badge", badge_add: "Add Info Entry", badge_label: "Label (optional)", badge_background: "Background (rgba)", standard_badge_background: "Standard Badge Background (rgba)", badge_auto_climate_btn: "Automatically add climate control button",
@@ -113,7 +113,7 @@ const TRANSLATIONS = {
     show_state: "Status anzeigen", show_label: "Bezeichnung anzeigen", show_icon: "Icon anzeigen", state_first: "Wert zuerst", text_layout: "Text-Reihenfolge", primary_text: "Erste Zeile", primary_state: "Wert zuerst", primary_name: "Name zuerst",
     height: "Höhe", width: "Breite", align: "Ausrichtung", visible: "Sichtbar", left: "Links", center: "Mitte", right: "Rechts",
     tap_action: "Antippen", hold_action: "Gedrückt halten", double_tap_action: "Doppelklick",
-    act_more: "Details (Standard)", act_toggle: "Umschalten", act_none: "Nichts",
+    act_more: "Details (Standard)", act_toggle: "Umschalten", act_navigate: "Navigieren", act_none: "Nichts",
     live_preview: "Live-Vorschau",
     upload_btn: "Bild hochladen", uploading: "Wird hochgeladen...", upload_success: "Fertig!",
     show_name: "Titel anzeigen", header_badges: "Badge", badge_add: "Info-Eintrag hinzufügen", badge_label: "Bezeichnung (optional)", badge_background: "Hintergrund (rgba)", standard_badge_background: "Standard Badge Hintergrund (rgba)", badge_auto_climate_btn: "Klima-Steuerungs-Button automatisch hinzufügen",
@@ -185,7 +185,7 @@ const TRANSLATIONS = {
     show_state: "Afficher l'état", show_label: "Afficher le libellé", show_icon: "Afficher l’icône", state_first: "Valeur d'abord", text_layout: "Ordre du texte", primary_text: "Première ligne", primary_state: "Valeur d’abord", primary_name: "Nom d’abord",
     height: "Hauteur", width: "Largeur", align: "Alignement", visible: "Visible", left: "Gauche", center: "Centre", right: "Droite",
     tap_action: "Appui court", hold_action: "Appui long", double_tap_action: "Double appui",
-    act_more: "Détails (Défaut)", act_toggle: "Basculer", act_none: "Rien",
+    act_more: "Détails (Défaut)", act_toggle: "Basculer", act_navigate: "Navigation", act_none: "Rien",
     live_preview: "Aperçu en direct",
     upload_btn: "Télécharger une image", uploading: "Téléchargement...", upload_success: "Terminé!",
     show_name: "Afficher le titre", header_badges: "Infos d'en-tête supplémentaires", badge_add: "Ajouter une entrée", badge_label: "Libellé (optionnel)", badge_background: "Arrière-plan (rgba)", standard_badge_background: "Fond du badge climat principal (rgba)",
@@ -529,6 +529,12 @@ class OneLineRoomCard extends HTMLElement {
 
   render() {
     if (!this.config) return;
+    const actOpts = [
+      { value: "more-info", label: getTranslation(this._hass, "act_more") || "Details (Default)" },
+      { value: "toggle", label: getTranslation(this._hass, "act_toggle") || "Toggle" },
+      { value: "navigate", label: getTranslation(this._hass, "act_navigate") || "Navigate" },
+      { value: "none", label: getTranslation(this._hass, "act_none") || "None" }
+    ];
     this.shadowRoot.innerHTML = `
       <style>
         ha-card { position: relative; overflow: hidden; border-radius: 16px; background: none; border: none; cursor: default; }
@@ -551,11 +557,15 @@ class OneLineRoomCard extends HTMLElement {
         .chip.info { background: #E3F2FD; color: #1976D2; }
         .chip.custom { background: var(--chip-bg); color: var(--chip-color); }
         .controls { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px; }
-        .btn { position: relative; display: flex; align-items: center; gap: 10px; padding: 0 10px; border-radius: 12px; cursor: pointer; background: var(--rc-btn-bg, var(--btn-bg, var(--card-background-color, rgba(128,128,128,0.05)))); border: 1px solid transparent; flex-grow: 1; flex-shrink: 1; min-width: 0; overflow: hidden; box-sizing: border-box; transition: background 0.2s; user-select: none; -webkit-user-select: none; flex-basis: var(--btn-flex-basis, auto); height: var(--btn-height, 60px); justify-content: var(--btn-justify, center); }
+        .btn { position: relative; display: flex; align-items: center; gap: 10px; padding: 0 10px; border-radius: 12px; cursor: pointer; background: var(--rc-btn-bg, var(--btn-bg, var(--card-background-color, rgba(128,128,128,0.05)))); border: 1px solid transparent; flex-grow: 1; flex-shrink: 1; min-width: 0; overflow: hidden; box-sizing: border-box; transition: background 0.2s; user-select: none; -webkit-user-select: none; touch-action: manipulation; -webkit-tap-highlight-color: transparent; flex-basis: var(--btn-flex-basis, auto); height: var(--btn-height, 60px); justify-content: var(--btn-justify, center); }
         .btn.label-right { flex-direction: row; align-items: center; justify-content: var(--btn-justify, center); gap: 10px; padding: 0 10px; }
         .btn.label-left { flex-direction: row-reverse; align-items: center; justify-content: var(--btn-justify, center); gap: 10px; padding: 0 10px; }
         .btn.label-bottom { flex-direction: column; justify-content: flex-start; align-items: center; gap: 1px; padding: 2px 4px; overflow: hidden; }
         .btn.label-top { flex-direction: column-reverse; justify-content: center; gap: 4px; padding: 6px 8px; overflow: hidden; }
+        .btn.has-inline-ctrl.label-bottom,
+        .btn.has-inline-ctrl.label-top { align-items: center; }
+        .btn.has-inline-ctrl.label-bottom .btn-top,
+        .btn.has-inline-ctrl.label-top .btn-top { align-items: center; width: 100%; }
         .btn.label-left .btn-txt { text-align: right; align-items: flex-end; }
         .btn.label-bottom .icon-box,
         .btn.label-top .icon-box { flex-shrink: 0; }
@@ -593,15 +603,15 @@ class OneLineRoomCard extends HTMLElement {
         .btn-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--icon-color, #ff9800); cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
         .btn-slider::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: var(--icon-color, #ff9800); cursor: pointer; border: none; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
         .btn-cover-actions { display: flex; gap: 4px; width: 100%; flex: 0 0 auto; padding-bottom: 4px; }
-        .cover-action-btn { flex: 1; display: flex; align-items: center; justify-content: center; background: rgba(128,128,128,0.1); border-radius: 6px; padding: 4px 2px; cursor: pointer; transition: background 0.15s; }
+        .cover-action-btn { flex: 1; display: flex; align-items: center; justify-content: center; background: rgba(128,128,128,0.1); border-radius: 6px; padding: 4px 2px; cursor: pointer; transition: background 0.15s; touch-action: manipulation; }
         .cover-action-btn:hover { background: rgba(128,128,128,0.22); }
         .cover-action-btn ha-icon { --mdc-icon-size: 16px; color: var(--primary-text-color); }
         .btn-cover-presets { display: flex; gap: 4px; width: 100%; flex: 0 0 auto; padding-bottom: 4px; }
-        .preset-btn { flex: 1; display: flex; align-items: center; justify-content: center; background: rgba(128,128,128,0.1); border-radius: 6px; padding: 3px 4px; cursor: pointer; transition: background 0.15s, color 0.15s; font-size: 11px; font-weight: 600; color: var(--secondary-text-color); white-space: nowrap; }
+        .preset-btn { flex: 1; display: flex; align-items: center; justify-content: center; background: rgba(128,128,128,0.1); border-radius: 6px; padding: 3px 4px; cursor: pointer; transition: background 0.15s, color 0.15s; font-size: 11px; font-weight: 600; color: var(--secondary-text-color); white-space: nowrap; touch-action: manipulation; }
         .preset-btn:hover { background: rgba(128,128,128,0.22); color: var(--primary-text-color); }
         .preset-btn.active { background: var(--icon-color, var(--primary-color, #ff9800)); color: #fff; }
         .btn-color-favorites { display: flex; gap: 6px; width: 100%; flex: 0 0 auto; padding-bottom: 4px; flex-wrap: wrap; }
-        .color-swatch { width: 20px; height: 20px; border-radius: 50%; cursor: pointer; flex-shrink: 0; border: 2px solid transparent; transition: transform 0.15s, border-color 0.15s; box-shadow: 0 1px 3px rgba(0,0,0,0.25); }
+        .color-swatch { width: 20px; height: 20px; border-radius: 50%; cursor: pointer; flex-shrink: 0; border: 2px solid transparent; transition: transform 0.15s, border-color 0.15s; box-shadow: 0 1px 3px rgba(0,0,0,0.25); touch-action: manipulation; }
         .color-swatch:hover { transform: scale(1.2); }
         .color-swatch.active { border-color: var(--primary-text-color); transform: scale(1.15); }
         .controls { transition: max-height 0.35s ease, padding 0.35s ease; overflow: hidden; max-height: 2000px; }
@@ -640,10 +650,8 @@ class OneLineRoomCard extends HTMLElement {
 
     this.content = this.shadowRoot.querySelector(".container");
     this.controls = this.shadowRoot.getElementById("ctrls");
-    this.shadowRoot.querySelector(".img-box").addEventListener("click", () => {
-      if (this.config?.collapsible === true) { this._toggleCollapse(); return; }
-      this._nav();
-    });
+    const imageBox = this.shadowRoot.querySelector(".img-box");
+    if (imageBox) this._attachHeaderActions(imageBox);
 
     if (this.config) {
       this._configChanged = true;
@@ -1645,6 +1653,7 @@ class OneLineRoomCard extends HTMLElement {
       hold_action: ctrl.hold_action || { action: canToggle ? "toggle" : "none" },
       double_tap_action: ctrl.double_tap_action || { action: "none" }
     };
+    node.style.touchAction = "manipulation";
     let timer = null, held = false, holdTimer = null;
     let startX = 0, isDragging = false;
     const trackTimeout = (fn, ms) => {
@@ -1733,6 +1742,48 @@ class OneLineRoomCard extends HTMLElement {
     });
   }
 
+  _attachHeaderActions(node) {
+    const cfg = this.config || {};
+    const config = {
+      entity: cfg.entity,
+      tap_action: cfg.tap_action,
+      hold_action: cfg.hold_action || { action: "none" },
+      double_tap_action: cfg.double_tap_action || { action: "none" }
+    };
+    node.style.touchAction = "manipulation";
+    const explicitTap = cfg.tap_action !== undefined;
+    let timer = null, held = false, holdTimer = null;
+    const trackTimeout = (fn, ms) => {
+      const id = setTimeout(() => { this._activeTimers.delete(id); fn(); }, ms);
+      this._activeTimers.add(id);
+      return id;
+    };
+    const cancelTimeout = (id) => { clearTimeout(id); this._activeTimers.delete(id); };
+    const handleTap = () => {
+      if (!explicitTap && cfg.collapsible === true) { this._toggleCollapse(); return; }
+      this._fireAction("tap", config);
+    };
+    const cancel = () => {
+      if (holdTimer) { cancelTimeout(holdTimer); holdTimer = null; }
+    };
+    node.addEventListener("pointerdown", () => {
+      held = false;
+      if (config.hold_action?.action !== "none") {
+        holdTimer = trackTimeout(() => { held = true; this._fireAction("hold", config); }, 500);
+      }
+    });
+    node.addEventListener("pointerup", (e) => {
+      if (holdTimer) cancelTimeout(holdTimer);
+      if (held) { held = false; return; }
+      if (config.double_tap_action.action !== "none") {
+        if (timer) { cancelTimeout(timer); timer = null; this._fireAction("double_tap", config); }
+        else { timer = trackTimeout(() => { timer = null; handleTap(); }, 250); }
+      } else { handleTap(); }
+    });
+    node.addEventListener("pointerleave", cancel);
+    node.addEventListener("pointercancel", cancel);
+  }
+
   _fireAction(type, config) {
     if (config.entity && this._isEntityUnavailable(config.entity)) return;
     const actionKey = `${type}_action`;
@@ -1811,8 +1862,36 @@ class OneLineRoomCardEditor extends HTMLElement {
     this._boundHandlePrimarySave = (ev) => this._handlePrimarySave(ev);
   }
 
-  connectedCallback() {
+connectedCallback() {
     document.addEventListener("click", this._boundHandlePrimarySave, true);
+    
+    // FIX: Dropdowns zwingen, den neuen Wert optisch zu behalten
+    this.addEventListener("value-changed", (ev) => {
+      // ev.composedPath()[0] findet das ECHTE Element, auch tief im Shadow-DOM
+      const target = ev.composedPath()[0];
+      
+      if (target && target.tagName) {
+        const tag = target.tagName.toUpperCase();
+        
+        // Gilt für alle Selektoren und Picker in deiner Card
+        if (tag === "HA-SELECTOR" || tag === "HA-ENTITY-PICKER" || tag === "HA-ICON-PICKER") {
+          if (ev.detail && ev.detail.value !== undefined) {
+            const newVal = ev.detail.value;
+            
+            // 1. Wert sofort hart setzen
+            target.value = newVal;
+            
+            // 2. Den Wert im nächsten Frame nochmal setzen, 
+            // falls das Lit-Framework ihn im Hintergrund überschreiben wollte
+            requestAnimationFrame(() => {
+              if (target.value !== newVal) {
+                target.value = newVal;
+              }
+            });
+          }
+        }
+      }
+    }, true); // "true" fängt das Event ab, BEVOR es verarbeitet wird
   }
 
   disconnectedCallback() {
@@ -1829,11 +1908,13 @@ class OneLineRoomCardEditor extends HTMLElement {
     this._ensureEditorState();
     const incoming = config || {};
     const incomingSig = JSON.stringify(incoming);
-    // Skip re-render if the config hasn't actually changed (e.g. echoed back by HA after our own _fire)
+    // Skip re-render if the config hasn't actually changed
     if (this._lastFiredConfigSig && incomingSig === this._lastFiredConfigSig) {
       this._config = incoming;
       if (!Array.isArray(this._config.controls)) this._config = { ...this._config, controls: [] };
       this._syncControlIds();
+
+      this.updVal();
       return;
     }
     this._config = incoming;
@@ -1850,8 +1931,6 @@ class OneLineRoomCardEditor extends HTMLElement {
       this.shadowRoot.querySelectorAll("ha-selector,ha-entity-picker,ha-icon-picker,ha-textfield,ha-switch,ha-card-conditions-editor").forEach(e => {
         if (e.hass !== hass) e.hass = hass;
       });
-      // After a hot-reload patch, new DOM elements may be missing from the old shadow DOM.
-      // Force a full re-render once so the new static HTML (including any new toggles) is applied.
       if (this._config && (!this.shadowRoot.getElementById("show-name-toggle") || !this.shadowRoot.getElementById("typo-sec"))) {
         this.shadowRoot.innerHTML = "";
         this.render();
@@ -1872,7 +1951,7 @@ class OneLineRoomCardEditor extends HTMLElement {
     clearTimeout(this._tm);
     this._tm = setTimeout(() => {
       this.dispatchEvent(new CustomEvent("config-changed", { detail: { config }, bubbles: true, composed: true }));
-    }, 300);
+    }, 100);
   }
 
   _emitConfigNow(config) {
@@ -2102,7 +2181,6 @@ class OneLineRoomCardEditor extends HTMLElement {
     const name = st?.attributes?.friendly_name || "";
     const domain = entityId?.split(".")[0] || "";
     const defaults = template?.defaults || {};
-    // Only store a static icon for domains without built-in state maps — otherwise _updateBtnState resolves dynamically
     const iconField = DOMAIN_STATE_ICON_MAPS[domain]
       ? {}
       : { icon: st?.attributes?.icon || template?.defaults?.icon || this._iconForEntity(entityId) };
@@ -2138,20 +2216,7 @@ class OneLineRoomCardEditor extends HTMLElement {
         (e) => e.device_id === deviceId && !e.disabled_by
       );
       if (devEntries.length === 0) return null;
-      const preferredDomains = [
-        "light",
-        "switch",
-        "climate",
-        "cover",
-        "fan",
-        "media_player",
-        "lock",
-        "input_boolean",
-        "vacuum",
-        "humidifier",
-        "sensor",
-        "binary_sensor"
-      ];
+      const preferredDomains = ["light", "switch", "climate", "cover", "fan", "media_player", "lock", "input_boolean", "vacuum", "humidifier", "sensor", "binary_sensor"];
       for (const domain of preferredDomains) {
         const found = devEntries.find((e) => e.entity_id?.startsWith(`${domain}.`));
         if (found?.entity_id) return found.entity_id;
@@ -2186,7 +2251,6 @@ class OneLineRoomCardEditor extends HTMLElement {
         });
       };
 
-      // Always include default Lovelace dashboard + views
       try {
         const cfg = await this._hass.connection.sendMessagePromise({ type: "lovelace/config" });
         addPanelViews({ url_path: "lovelace", title: "Lovelace" }, cfg);
@@ -2194,7 +2258,6 @@ class OneLineRoomCardEditor extends HTMLElement {
         addOption("/lovelace", "Lovelace (/lovelace)");
       }
 
-      // Prefer Lovelace dashboards + views
       let dashboards = [];
       try {
         const dashResp = await this._hass.connection.sendMessagePromise({ type: "lovelace/dashboards" });
@@ -2238,45 +2301,24 @@ class OneLineRoomCardEditor extends HTMLElement {
     const alreadyRendered = !!this.shadowRoot.innerHTML;
     const domVersion = this.shadowRoot.querySelector("[data-rc-version]")?.dataset?.rcVersion;
     if (alreadyRendered && domVersion === VERSION) { this.updVal(); if (JSON.stringify(this._config?.controls || []) !== this._lastRenderedControlsSig) this.renBtn(); this._applyNavSelectorOptions(); this._ensureNavOptions(); this._updateSensorsSectionUI(); this._updateImageSectionUI(); this._updateBadgesUI(); this._updateTypographyUI(); this._updateCardBehaviorUI(); this._updateHeaderSectionUI(); this._updateTabUI(); return; }
-    // Force full re-render if DOM is stale or from old version
+    
     this.shadowRoot.innerHTML = "";
     const h = this._hass;
     this.shadowRoot.innerHTML = `
       <style>
         .sec { padding: 12px 0; border-bottom: 1px solid var(--divider-color); }
         .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 8px; }
-        .image-sec { border: 1px solid var(--divider-color); border-radius: 8px; background: var(--secondary-background-color); padding: 6px 10px; margin-bottom: 8px; }
-        .image-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer; user-select: none; padding: 4px 0; }
-        .image-title { font-size: 12px; font-weight: 600; opacity: 0.8; }
-        .image-chev { --mdc-icon-size: 18px; opacity: 0.7; transition: transform 0.15s ease; }
-        .image-sec.open .image-chev { transform: rotate(90deg); }
-        .image-content { margin-top: 6px; }
-        .image-content[hidden] { display: none; }
-        .manual-sec { border: 1px solid var(--divider-color); border-radius: 8px; background: var(--secondary-background-color); padding: 6px 10px; margin-bottom: 8px; }
-        .manual-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer; user-select: none; padding: 4px 0; }
-        .manual-title { font-size: 12px; font-weight: 600; opacity: 0.8; }
-        .manual-chev { --mdc-icon-size: 18px; opacity: 0.7; transition: transform 0.15s ease; }
-        .manual-sec.open .manual-chev { transform: rotate(90deg); }
-        .manual-content { margin-top: 6px; }
-        .manual-content[hidden] { display: none; }
-        .badges-sec { border: 1px solid var(--divider-color); border-radius: 8px; background: var(--secondary-background-color); padding: 6px 10px; margin-bottom: 8px; }
-        .badges-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer; user-select: none; padding: 4px 0; }
-        .badges-title { font-size: 12px; font-weight: 600; opacity: 0.8; }
-        .badges-chev { --mdc-icon-size: 18px; opacity: 0.7; transition: transform 0.15s ease; }
-        .badges-sec.open .badges-chev { transform: rotate(90deg); }
-        .badges-content { margin-top: 6px; }
-        .badges-content[hidden] { display: none; }
+        .image-sec, .manual-sec, .badges-sec { border: 1px solid var(--divider-color); border-radius: 8px; background: var(--secondary-background-color); padding: 6px 10px; margin-bottom: 8px; }
+        .image-head, .manual-head, .badges-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer; user-select: none; padding: 4px 0; }
+        .image-title, .manual-title, .badges-title { font-size: 12px; font-weight: 600; opacity: 0.8; }
+        .image-chev, .manual-chev, .badges-chev { --mdc-icon-size: 18px; opacity: 0.7; transition: transform 0.15s ease; }
+        .image-sec.open .image-chev, .manual-sec.open .manual-chev, .badges-sec.open .badges-chev { transform: rotate(90deg); }
+        .image-content, .manual-content, .badges-content { margin-top: 6px; }
+        .image-content[hidden], .manual-content[hidden], .badges-content[hidden] { display: none; }
         .badge-box { border: 1px solid var(--divider-color); border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; background: var(--card-background-color, var(--primary-background-color)); }
         .badge-head-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
         .badge-entity-label { font-size: 12px; font-weight: 600; opacity: 0.7; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .badge-del-btn { background: none; border: 0; cursor: pointer; padding: 2px; display: inline-flex; color: #d32f2f; --mdc-icon-size: 18px; }
-        .tmpl-label-row { margin-bottom: 4px; }
-        .tmpl-label { font-size: 12px; font-weight: 600; opacity: 0.8; }
-        .tmpl-row { align-items: start; margin-bottom: 12px; }
-        .tmpl-row ha-textfield,
-        .tmpl-row ha-selector,
-        .tmpl-row ha-entity-picker,
-        .tmpl-row ha-icon-picker { margin-bottom: 0; }
         .qa { border: 1px solid var(--divider-color); border-radius: 8px; background: var(--secondary-background-color); padding: 6px 10px; }
         .sec-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
         .sec-head h3 { margin: 0; }
@@ -2293,10 +2335,8 @@ class OneLineRoomCardEditor extends HTMLElement {
         .quick-add-col { display: flex; flex-direction: column; }
         .quick-add-label { font-size: 12px; font-weight: 600; opacity: 0.8; margin-bottom: 6px; }
         .quick-add-field { min-height: 56px; display: flex; align-items: stretch; }
-        .quick-add-field > ha-selector,
-        .quick-add-field > ha-entity-picker { min-height: 56px; }
-        .quick-add-field > ha-selector::part(form-field),
-        .quick-add-field > ha-entity-picker::part(form-field) { min-height: 56px; }
+        .quick-add-field > ha-selector, .quick-add-field > ha-entity-picker { min-height: 56px; }
+        .quick-add-field > ha-selector::part(form-field), .quick-add-field > ha-entity-picker::part(form-field) { min-height: 56px; }
         .quick-add-helper { font-size: 12px; opacity: 0.7; margin-top: 4px; }
         .qa-empty { font-size: 12px; color: var(--error-color, #db4437); margin-top: 4px; }
         .qa-caption { font-size: 12px; font-weight: 600; opacity: 0.8; margin: 6px 0 8px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
@@ -2355,9 +2395,6 @@ class OneLineRoomCardEditor extends HTMLElement {
         }
         .color-container:hover .color-popover, .color-container:focus-within .color-popover { display: block; }
         .hidden { display: none !important; }
-        .qa-native-select { width: 100%; height: 56px; padding: 0 36px 0 16px; border: 1px solid var(--divider-color, rgba(0,0,0,0.38)); border-radius: 4px; background: transparent; color: var(--primary-text-color); font-size: 16px; font-family: var(--mdc-typography-body1-font-family, var(--mdc-typography-font-family, Roboto, sans-serif)); cursor: pointer; box-sizing: border-box; appearance: auto; -webkit-appearance: auto; outline: none; transition: border-color 0.15s ease; }
-        .qa-native-select:hover { border-color: var(--primary-text-color, rgba(0,0,0,0.87)); }
-        .qa-native-select:focus { border: 2px solid var(--mdc-theme-primary, var(--primary-color)); padding: 0 35px 0 15px; }
         .tab-bar { display: flex; border-bottom: 2px solid var(--divider-color); margin-bottom: 4px; }
         .tab-btn { flex: 1; background: none; border: none; border-bottom: 3px solid transparent; padding: 10px 0; font-size: 14px; font-weight: 600; color: var(--secondary-text-color); cursor: pointer; margin-bottom: -2px; transition: color 0.15s, border-color 0.15s; }
         .tab-btn.active { color: var(--primary-color); border-bottom-color: var(--primary-color); }
@@ -2391,17 +2428,19 @@ class OneLineRoomCardEditor extends HTMLElement {
                        style="position: absolute; right: 8px; bottom: 28px; --mdc-switch-size: 20px; z-index: 1; transform: scale(0.8);"></ha-switch>
           </div>
           <div style="position:relative;width:180px;flex-shrink:0;">
-            <label style="position:absolute;top:-9px;left:12px;padding:0 4px;font-size:12px;line-height:1;color:var(--secondary-text-color);background:var(--ha-card-background,var(--card-background-color,#1c1c1c));z-index:1;pointer-events:none;">${getTranslation(h, "behavior")}</label>
-            <select id="behavior-sel" style="width:100%;height:56px;padding:0 36px 0 16px;border:1px solid var(--divider-color,rgba(255,255,255,0.12));border-radius:4px;background:transparent;color:var(--primary-text-color);font-size:16px;font-family:var(--mdc-typography-body1-font-family,Roboto,sans-serif);cursor:pointer;box-sizing:border-box;appearance:none;-webkit-appearance:none;outline:none;">
-              <option value="fixed">${getTranslation(h, "behavior_fixed")}</option>
-              <option value="collapsed">${getTranslation(h, "behavior_collapsed")}</option>
-              <option value="expanded">${getTranslation(h, "behavior_expanded")}</option>
-              <option value="remember">${getTranslation(h, "behavior_remember")}</option>
-            </select>
-            <ha-icon icon="mdi:menu-down" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);pointer-events:none;--mdc-icon-size:24px;opacity:0.7;color:var(--secondary-text-color);"></ha-icon>
+            <ha-selector id="behavior-sel" label="${getTranslation(h, "behavior")}" style="width:100%;"></ha-selector>
           </div>
         </div>
-        <ha-selector id="nav-path" label="${getTranslation(h, "path")}" style="margin-top:12px"></ha-selector>
+        <div style="margin-top:12px">
+          <ha-selector id="tap-action" label="${getTranslation(h, "tap_action")}"></ha-selector>
+        </div>
+        <div style="margin-top:12px">
+          <ha-selector id="hold-action" label="${getTranslation(h, "hold_action")}"></ha-selector>
+        </div>
+        <div style="margin-top:12px">
+          <ha-selector id="dbl-action" label="${getTranslation(h, "double_tap_action")}"></ha-selector>
+        </div>
+        <ha-textfield id="nav-path" label="${getTranslation(h, "path")}" style="margin-top:12px; width: 100%;"></ha-textfield>
         </div>
       </div>
       <div class="sec">
@@ -2441,11 +2480,7 @@ class OneLineRoomCardEditor extends HTMLElement {
             </div>
             
             <div style="margin-bottom:8px">
-              <div style="font-size:12px;opacity:0.7;margin-bottom:4px">${getTranslation(h, "info_line_position")}</div>
-              <select class="info-line-pos-sel qa-native-select" style="height:42px;font-size:14px;width:100%">
-                <option value="header">${getTranslation(h, "info_position_header")}</option>
-                <option value="below_header">${getTranslation(h, "info_position_below")}</option>
-              </select>
+              <ha-selector class="info-line-pos-sel" label="${getTranslation(h, "info_line_position")}"></ha-selector>
             </div>
             <div class="image-title" style="margin:12px 0 8px">${getTranslation(h, "badge_bg")}</div>
             <div style="position: relative; display: flex; align-items: flex-end;">
@@ -2494,11 +2529,15 @@ class OneLineRoomCardEditor extends HTMLElement {
             <div class="image-title" style="margin-bottom:8px">${getTranslation(h, "name_font")}</div>
             <div class="row">
               <ha-textfield label="${getTranslation(h, "font_size")}" cfg="header_name_size" class="i" type="number" placeholder="14"></ha-textfield>
-              <ha-selector id="header-name-weight-sel" label="${getTranslation(h, "font_weight")}"></ha-selector>
+              <div style="width:100%;">
+                <ha-selector id="header-name-weight-sel" label="${getTranslation(h, "font_weight")}" style="width:100%;"></ha-selector>
+              </div>
             </div>
             <div class="row" style="align-items: flex-end;">
               <div style="position: relative; flex: 1; display: flex; align-items: flex-end;">
-                <ha-selector id="header-name-style-sel" label="${getTranslation(h, "font_style")}" style="width: 100%;"></ha-selector>
+                <div style="width:100%;">
+                  <ha-selector id="header-name-style-sel" label="${getTranslation(h, "font_style")}" style="width:100%;"></ha-selector>
+                </div>
                 <div class="color-container" style="position: absolute; right: 8px; bottom: 8px; z-index: 1;">
                    <div class="color-popover">
                       <ha-textfield id="header-name-color" class="i" placeholder="#hex" style="width: 100%; margin-bottom: 0; --mdc-text-field-fill-color: rgba(255,255,255,0.1); --mdc-text-field-ink-color: white;"></ha-textfield>
@@ -2514,11 +2553,15 @@ class OneLineRoomCardEditor extends HTMLElement {
             <div class="image-title" style="margin:12px 0 8px">${getTranslation(h, "info_font")}</div>
             <div class="row">
               <ha-textfield label="${getTranslation(h, "font_size")}" cfg="header_info_size" class="i" type="number" placeholder="12"></ha-textfield>
-              <ha-selector id="header-info-weight-sel" label="${getTranslation(h, "font_weight")}"></ha-selector>
+              <div style="width:100%;">
+                <ha-selector id="header-info-weight-sel" label="${getTranslation(h, "font_weight")}" style="width:100%;"></ha-selector>
+              </div>
             </div>
             <div class="row" style="align-items: flex-end;">
               <div style="position: relative; flex: 1; display: flex; align-items: flex-end;">
-                <ha-selector id="header-info-style-sel" label="${getTranslation(h, "font_style")}" style="width: 100%;"></ha-selector>
+                <div style="width:100%;">
+                  <ha-selector id="header-info-style-sel" label="${getTranslation(h, "font_style")}" style="width:100%;"></ha-selector>
+                </div>
                 <div class="color-container" style="position: absolute; right: 8px; bottom: 8px; z-index: 1;">
                    <div class="color-popover">
                       <ha-textfield id="header-info-color" class="i" placeholder="#hex" style="width: 100%; margin-bottom: 0; --mdc-text-field-fill-color: rgba(255,255,255,0.1); --mdc-text-field-ink-color: white;"></ha-textfield>
@@ -2647,7 +2690,7 @@ class OneLineRoomCardEditor extends HTMLElement {
               <div class="quick-add-col">
                 <div class="quick-add-label">${getTranslation(h, "quick_add_entity_type_label")}</div>
                 <div class="quick-add-field">
-                  <select id="tmpl-select" class="qa-native-select" aria-label="${getTranslation(h, "quick_add_entity_type_label")}"></select>
+                  <ha-selector id="tmpl-select" aria-label="${getTranslation(h, "quick_add_entity_type_label")}"></ha-selector>
                 </div>
                 <div class="quick-add-helper">${getTranslation(h, "quick_add_entity_type_help")}</div>
               </div>
@@ -2756,7 +2799,6 @@ class OneLineRoomCardEditor extends HTMLElement {
           this._fire({ ...this._config, [`header_${type}_style`]: ev.detail.value });
         });
       }
-      // Color text + picker
       const colorField = this.shadowRoot.getElementById(`header-${type}-color`);
       const colorPicker = this.shadowRoot.getElementById(`header-${type}-color-picker`);
       if (colorField) {
@@ -2889,17 +2931,24 @@ class OneLineRoomCardEditor extends HTMLElement {
         this._updateBadgesUI();
       });
     }
+    
     const infoLinePosSel = this.shadowRoot.querySelector(".info-line-pos-sel");
     if (infoLinePosSel) {
+      infoLinePosSel.hass = h;
+      infoLinePosSel.selector = { select: { mode: "dropdown", options: [
+        {value: "header", label: getTranslation(h, "info_position_header")},
+        {value: "below_header", label: getTranslation(h, "info_position_below")}
+      ]}};
       infoLinePosSel.value = this._config?.info_line_position || "header";
-      infoLinePosSel.addEventListener("change", (e) => {
+      infoLinePosSel.addEventListener("value-changed", (e) => {
         e.stopPropagation();
         const next = { ...this._config };
-        if (e.target.value === "header") delete next.info_line_position;
-        else next.info_line_position = e.target.value;
+        if (e.detail.value === "header") delete next.info_line_position;
+        else next.info_line_position = e.detail.value;
         this._fire(next);
       });
     }
+
     const layoutHead = this.shadowRoot.getElementById("layout-head");
     if (layoutHead) {
       layoutHead.addEventListener("click", () => {
@@ -2967,7 +3016,6 @@ class OneLineRoomCardEditor extends HTMLElement {
         const next = { ...this._config };
         if (ev.target.checked) {
           next.header_sync_offsets = true;
-          // Auto-sync line to name position when turning on
           const val = this._config?.header_name_offset ?? 0;
           if (val > 0) next.header_info_offset = val; else delete next.header_info_offset;
         } else {
@@ -2976,14 +3024,75 @@ class OneLineRoomCardEditor extends HTMLElement {
         this._fire(next);
       });
     }
+    const actOpts = [
+      { value: "more-info", label: getTranslation(h, "act_more") || "Details (Default)" },
+      { value: "toggle", label: getTranslation(h, "act_toggle") || "Toggle" },
+      { value: "navigate", label: getTranslation(h, "act_navigate") || "Navigate" },
+      { value: "none", label: getTranslation(h, "act_none") || "None" }
+    ];
+    const tapActionSelect = this.shadowRoot.getElementById("tap-action");
+    const holdActionSelect = this.shadowRoot.getElementById("hold-action");
+    const dblActionSelect = this.shadowRoot.getElementById("dbl-action");
     const navSelect = this.shadowRoot.getElementById("nav-path");
+
+    const updateNavVisibility = (action) => {
+      if (navSelect) navSelect.hidden = action !== "navigate";
+    };
+
+    if (tapActionSelect) {
+      tapActionSelect.hass = h;
+      tapActionSelect.selector = { select: { mode: "dropdown", options: actOpts } };
+      tapActionSelect.value = this._config?.tap_action?.action || "more-info";
+      tapActionSelect.addEventListener("value-changed", (ev) => {
+        ev.stopPropagation();
+        const action = ev.detail?.value || "more-info";
+        const c = { ...this._config };
+        c.tap_action = { ...(c.tap_action || {}), action };
+        if (action !== "navigate") delete c.tap_action.navigation_path;
+        if (!c.tap_action.action) delete c.tap_action;
+        this._fire(c);
+        updateNavVisibility(action);
+      });
+      updateNavVisibility(this._config?.tap_action?.action || "more-info");
+    }
+    if (holdActionSelect) {
+      holdActionSelect.hass = h;
+      holdActionSelect.selector = { select: { mode: "dropdown", options: actOpts } };
+      holdActionSelect.value = this._config?.hold_action?.action || "none";
+      holdActionSelect.addEventListener("value-changed", (ev) => {
+        ev.stopPropagation();
+        const action = ev.detail?.value || "none";
+        const c = { ...this._config };
+        c.hold_action = { ...(c.hold_action || {}), action };
+        if (!c.hold_action.action) delete c.hold_action;
+        this._fire(c);
+      });
+    }
+    if (dblActionSelect) {
+      dblActionSelect.hass = h;
+      dblActionSelect.selector = { select: { mode: "dropdown", options: actOpts } };
+      dblActionSelect.value = this._config?.double_tap_action?.action || "none";
+      dblActionSelect.addEventListener("value-changed", (ev) => {
+        ev.stopPropagation();
+        const action = ev.detail?.value || "none";
+        const c = { ...this._config };
+        c.double_tap_action = { ...(c.double_tap_action || {}), action };
+        if (!c.double_tap_action.action) delete c.double_tap_action;
+        this._fire(c);
+      });
+    }
     if (navSelect) {
+      navSelect.hass = h;
+      this._ensureNavOptions();
+      this._applyNavSelectorOptions();
+      navSelect.value = this._config?.tap_action?.navigation_path || "";
       navSelect.addEventListener("value-changed", (ev) => {
         ev.stopPropagation();
         const v = ev.detail?.value ?? "";
         const c = { ...this._config };
-        if (v?.trim()) c.tap_action = { action: "navigate", navigation_path: v };
-        else delete c.tap_action;
+        c.tap_action = { ...(c.tap_action || {}), action: "navigate" };
+        if (v?.trim()) c.tap_action.navigation_path = v;
+        else delete c.tap_action.navigation_path;
         this._fire(c);
       });
     }
@@ -3006,15 +3115,23 @@ class OneLineRoomCardEditor extends HTMLElement {
         this._fire({ ...this._config, show_name: ev.target.checked !== false });
       });
     }
+    
     const behaviorSel = this.shadowRoot.getElementById("behavior-sel");
     if (behaviorSel) {
+      behaviorSel.hass = h;
+      behaviorSel.selector = { select: { mode: "dropdown", options: [
+        {value: "fixed", label: getTranslation(h, "behavior_fixed")},
+        {value: "collapsed", label: getTranslation(h, "behavior_collapsed")},
+        {value: "expanded", label: getTranslation(h, "behavior_expanded")},
+        {value: "remember", label: getTranslation(h, "behavior_remember")}
+      ]}};
       const isColl = this._config?.collapsible === true;
       const noRem = this._config?.remember_state === false;
       const isColld = this._config?.default_state === "collapsed";
       behaviorSel.value = !isColl ? "fixed" : (!noRem ? "remember" : (isColld ? "collapsed" : "expanded"));
-      behaviorSel.addEventListener("change", (ev) => {
+      behaviorSel.addEventListener("value-changed", (ev) => {
         ev.stopPropagation();
-        const v = ev.target.value;
+        const v = ev.detail.value;
         const next = { ...this._config };
         if (v === "fixed") {
           delete next.collapsible;
@@ -3036,6 +3153,7 @@ class OneLineRoomCardEditor extends HTMLElement {
         this._fire(next);
       });
     }
+    
     const standardBadgeBg = this.shadowRoot.getElementById("standard-badge-bg");
     const standardBadgeBgPicker = this.shadowRoot.getElementById("standard-badge-bg-picker");
     if (standardBadgeBg) {
@@ -3153,14 +3271,12 @@ class OneLineRoomCardEditor extends HTMLElement {
       if (emptyHint) emptyHint.classList.toggle("hidden", hasMatch);
     };
     if (tmplSelect) {
-      // Native <select>: immune to ha-selector/hass-update resets
-      tmplSelect.innerHTML = this._getControlTemplates()
-        .map((t) => `<option value="${t.id}">${t.label}</option>`)
-        .join("");
+      tmplSelect.hass = h;
+      tmplSelect.selector = { select: { mode: "dropdown", options: this._getControlTemplates().map((t) => ({ value: t.id, label: t.label })) } };
       tmplSelect.value = this._quickAddType;
-      tmplSelect.addEventListener("change", (ev) => {
+      tmplSelect.addEventListener("value-changed", (ev) => {
         ev.stopPropagation();
-        const tid = ev.target.value;
+        const tid = ev.detail.value;
         if (!tid) return;
         this._quickAddType = tid;
         const template = this._getTemplateById(tid);
@@ -3320,7 +3436,6 @@ class OneLineRoomCardEditor extends HTMLElement {
 
     if (!this._badgesSectionOpen) return;
 
-    // Sync Primary Climate Entity
     const climatePicker = content.querySelector('ha-entity-picker[cfg="entity"]');
     if (climatePicker) {
       climatePicker.hess = h;
@@ -3332,7 +3447,6 @@ class OneLineRoomCardEditor extends HTMLElement {
       };
     }
 
-    // Sync Auto Climate Button Toggle
     const autoToggle = content.querySelector("#auto-climate-btn-toggle");
     if (autoToggle) {
       autoToggle.checked = !!this._config?.auto_climate_button;
@@ -3343,7 +3457,6 @@ class OneLineRoomCardEditor extends HTMLElement {
       };
     }
 
-    // Sync Badge Background
     const bgField = content.querySelector("#standard-badge-bg");
     const bgPop = content.querySelector("#standard-badge-bg-popover");
     const bgPicker = content.querySelector("#standard-badge-bg-picker");
@@ -3428,7 +3541,6 @@ class OneLineRoomCardEditor extends HTMLElement {
       });
       box.appendChild(ep);
 
-      // Combined Label + Toggle
       const labelRow = document.createElement("div");
       labelRow.style.cssText = "position: relative; display:flex; align-items: flex-end; margin-bottom:8px;";
 
@@ -3457,7 +3569,6 @@ class OneLineRoomCardEditor extends HTMLElement {
       labelRow.appendChild(toggleWrap);
       box.appendChild(labelRow);
 
-      // Compact Background Color Row
       const bgRow = document.createElement("div");
       bgRow.style.cssText = "position: relative; display: flex; align-items: flex-end; margin-bottom: 8px;";
 
@@ -3485,7 +3596,6 @@ class OneLineRoomCardEditor extends HTMLElement {
         ev.stopPropagation();
         const v = trimStr(ev.target.value || "");
         updBadge(idx, "background", v);
-        // Visual sync
         cpInner.style.backgroundColor = v;
       });
       popover.appendChild(popoverField);
@@ -3504,7 +3614,7 @@ class OneLineRoomCardEditor extends HTMLElement {
       bgPicker.addEventListener("change", (ev) => {
         ev.stopPropagation();
         const hex = ev.target.value;
-        const rgba = hexToRgba(hex, 0.25); // Default transparency as requested for badges
+        const rgba = hexToRgba(hex, 0.25);
         updBadge(idx, "background", rgba);
         cpInner.style.backgroundColor = rgba;
         popoverField.value = rgba;
@@ -3515,11 +3625,9 @@ class OneLineRoomCardEditor extends HTMLElement {
       bgRow.appendChild(colorContainer);
 
       box.appendChild(bgRow);
-
       list.appendChild(box);
     });
 
-    // Wire up add-badge button using onclick to avoid listener accumulation
     if (addBtn) {
       addBtn.onclick = () => {
         const arr = [...(this._config?.header_badges || [])];
@@ -3537,7 +3645,7 @@ class OneLineRoomCardEditor extends HTMLElement {
     if (!sec || !content) return;
     sec.classList.toggle("open", this._typoSectionOpen === true);
     content.hidden = this._typoSectionOpen !== true;
-    // Sync weight/style/color to current config
+    
     ["name", "info"].forEach(type => {
       const w = this.shadowRoot.getElementById(`header-${type}-weight-sel`);
       if (w) {
@@ -3598,9 +3706,10 @@ class OneLineRoomCardEditor extends HTMLElement {
     const h = this._hass;
     this._syncControlIds();
     const actOpts = [
-      { value: "more-info", label: getTranslation(h, "act_more") },
-      { value: "toggle", label: getTranslation(h, "act_toggle") },
-      { value: "none", label: getTranslation(h, "act_none") }
+      { value: "more-info", label: getTranslation(h, "act_more") || "Details (Default)" },
+      { value: "toggle", label: getTranslation(h, "act_toggle") || "Toggle" },
+      { value: "navigate", label: getTranslation(h, "act_navigate") || "Navigate" },
+      { value: "none", label: getTranslation(h, "act_none") || "None" }
     ];
     const boxes = [];
     this._config.controls.forEach((ctrl, i) => {
@@ -3688,18 +3797,10 @@ class OneLineRoomCardEditor extends HTMLElement {
            <ha-textfield class="isz" label="${getTranslation(h, "icon_size")}" type="number" style="max-width:120px" placeholder="20"></ha-textfield>
            <ha-selector class="cm" label="${getTranslation(h, "control_mode")}"></ha-selector>
            <div class="sst-wrap" style="display:${showStyle};margin-bottom:8px;">
-             <div style="font-size:12px;opacity:0.7;margin-bottom:4px">${getTranslation(h, "slider_style")}</div>
-             <select class="sst qa-native-select" style="height:42px;font-size:14px;width:100%">
-               <option value="inline">${getTranslation(h, "style_inline")}</option>
-               <option value="background">${getTranslation(h, "style_bg")}</option>
-             </select>
+             <ha-selector class="sst" label="${getTranslation(h, "slider_style")}"></ha-selector>
            </div>
            <div class="sm-wrap" style="display:${showMode};margin-bottom:8px;">
-             <div style="font-size:12px;opacity:0.7;margin-bottom:4px">${getTranslation(h, "slider_mode")}</div>
-             <select class="sm qa-native-select" style="height:42px;font-size:14px;width:100%">
-               <option value="brightness">${getTranslation(h, "slider_mode_brightness")}</option>
-               <option value="color_temp">${getTranslation(h, "slider_mode_color_temp")}</option>
-             </select>
+             <ha-selector class="sm" label="${getTranslation(h, "slider_mode")}"></ha-selector>
            </div>
            <ha-selector class="tap" label="${getTranslation(h, "tap_action")}"></ha-selector>
            <ha-textfield class="tap-nav ${showNav}" label="Nav Pfad"></ha-textfield>
@@ -3723,11 +3824,7 @@ class OneLineRoomCardEditor extends HTMLElement {
         <div class="entity-only ${hideEntity}" style="margin-top:8px; border-top:1px solid var(--divider-color); padding-top:8px">
           <div class="image-title" style="margin-bottom:8px; font-weight:bold">${getTranslation(h, "sub_chips")}</div>
           <div style="margin-bottom:8px">
-            <div style="font-size:12px;opacity:0.7;margin-bottom:4px">${getTranslation(h, "chips_position")}</div>
-            <select class="chips-pos-sel qa-native-select" style="height:42px;font-size:14px">
-              <option value="bottom">${getTranslation(h, "chips_bottom")}</option>
-              <option value="top">${getTranslation(h, "chips_top")}</option>
-            </select>
+            <ha-selector class="chips-pos-sel" label="${getTranslation(h, "chips_position")}"></ha-selector>
           </div>
           <div class="chips-list"></div>
           <mwc-button class="add-chip" style="margin-top:8px">
@@ -3855,7 +3952,7 @@ class OneLineRoomCardEditor extends HTMLElement {
           let next = { ...c[i], entity: val };
           if (st?.attributes?.friendly_name) next.name = st.attributes.friendly_name;
           if (DOMAIN_STATE_ICON_MAPS[epDomain]) {
-            delete next.icon; // clear static icon — let domain state map resolve dynamically
+            delete next.icon;
           } else {
             next.icon = st?.attributes?.icon || this._iconForEntity(val);
           }
@@ -3925,7 +4022,6 @@ class OneLineRoomCardEditor extends HTMLElement {
           if (bgPop) bgPop.value = val;
           if (bgCp) bgCp.value = parseColorToPickerHex(val);
           if (bgPrv) bgPrv.style.backgroundColor = val;
-          this.renBtn();
         });
       }
       if (bgPop) {
@@ -3936,7 +4032,6 @@ class OneLineRoomCardEditor extends HTMLElement {
           if (bgTxt) bgTxt.value = val;
           if (bgCp) bgCp.value = parseColorToPickerHex(val);
           if (bgPrv) bgPrv.style.backgroundColor = val;
-          this.renBtn();
         });
       }
       if (bgCp) {
@@ -3948,7 +4043,6 @@ class OneLineRoomCardEditor extends HTMLElement {
           if (bgTxt) bgTxt.value = val;
           if (bgPop) bgPop.value = val;
           if (bgPrv) bgPrv.style.backgroundColor = val;
-          this.renBtn();
         });
       }
       box.querySelectorAll(".local-bg-presets .bg-preset").forEach(btn => {
@@ -3959,15 +4053,14 @@ class OneLineRoomCardEditor extends HTMLElement {
           if (bgCp) bgCp.value = parseColorToPickerHex(val || "#ffffff");
           if (bgPrv) bgPrv.style.backgroundColor = val || "#ffffff";
           upd("button_background", val);
-          this.renBtn();
         });
       });
       const isz = box.querySelector(".isz"); if (isz) {
         const rawIsz = trimStr(ctrl.icon_size) || "";
         isz.value = /^\d+(\.\d+)?(px)?$/.test(rawIsz) ? rawIsz.replace("px", "") : rawIsz;
-        isz.addEventListener("change", e => { e.stopPropagation(); const v = e.target.value.trim(); upd("icon_size", v || undefined); this.renBtn(); });
+        isz.addEventListener("change", e => { e.stopPropagation(); const v = e.target.value.trim(); upd("icon_size", v || undefined); });
       }
-      // Cover presets section — only visible for cover domain
+      
       const coverOnly = box.querySelector(".cover-only");
       const ctrlDomain = ctrl.entity?.split(".")?.[0] || "";
       if (coverOnly) {
@@ -3981,7 +4074,7 @@ class OneLineRoomCardEditor extends HTMLElement {
             const c = [...this._config.controls];
             const next = { ...c[i], show_cover_presets: e.target.checked === true };
             if (!e.target.checked) delete next.show_cover_presets;
-            c[i] = next; keepOpen(); this._fire({ ...this._config, controls: c }); this.renBtn();
+            c[i] = next; keepOpen(); this._fire({ ...this._config, controls: c });
           });
         }
         if (cpv) {
@@ -3994,11 +4087,11 @@ class OneLineRoomCardEditor extends HTMLElement {
             const c = [...this._config.controls];
             const next = { ...c[i] };
             if (parsed?.length) next.cover_presets = parsed; else delete next.cover_presets;
-            c[i] = next; keepOpen(); this._fire({ ...this._config, controls: c }); this.renBtn();
+            c[i] = next; keepOpen(); this._fire({ ...this._config, controls: c });
           });
         }
       }
-      // Climate presets section — only visible for climate domain
+      
       const climateOnly = box.querySelector(".climate-only");
       if (climateOnly) {
         climateOnly.hidden = ctrlDomain !== "climate";
@@ -4011,7 +4104,7 @@ class OneLineRoomCardEditor extends HTMLElement {
             const c = [...this._config.controls];
             const next = { ...c[i] };
             if (e.target.checked) next.show_climate_presets = true; else delete next.show_climate_presets;
-            c[i] = next; keepOpen(); this._fire({ ...this._config, controls: c }); this.renBtn();
+            c[i] = next; keepOpen(); this._fire({ ...this._config, controls: c });
           });
         }
         if (ctpv) {
@@ -4029,11 +4122,11 @@ class OneLineRoomCardEditor extends HTMLElement {
             const c = [...this._config.controls];
             const next = { ...c[i] };
             if (parsed?.length) next.climate_presets = parsed; else delete next.climate_presets;
-            c[i] = next; keepOpen(); this._fire({ ...this._config, controls: c }); this.renBtn();
+            c[i] = next; keepOpen(); this._fire({ ...this._config, controls: c });
           });
         }
       }
-      // Light color favorites section — only visible for light domain
+      
       const lightOnly = box.querySelector(".light-only");
       if (lightOnly) {
         lightOnly.hidden = ctrlDomain !== "light";
@@ -4109,7 +4202,6 @@ class OneLineRoomCardEditor extends HTMLElement {
               wrap.appendChild(delBtn);
               cfvContainer.appendChild(wrap);
             });
-            // "+" add button
             const addWrap = document.createElement("div");
             addWrap.style.cssText = "position:relative;display:inline-flex;width:24px;height:24px;flex-shrink:0;";
             const addPicker = document.createElement("input");
@@ -4139,7 +4231,7 @@ class OneLineRoomCardEditor extends HTMLElement {
           rebuildSwatches();
         }
       }
-      // Color Map section
+      
       if (!isTemplate) {
         const entityOnly = box.querySelector(".entity-only");
         if (entityOnly) {
@@ -4276,12 +4368,28 @@ class OneLineRoomCardEditor extends HTMLElement {
       const sl = box.querySelector(".sl"); sl.checked = ctrl.show_label !== false; sl.addEventListener("change", e => { e.stopPropagation(); upd("show_label", e.target.checked); });
       const si = box.querySelector(".si"); si.checked = ctrl.show_icon !== false; si.addEventListener("change", e => { e.stopPropagation(); upd("show_icon", e.target.checked); });
       const hd = box.querySelector(".hd"); hd.checked = !ctrl.hide; hd.addEventListener("change", e => { e.stopPropagation(); upd("hide", !e.target.checked); });
-      const tap = box.querySelector(".tap"); if (tap) {
+      const tap = box.querySelector(".tap");
+      const tapNav = box.querySelector(".tap-nav");
+      const toggleTapNav = (action) => {
+        if (!tapNav) return;
+        tapNav.classList.toggle("hidden", action !== "navigate");
+      };
+      if (tap) {
         tap.hass = h; tap.selector = { select: { mode: "dropdown", options: actOpts } };
-        tap.value = ctrl.tap_action?.action || "more-info"; tap.addEventListener("value-changed", e => { e.stopPropagation(); updAct("tap_action", e.detail.value); });
+        const initialTapAction = ctrl.tap_action?.action || "more-info";
+        tap.value = initialTapAction;
+        toggleTapNav(initialTapAction);
+        tap.addEventListener("value-changed", e => {
+          e.stopPropagation();
+          const action = e.detail.value || "more-info";
+          toggleTapNav(action);
+          updAct("tap_action", action);
+        });
       }
-      const tapNav = box.querySelector(".tap-nav"); if (tapNav) {
-        tapNav.value = ctrl.tap_action?.navigation_path || ""; tapNav.addEventListener("change", e => {
+      if (tapNav) {
+        tapNav.value = ctrl.tap_action?.navigation_path || "";
+        tapNav.classList.toggle("hidden", ctrl.tap_action?.action !== "navigate");
+        tapNav.addEventListener("change", e => {
           const c = [...this._config.controls];
           const action = e.target.value ? { action: "navigate", navigation_path: e.target.value } : { action: "more-info" };
           c[i] = { ...c[i], tap_action: action };
@@ -4317,44 +4425,56 @@ class OneLineRoomCardEditor extends HTMLElement {
 
       const sst = box.querySelector(".sst");
       if (sst) {
+        sst.hass = h;
+        sst.selector = { select: { mode: "dropdown", options: [
+          {value: "inline", label: getTranslation(h, "style_inline")},
+          {value: "background", label: getTranslation(h, "style_bg")}
+        ]}};
         sst.value = ctrl.slider_style || "inline";
-        sst.addEventListener("change", e => {
+        sst.addEventListener("value-changed", e => {
           e.stopPropagation();
-          const v = e.target.value || "inline";
+          const v = e.detail.value || "inline";
           upd("slider_style", v === "inline" ? undefined : v);
         });
       }
 
       const sm = box.querySelector(".sm");
       if (sm) {
+        sm.hass = h;
+        sm.selector = { select: { mode: "dropdown", options: [
+          {value: "brightness", label: getTranslation(h, "slider_mode_brightness")},
+          {value: "color_temp", label: getTranslation(h, "slider_mode_color_temp")}
+        ]}};
         sm.value = ctrl.slider_mode || "brightness";
-        sm.addEventListener("change", e => {
+        sm.addEventListener("value-changed", e => {
           e.stopPropagation();
-          const v = e.target.value || "brightness";
+          const v = e.detail.value || "brightness";
           upd("slider_mode", v === "brightness" ? undefined : v);
           this.renBtn();
         });
       }
 
 
-      // Visibility conditions (Native HA conditions editor — same as card visibility tab)
       const visCondEditor = box.querySelector(".vis-cond-editor");
       if (visCondEditor) {
         visCondEditor.hass = h;
         visCondEditor.conditions = ctrl.visibility || [];
         visCondEditor.addEventListener("value-changed", e => {
           e.stopPropagation();
-          // Feed updated conditions back to the component so it can render the inline form
           visCondEditor.conditions = e.detail.value;
           upd("visibility", e.detail.value, true);
         });
       }
 
-      // Sub-Chips listeners
       const chipsPosSel = box.querySelector(".chips-pos-sel");
       if (chipsPosSel) {
+        chipsPosSel.hass = h;
+        chipsPosSel.selector = { select: { mode: "dropdown", options: [
+          {value: "bottom", label: getTranslation(h, "chips_bottom")},
+          {value: "top", label: getTranslation(h, "chips_top")}
+        ]}};
         chipsPosSel.value = ctrl.chips_position || "bottom";
-        chipsPosSel.addEventListener("change", e => { e.stopPropagation(); upd("chips_position", e.target.value); });
+        chipsPosSel.addEventListener("value-changed", e => { e.stopPropagation(); upd("chips_position", e.detail.value); });
       }
 
       const chipsList = box.querySelector(".chips-list");
@@ -4403,9 +4523,26 @@ class OneLineRoomCardEditor extends HTMLElement {
       if (k === "humidity_warning_threshold") v = this._config[k] ?? 60;
       if (e.value !== v) e.value = v;
     });
+    const tapActionSel = this.shadowRoot.getElementById("tap-action");
+    const holdActionSel = this.shadowRoot.getElementById("hold-action");
+    const dblActionSel = this.shadowRoot.getElementById("dbl-action");
     const nav = this.shadowRoot.getElementById("nav-path");
-    if (nav && nav.value !== (this._config.tap_action?.navigation_path || "")) {
-      nav.value = this._config.tap_action?.navigation_path || "";
+    if (tapActionSel) {
+      const tapAction = this._config.tap_action?.action || "more-info";
+      if (tapActionSel.value !== tapAction) tapActionSel.value = tapAction;
+    }
+    if (holdActionSel) {
+      const holdAction = this._config.hold_action?.action || "none";
+      if (holdActionSel.value !== holdAction) holdActionSel.value = holdAction;
+    }
+    if (dblActionSel) {
+      const dblAction = this._config.double_tap_action?.action || "none";
+      if (dblActionSel.value !== dblAction) dblActionSel.value = dblAction;
+    }
+    if (nav) {
+      const navPath = this._config.tap_action?.navigation_path || "";
+      nav.hidden = this._config.tap_action?.action !== "navigate";
+      if (nav.value !== navPath) nav.value = navPath;
     }
     const livePreviewToggle = this.shadowRoot.getElementById("live-preview-toggle");
     if (livePreviewToggle && livePreviewToggle.checked !== (this._livePreview !== false)) {
@@ -4472,13 +4609,11 @@ class OneLineRoomCardEditor extends HTMLElement {
         if (popField && popField.value !== v) popField.value = v;
         const mainField = container.closest(".row")?.querySelector(`ha-textfield[cfg="${k}"]`);
         if (mainField && mainField.value !== v) mainField.value = v;
-        // Fallback for fields like standard-badge-bg which might not be inside a .row with cfg
         if (k === "header_info_background") {
           const bgF = this.shadowRoot.getElementById("standard-badge-bg");
           if (bgF && bgF.value !== v) bgF.value = v;
         }
       } else {
-        // Fallback for pickers not in a color-container (like global-button-bg in old structure)
         const prev = e.closest(".cp-preview")?.querySelector("div");
         if (prev) prev.style.backgroundColor = v;
         const mainField = this.shadowRoot.querySelector(`ha-textfield[cfg="${k}"]`);
@@ -4486,8 +4621,6 @@ class OneLineRoomCardEditor extends HTMLElement {
       }
     });
   }
-
-
 
   _updateSubChipsUI(container, ctrl, ctrlIdx, h) {
     container.replaceChildren();
@@ -4581,7 +4714,6 @@ const patchExistingEditor = (ExistingEditor, NewEditor) => {
   if (hassDesc) Object.defineProperty(ExistingEditor.prototype, "hass", hassDesc);
 };
 
-// 1. Editor registrieren (wenn noch nicht da)
 const existingEditor = customElements.get("oneline-room-card-editor");
 if (!existingEditor) {
   customElements.define("oneline-room-card-editor", OneLineRoomCardEditor);
@@ -4589,7 +4721,6 @@ if (!existingEditor) {
   patchExistingEditor(existingEditor, OneLineRoomCardEditor);
 }
 
-// 2. Neue Karte registrieren (wenn noch nicht da)
 if (!customElements.get("oneline-room-card")) {
   customElements.define("oneline-room-card", OneLineRoomCard);
 }
