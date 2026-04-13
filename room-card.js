@@ -52,7 +52,9 @@ const TRANSLATIONS = {
     visibility: "Visibility", visibility_cond: "Conditional Visibility", vis_entity: "Condition Entity", vis_state: "Show if state is", vis_invert: "Invert Logic (Hide if state corresponds)",
     migration_title: "Action Required",
     migration_text: "Card renamed to <b>oneline-room-card</b> to avoid conflicts.<br>Please change <code>type: custom:room-card</code> to <code>type: custom:oneline-room-card</code> in your YAML.",
-    control_mode: "Control Mode", ctrl_default: "Default", ctrl_slider: "Inline Slider", ctrl_buttons: "Inline Buttons (Cover)",
+    control_mode: "Control Mode", ctrl_default: "Default", ctrl_slider: "Inline Slider", ctrl_buttons: "Inline Buttons",
+    slider_mode: "Slider Mode", slider_mode_brightness: "Brightness", slider_mode_color_temp: "Color Temperature",
+    slider_style: "Slider Style", style_inline: "Inline", style_bg: "Background",
     collapsible: "Collapsible", default_state: "Default State", state_expanded: "Expanded", state_collapsed: "Collapsed",
     header_height: "Header Height (px)",
     typography: "Header Typography", name_font: "Room Name Font", info_font: "Info Line Font",
@@ -118,7 +120,9 @@ const TRANSLATIONS = {
     visibility: "Sichtbarkeit", visibility_cond: "Bedingte Sichtbarkeit", vis_entity: "Bedingungs-Entität", vis_state: "Anzeigen falls Status gleich", vis_invert: "Logik umkehren (Ausblenden falls entsprechend)",
     migration_title: "Handlung erforderlich",
     migration_text: "Karte wurde in <b>oneline-room-card</b> umbenannt.<br>Bitte ändere <code>type: custom:room-card</code> zu <code>type: custom:oneline-room-card</code> in deiner YAML-Konfiguration.",
-    control_mode: "Steuerungsmodus", ctrl_default: "Standard", ctrl_slider: "Inline-Slider", ctrl_buttons: "Inline-Buttons (Rollladen)",
+    control_mode: "Steuerungsmodus", ctrl_default: "Standard", ctrl_slider: "Inline-Slider", ctrl_buttons: "Inline-Buttons",
+    slider_mode: "Slider Modus", slider_mode_brightness: "Helligkeit", slider_mode_color_temp: "Farbtemperatur",
+    slider_style: "Slider Stil", style_inline: "Inline", style_bg: "Hintergrund",
     collapsible: "Einklappbar", default_state: "Standardzustand", state_expanded: "Ausgeklappt", state_collapsed: "Eingeklappt",
     header_height: "Kopfzeilenhöhe (px)",
     typography: "Header Typografie", name_font: "Raumname Schrift", info_font: "Info-Zeile Schrift",
@@ -187,7 +191,9 @@ const TRANSLATIONS = {
     show_name: "Afficher le titre", header_badges: "Infos d'en-tête supplémentaires", badge_add: "Ajouter une entrée", badge_label: "Libellé (optionnel)", badge_background: "Arrière-plan (rgba)", standard_badge_background: "Fond du badge climat principal (rgba)",
     migration_title: "Action requise",
     migration_text: "Carte renommée en <b>oneline-room-card</b> pour éviter les conflits.<br>Veuillez changer <code>type: custom:room-card</code> en <code>type: custom:oneline-room-card</code>.",
-    control_mode: "Mode de contrôle", ctrl_default: "Défaut", ctrl_slider: "Curseur intégré", ctrl_buttons: "Boutons intégrés (Volet)",
+    control_mode: "Mode de contrôle", ctrl_default: "Défaut", ctrl_slider: "Curseur", ctrl_buttons: "Boutons",
+    slider_mode: "Mode Curseurs", slider_mode_brightness: "Luminosité", slider_mode_color_temp: "Température de couleur",
+    slider_style: "Style de curseur", style_inline: "Intégré", style_bg: "Arrière-plan",
     collapsible: "Rétractable", default_state: "État par défaut", state_expanded: "Déplié", state_collapsed: "Replié",
     header_height: "Hauteur de l'en-tête (px)",
     typography: "Typographie de l'en-tête", name_font: "Police du nom", info_font: "Police des infos",
@@ -669,19 +675,19 @@ class OneLineRoomCard extends HTMLElement {
     (Array.isArray(cfg.window_sensors) ? cfg.window_sensors : []).forEach(add);
     (Array.isArray(cfg.battery_sensors) ? cfg.battery_sensors : []).forEach(add);
     (Array.isArray(cfg.controls) ? cfg.controls : []).forEach((ctrl) => {
-        add(ctrl?.entity);
-        if (Array.isArray(ctrl.visibility)) {
-            const extract = (conds) => {
-                conds.forEach(c => {
-                    if (c.entity) add(c.entity);
-                    if (Array.isArray(c.conditions)) extract(c.conditions);
-                });
-            };
-            extract(ctrl.visibility);
-        }
-        if (Array.isArray(ctrl.sub_chips)) {
-            ctrl.sub_chips.forEach(chip => add(chip.entity));
-        }
+      add(ctrl?.entity);
+      if (Array.isArray(ctrl.visibility)) {
+        const extract = (conds) => {
+          conds.forEach(c => {
+            if (c.entity) add(c.entity);
+            if (Array.isArray(c.conditions)) extract(c.conditions);
+          });
+        };
+        extract(ctrl.visibility);
+      }
+      if (Array.isArray(ctrl.sub_chips)) {
+        ctrl.sub_chips.forEach(chip => add(chip.entity));
+      }
     });
     (Array.isArray(cfg.header_badges) ? cfg.header_badges : []).forEach((b) => add(b?.entity));
     return Array.from(ids);
@@ -700,6 +706,8 @@ class OneLineRoomCard extends HTMLElement {
       attrs.hvac_action ?? "",
       attrs.icon ?? "",
       attrs.current_position ?? "",
+      attrs.color_temp ?? "",
+      attrs.brightness ?? "",
       rgb
     ].join("|");
   }
@@ -1089,6 +1097,93 @@ class OneLineRoomCard extends HTMLElement {
     return true;
   }
 
+  _getSliderCapabilities(domain, st, ctrl) {
+    let supported = false, min = 0, max = 100, step = 1, value = 0, pct = 0, action = null;
+    if (!st || this._isEntityUnavailable(ctrl.entity)) return { supported };
+
+    if (domain === "light") {
+      const supp = st.attributes?.supported_color_modes || [];
+      const hasColorTemp = supp.includes("color_temp") || st.attributes?.color_temp !== undefined || st.attributes?.color_temp_kelvin !== undefined;
+      const isColorTemp = ctrl.slider_mode === "color_temp" && hasColorTemp;
+      supported = true;
+      if (isColorTemp) {
+        if (st.attributes?.min_color_temp_kelvin !== undefined) {
+          min = st.attributes.min_color_temp_kelvin;
+          max = st.attributes.max_color_temp_kelvin;
+          value = st.attributes.color_temp_kelvin ?? min;
+          action = "color_temp_kelvin";
+        } else {
+          min = st.attributes?.min_mireds ?? 153;
+          max = st.attributes?.max_mireds ?? 500;
+          value = st.attributes?.color_temp ?? min;
+          action = "color_temp";
+        }
+      } else {
+        value = st.attributes?.brightness != null ? Math.round((st.attributes.brightness / 255) * 100) : 0;
+        min = 0; max = 100; step = 1;
+        action = "brightness";
+      }
+    } else if (domain === "cover") {
+      supported = true;
+      value = st.attributes?.current_position ?? 0;
+      action = "position";
+    } else if (domain === "climate") {
+      supported = true;
+      min = st.attributes?.min_temp ?? 5;
+      max = st.attributes?.max_temp ?? 35;
+      step = 0.5;
+      value = st.attributes?.temperature ?? min;
+      action = "temperature";
+    } else if (domain === "fan") {
+      supported = true;
+      step = parseInt(st.attributes?.percentage_step ?? 1);
+      value = st.attributes?.percentage ?? 0;
+      action = "percentage";
+    } else if (domain === "media_player") {
+      supported = true;
+      value = st.attributes?.volume_level != null ? Math.round(st.attributes.volume_level * 100) : 0;
+      action = "volume_level";
+    } else if (domain === "number" || domain === "input_number") {
+      supported = true;
+      min = parseFloat(st.attributes?.min ?? 0);
+      max = parseFloat(st.attributes?.max ?? 100);
+      step = parseFloat(st.attributes?.step ?? 1);
+      value = parseFloat(st.state) || min;
+      action = "value";
+    }
+    pct = ((Math.max(min, Math.min(max, value)) - min) / (max - min)) * 100;
+    return { supported, min, max, step, value, pct, action };
+  }
+
+  _getInlineButtons(domain) {
+    if (domain === "cover") return [
+      { icon: "mdi:arrow-up-bold", action: "service", service: "cover.open_cover" },
+      { icon: "mdi:stop", action: "service", service: "cover.stop_cover" },
+      { icon: "mdi:arrow-down-bold", action: "service", service: "cover.close_cover" }
+    ];
+    if (domain === "climate") return [
+      { icon: "mdi:minus", action: "custom", custom: "temp_down" },
+      { icon: "mdi:power", action: "custom", custom: "toggle_hvac" },
+      { icon: "mdi:plus", action: "custom", custom: "temp_up" }
+    ];
+    if (domain === "light") return [
+      { icon: "mdi:brightness-5", action: "custom", custom: "dim_down" },
+      { icon: "mdi:power", action: "service", service: "light.toggle" },
+      { icon: "mdi:brightness-7", action: "custom", custom: "dim_up" }
+    ];
+    if (domain === "fan") return [
+      { icon: "mdi:minus", action: "service", service: "fan.decrease_speed" },
+      { icon: "mdi:power", action: "service", service: "fan.toggle" },
+      { icon: "mdi:plus", action: "service", service: "fan.increase_speed" }
+    ];
+    if (domain === "media_player") return [
+      { icon: "mdi:skip-previous", action: "service", service: "media_player.media_previous_track" },
+      { icon: "mdi:play-pause", action: "service", service: "media_player.media_play_pause" },
+      { icon: "mdi:skip-next", action: "service", service: "media_player.media_next_track" }
+    ];
+    return [];
+  }
+
   _updateBtnState(btn, ctrl, h) {
     const unit = h.config.unit_system.temperature || "°C"; // --- NEW: DYNAMIC UNIT ---
     const st = ctrl.entity ? h.states[ctrl.entity] : null;
@@ -1250,50 +1345,72 @@ class OneLineRoomCard extends HTMLElement {
     btn.style.setProperty("--icon-color", col);
     btn.style.setProperty("--btn-bg", bg);
 
-    // Inline controls (slider / cover buttons)
+    // Inline controls
     const controlMode = ctrl.control_mode;
-    const hasSlider = controlMode === "slider" && !isUnavail && (domain === "light" || domain === "cover" || domain === "climate");
-    const hasCoverBtns = controlMode === "buttons" && !isUnavail && domain === "cover";
+    const sliderCaps = this._getSliderCapabilities(domain, st, ctrl);
+    const inlineBtns = this._getInlineButtons(domain);
+    const isBgSlider = controlMode === "slider" && ctrl.slider_style === "background" && !isUnavail && sliderCaps.supported;
+    const isInlineSlider = controlMode === "slider" && ctrl.slider_style !== "background" && !isUnavail && sliderCaps.supported;
+    const hasInlineBtns = controlMode === "buttons" && !isUnavail && inlineBtns.length > 0;
     const hasCoverPresets = ctrl.show_cover_presets === true && domain === "cover" && !isUnavail;
     const hasClimatePresets = ctrl.show_climate_presets === true && domain === "climate" && !isUnavail;
     const hasColorFavorites = ctrl.show_color_favorites === true && domain === "light" && !isUnavail;
 
-    if (hasSlider || hasCoverBtns || hasCoverPresets || hasClimatePresets || hasColorFavorites) {
+    if (isBgSlider) {
+      btn.style.position = "relative";
+      btn.style.overflow = "hidden";
+      btn.style.touchAction = "pan-y";
+      const bgSlider = document.createElement("div");
+      bgSlider.className = "bg-slider-fill";
+      bgSlider.style.position = "absolute";
+      bgSlider.style.top = "0";
+      bgSlider.style.left = "0";
+      bgSlider.style.height = "100%";
+      bgSlider.style.width = `${sliderCaps.pct}%`;
+      bgSlider.style.zIndex = "0";
+      bgSlider.style.pointerEvents = "none";
+      bgSlider.style.opacity = "0.2";
+      if (sliderCaps.action === "color_temp") {
+        bgSlider.style.background = `linear-gradient(to right, #a2c8ff 0%, #ffcf91 100%)`;
+      } else if (sliderCaps.action === "color_temp_kelvin") {
+        bgSlider.style.background = `linear-gradient(to right, #ffcf91 0%, #a2c8ff 100%)`;
+      } else {
+        bgSlider.style.background = "var(--icon-color)";
+      }
+      Array.from(btn.children).forEach(c => { c.style.position = "relative"; c.style.zIndex = "1"; });
+      btn.insertBefore(bgSlider, btn.firstChild);
+    }
+
+    if (isInlineSlider || hasInlineBtns || hasCoverPresets || hasClimatePresets || hasColorFavorites) {
       btn.classList.add("has-inline-ctrl");
       const topDiv = document.createElement("div");
       topDiv.className = "btn-top";
-      while (btn.firstChild) topDiv.appendChild(btn.firstChild);
+      while (btn.firstChild) {
+        if (btn.firstChild.className === "bg-slider-fill") break; // Keep background behind topDiv if they somehow co-exist
+        topDiv.appendChild(btn.firstChild);
+      }
       btn.appendChild(topDiv);
 
-      if (hasSlider) {
-        let sliderMin = 0, sliderMax = 100, sliderStep = 1, sliderValue, sliderPct;
-        if (domain === "light") {
-          sliderValue = st?.attributes?.brightness != null ? Math.round((st.attributes.brightness / 255) * 100) : 0;
-          sliderPct = sliderValue;
-        } else if (domain === "climate") {
-          sliderMin = st?.attributes?.min_temp ?? 5;
-          sliderMax = st?.attributes?.max_temp ?? 35;
-          sliderStep = 0.5;
-          sliderValue = st?.attributes?.temperature ?? sliderMin;
-          sliderPct = ((sliderValue - sliderMin) / (sliderMax - sliderMin)) * 100;
-        } else {
-          sliderValue = st?.attributes?.current_position ?? 0;
-          sliderPct = sliderValue;
-        }
+      if (isInlineSlider) {
         const wrap = document.createElement("div");
         wrap.className = "btn-slider-wrap";
         const slider = document.createElement("input");
         slider.type = "range";
         slider.className = "btn-slider";
-        slider.min = sliderMin; slider.max = sliderMax; slider.step = sliderStep; slider.value = sliderValue;
-        slider.style.setProperty("--slider-pct", `${sliderPct}%`);
+        slider.min = sliderCaps.min; slider.max = sliderCaps.max; slider.step = sliderCaps.step; slider.value = sliderCaps.value;
+        slider.style.setProperty("--slider-pct", `${sliderCaps.pct}%`);
+        if (sliderCaps.action === "color_temp") {
+          slider.style.background = `linear-gradient(to right, #a2c8ff 0%, #ffcf91 100%)`;
+          slider.style.boxShadow = `inset 0 0 0 1px rgba(128,128,128,0.2)`;
+        } else if (sliderCaps.action === "color_temp_kelvin") {
+          slider.style.background = `linear-gradient(to right, #ffcf91 0%, #a2c8ff 100%)`;
+          slider.style.boxShadow = `inset 0 0 0 1px rgba(128,128,128,0.2)`;
+        }
         slider.addEventListener("pointerdown", e => e.stopPropagation());
         slider.addEventListener("click", e => e.stopPropagation());
         slider.addEventListener("input", e => {
           const v = +e.target.value;
-          const pct = domain === "climate"
-            ? ((v - sliderMin) / (sliderMax - sliderMin)) * 100
-            : v;
+          const pct = ((v - sliderCaps.min) / (sliderCaps.max - sliderCaps.min)) * 100;
           e.target.style.setProperty("--slider-pct", `${pct}%`);
           if (domain === "climate") {
             const stateEl = topDiv.querySelector(".btn-state");
@@ -1301,38 +1418,64 @@ class OneLineRoomCard extends HTMLElement {
               const cur = st?.attributes?.current_temperature;
               stateEl.textContent = cur != null ? `${cur}${unit} → ${v}${unit}` : `${v}${unit}`;
             }
+          } else if (sliderCaps.action === "color_temp") {
+            const stateEl = topDiv.querySelector(".btn-state");
+            if (stateEl) {
+              const k = Math.round(1000000 / v);
+              stateEl.textContent = `${k} K`;
+            }
+          } else if (sliderCaps.action === "color_temp_kelvin") {
+            const stateEl = topDiv.querySelector(".btn-state");
+            if (stateEl) stateEl.textContent = `${Math.round(v)} K`;
           }
         });
         slider.addEventListener("change", e => {
           const v = +e.target.value;
-          if (domain === "light") {
+          if (sliderCaps.action === "color_temp") {
+            this._hass.callService("light", "turn_on", { entity_id: ctrl.entity, color_temp_kelvin: Math.round(1000000 / v) });
+          } else if (sliderCaps.action === "color_temp_kelvin") {
+            this._hass.callService("light", "turn_on", { entity_id: ctrl.entity, color_temp_kelvin: Math.round(v) });
+          } else if (sliderCaps.action === "brightness") {
             this._hass.callService("light", "turn_on", { entity_id: ctrl.entity, brightness: Math.round(v * 2.55) });
-          } else if (domain === "climate") {
+          } else if (sliderCaps.action === "temperature") {
             this._hass.callService("climate", "set_temperature", { entity_id: ctrl.entity, temperature: v });
-          } else {
+          } else if (sliderCaps.action === "position") {
             this._hass.callService("cover", "set_cover_position", { entity_id: ctrl.entity, position: v });
+          } else if (sliderCaps.action === "percentage") {
+            this._hass.callService("fan", "set_percentage", { entity_id: ctrl.entity, percentage: v });
+          } else if (sliderCaps.action === "volume_level") {
+            this._hass.callService("media_player", "volume_set", { entity_id: ctrl.entity, volume_level: v / 100 });
+          } else if (sliderCaps.action === "value") {
+            this._hass.callService(domain, "set_value", { entity_id: ctrl.entity, value: v });
           }
         });
         wrap.appendChild(slider);
         btn.appendChild(wrap);
       }
 
-      if (hasCoverBtns) {
+      if (hasInlineBtns) {
         const actDiv = document.createElement("div");
         actDiv.className = "btn-cover-actions";
-        [
-          { icon: "mdi:arrow-up-bold", svc: "open_cover" },
-          { icon: "mdi:stop", svc: "stop_cover" },
-          { icon: "mdi:arrow-down-bold", svc: "close_cover" }
-        ].forEach(({ icon, svc }) => {
+        inlineBtns.forEach(({ icon, action, service, custom }) => {
           const b = document.createElement("div");
           b.className = "cover-action-btn";
           b.innerHTML = `<ha-icon icon="${icon}"></ha-icon>`;
           b.addEventListener("pointerdown", e => e.stopPropagation());
           b.addEventListener("click", e => {
             e.stopPropagation();
-            if (!this._isEntityUnavailable(ctrl.entity)) {
-              this._hass.callService("cover", svc, { entity_id: ctrl.entity });
+            if (this._isEntityUnavailable(ctrl.entity)) return;
+            if (action === "service") {
+              const [d, s] = service.split(".");
+              this._hass.callService(d, s, { entity_id: ctrl.entity });
+            } else if (action === "custom") {
+              if (custom === "dim_down") this._hass.callService("light", "turn_on", { entity_id: ctrl.entity, brightness_step_pct: -10 });
+              else if (custom === "dim_up") this._hass.callService("light", "turn_on", { entity_id: ctrl.entity, brightness_step_pct: 10 });
+              else if (custom === "temp_down") this._hass.callService("climate", "set_temperature", { entity_id: ctrl.entity, temperature: (st?.attributes?.temperature || 20) - 0.5 });
+              else if (custom === "temp_up") this._hass.callService("climate", "set_temperature", { entity_id: ctrl.entity, temperature: (st?.attributes?.temperature || 20) + 0.5 });
+              else if (custom === "toggle_hvac") {
+                const isOff = ["off", "idle"].includes(st?.state);
+                this._hass.callService("climate", isOff ? "turn_on" : "set_hvac_mode", isOff ? { entity_id: ctrl.entity } : { entity_id: ctrl.entity, hvac_mode: "off" });
+              }
             }
           });
           actDiv.appendChild(b);
@@ -1503,25 +1646,86 @@ class OneLineRoomCard extends HTMLElement {
       double_tap_action: ctrl.double_tap_action || { action: "none" }
     };
     let timer = null, held = false, holdTimer = null;
+    let startX = 0, isDragging = false;
     const trackTimeout = (fn, ms) => {
       const id = setTimeout(() => { this._activeTimers.delete(id); fn(); }, ms);
       this._activeTimers.add(id);
       return id;
     };
     const cancelTimeout = (id) => { clearTimeout(id); this._activeTimers.delete(id); };
-    node.addEventListener("pointerdown", () => {
+    node.addEventListener("pointerdown", (e) => {
       if (this._isEntityUnavailable(ctrl.entity)) return;
+      startX = e.clientX;
+      isDragging = false;
       held = false;
-      holdTimer = trackTimeout(() => { held = true; this._fireAction("hold", config); }, 500);
+      holdTimer = trackTimeout(() => { if (!isDragging) { held = true; this._fireAction("hold", config); } }, 500);
     });
-    const cancel = () => { if (holdTimer) { cancelTimeout(holdTimer); holdTimer = null; } };
+    node.addEventListener("pointermove", (e) => {
+      if (!startX || !this._hass || this._isEntityUnavailable(ctrl.entity)) return;
+      const domain = ctrl.entity.split(".")[0];
+      const st = this._hass.states[ctrl.entity];
+      const sliderCaps = this._getSliderCapabilities(domain, st, ctrl);
+      const isBgSlider = ctrl.control_mode === "slider" && ctrl.slider_style === "background" && sliderCaps.supported;
+
+      if (!isBgSlider) return;
+
+      const dx = Math.abs(e.clientX - startX);
+      if (dx > 10) {
+        if (!isDragging) {
+          isDragging = true;
+          held = false;
+          if (holdTimer) cancelTimeout(holdTimer);
+        }
+        const rect = node.getBoundingClientRect();
+        let pct = ((e.clientX - rect.left) / rect.width) * 100;
+        pct = Math.max(0, Math.min(100, pct));
+        const bgNode = node.querySelector(".bg-slider-fill");
+        if (bgNode) bgNode.style.width = `${pct}%`;
+      }
+    });
+
+    const cancel = (e) => {
+      if (holdTimer) { cancelTimeout(holdTimer); holdTimer = null; }
+      if (isDragging && e && e.type === "pointerup" && this._hass && ctrl.control_mode === "slider" && ctrl.slider_style === "background") {
+        const domain = ctrl.entity.split(".")[0];
+        const st = this._hass.states[ctrl.entity];
+        const sliderCaps = this._getSliderCapabilities(domain, st, ctrl);
+        if (sliderCaps.supported) {
+          const rect = node.getBoundingClientRect();
+          let pct = ((e.clientX - rect.left) / rect.width);
+          pct = Math.max(0, Math.min(1, pct));
+          let v = sliderCaps.min + pct * (sliderCaps.max - sliderCaps.min);
+          v = Math.round(v / sliderCaps.step) * sliderCaps.step;
+
+          if (sliderCaps.action === "color_temp") {
+            this._hass.callService("light", "turn_on", { entity_id: ctrl.entity, color_temp_kelvin: Math.round(1000000 / v) });
+          } else if (sliderCaps.action === "color_temp_kelvin") {
+            this._hass.callService("light", "turn_on", { entity_id: ctrl.entity, color_temp_kelvin: Math.round(v) });
+          } else if (sliderCaps.action === "brightness") {
+            this._hass.callService("light", "turn_on", { entity_id: ctrl.entity, brightness: Math.round(v * 2.55) });
+          } else if (sliderCaps.action === "temperature") {
+            this._hass.callService("climate", "set_temperature", { entity_id: ctrl.entity, temperature: v });
+          } else if (sliderCaps.action === "position") {
+            this._hass.callService("cover", "set_cover_position", { entity_id: ctrl.entity, position: v });
+          } else if (sliderCaps.action === "percentage") {
+            this._hass.callService("fan", "set_percentage", { entity_id: ctrl.entity, percentage: v });
+          } else if (sliderCaps.action === "volume_level") {
+            this._hass.callService("media_player", "volume_set", { entity_id: ctrl.entity, volume_level: v / 100 });
+          } else if (sliderCaps.action === "value") {
+            this._hass.callService(domain, "set_value", { entity_id: ctrl.entity, value: v });
+          }
+        }
+      }
+      startX = 0;
+      setTimeout(() => isDragging = false, 50);
+    };
     node.addEventListener("pointerup", cancel);
     node.addEventListener("pointerleave", cancel);
     node.addEventListener("pointercancel", cancel);
     node.addEventListener("click", (e) => {
       e.stopPropagation();
       if (this._isEntityUnavailable(ctrl.entity)) return;
-      if (held) return;
+      if (isDragging || held) return;
       if (config.double_tap_action.action !== "none") {
         if (timer) { cancelTimeout(timer); timer = null; this._fireAction("double_tap", config); }
         else { timer = trackTimeout(() => { timer = null; this._fireAction("tap", config); }, 250); }
@@ -3413,6 +3617,12 @@ class OneLineRoomCardEditor extends HTMLElement {
       box.addEventListener("focusin", () => { this._lastInteractedControlId = key; });
       this._collapsedState = this._collapsedState || {};
       if (this._collapsedState[key] === undefined) this._collapsedState[key] = true;
+      const r_dom = (ctrl.entity || "").split(".")[0];
+      const r_st = h.states[ctrl.entity];
+      const r_supp = r_st?.attributes?.supported_color_modes || [];
+      const r_hasColorTemp = r_supp.includes("color_temp") || r_st?.attributes?.color_temp !== undefined;
+      const showStyle = ctrl.control_mode === "slider" ? "block" : "none";
+      const showMode = (ctrl.control_mode === "slider" && r_dom === "light" && r_hasColorTemp) ? "block" : "none";
       box.open = this._collapsedState[key] !== true;
       box.addEventListener("toggle", () => { this._collapsedState[key] = !box.open; this._updateBulkToggleButton(); });
       const summaryText = ctrl.name || ctrl.entity || (isTemplate ? (ctrl.content || "Template") : "Button");
@@ -3474,7 +3684,28 @@ class OneLineRoomCardEditor extends HTMLElement {
           <div class="tmpl-preview"><span>${getTranslation(h, "tmpl_preview")}:</span> <ha-icon class="tp-ic"></ha-icon> <span class="tp-tx"></span></div>
         </details>
         <div class="row" style="margin-top:8px; align-items:center"><ha-selector class="al" label="${getTranslation(h, "align")}"></ha-selector><ha-selector class="lp" label="${getTranslation(h, "label_position")}"></ha-selector><ha-selector class="tl" label="${getTranslation(h, "text_layout")}"></ha-selector><ha-formfield label="${getTranslation(h, "show_state")}"><ha-switch class="ss" checked></ha-switch></ha-formfield><ha-formfield label="${getTranslation(h, "show_label")}"><ha-switch class="sl" checked></ha-switch></ha-formfield><ha-formfield label="${getTranslation(h, "show_icon")}"><ha-switch class="si" checked></ha-switch></ha-formfield><ha-formfield label="${getTranslation(h, "visible")}"><ha-switch class="hd" checked></ha-switch></ha-formfield></div>
-        <div class="entity-only ${hideEntity}" style="margin-top:12px; border-top:1px solid var(--divider-color); padding-top:12px"><ha-textfield class="isz" label="${getTranslation(h, "icon_size")}" type="number" style="max-width:120px" placeholder="20"></ha-textfield><ha-selector class="cm" label="${getTranslation(h, "control_mode")}"></ha-selector><ha-selector class="tap" label="${getTranslation(h, "tap_action")}"></ha-selector><ha-textfield class="tap-nav ${showNav}" label="Nav Pfad"></ha-textfield><ha-selector class="hold" label="${getTranslation(h, "hold_action")}"></ha-selector><ha-selector class="dbl" label="${getTranslation(h, "double_tap_action")}"></ha-selector></div>
+        <div class="entity-only ${hideEntity}" style="margin-top:12px; border-top:1px solid var(--divider-color); padding-top:12px">
+           <ha-textfield class="isz" label="${getTranslation(h, "icon_size")}" type="number" style="max-width:120px" placeholder="20"></ha-textfield>
+           <ha-selector class="cm" label="${getTranslation(h, "control_mode")}"></ha-selector>
+           <div class="sst-wrap" style="display:${showStyle};margin-bottom:8px;">
+             <div style="font-size:12px;opacity:0.7;margin-bottom:4px">${getTranslation(h, "slider_style")}</div>
+             <select class="sst qa-native-select" style="height:42px;font-size:14px;width:100%">
+               <option value="inline">${getTranslation(h, "style_inline")}</option>
+               <option value="background">${getTranslation(h, "style_bg")}</option>
+             </select>
+           </div>
+           <div class="sm-wrap" style="display:${showMode};margin-bottom:8px;">
+             <div style="font-size:12px;opacity:0.7;margin-bottom:4px">${getTranslation(h, "slider_mode")}</div>
+             <select class="sm qa-native-select" style="height:42px;font-size:14px;width:100%">
+               <option value="brightness">${getTranslation(h, "slider_mode_brightness")}</option>
+               <option value="color_temp">${getTranslation(h, "slider_mode_color_temp")}</option>
+             </select>
+           </div>
+           <ha-selector class="tap" label="${getTranslation(h, "tap_action")}"></ha-selector>
+           <ha-textfield class="tap-nav ${showNav}" label="Nav Pfad"></ha-textfield>
+           <ha-selector class="hold" label="${getTranslation(h, "hold_action")}"></ha-selector>
+           <ha-selector class="dbl" label="${getTranslation(h, "double_tap_action")}"></ha-selector>
+        </div>
         <div class="entity-only cover-only ${hideEntity}" style="margin-top:8px; border-top:1px solid var(--divider-color); padding-top:8px">
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
             <ha-formfield label="${getTranslation(h, "show_cover_presets")}"><ha-switch class="scp"></ha-switch></ha-formfield>
@@ -3554,7 +3785,7 @@ class OneLineRoomCardEditor extends HTMLElement {
       });
 
       const keepOpen = () => { this._collapsedState[key] = false; };
-      const upd = (k, v, skipRender = false) => { keepOpen(); const c = [...this._config.controls]; c[i] = { ...c[i], [k]: v }; if(skipRender) { this._lastRenderedControlsSig = JSON.stringify(c); } this._fire({ ...this._config, controls: c }); };
+      const upd = (k, v, skipRender = false) => { keepOpen(); const c = [...this._config.controls]; c[i] = { ...c[i], [k]: v }; if (skipRender) { this._lastRenderedControlsSig = JSON.stringify(c); } this._fire({ ...this._config, controls: c }); };
       const updAct = (type, val) => { keepOpen(); const c = [...this._config.controls]; const old = c[i][type] || {}; c[i] = { ...c[i], [type]: { ...old, action: val } }; this._fire({ ...this._config, controls: c }); this.renBtn(); };
       box.querySelector(".u").onclick = (e) => {
         e.preventDefault(); e.stopPropagation();
@@ -4075,8 +4306,36 @@ class OneLineRoomCardEditor extends HTMLElement {
             ]
           }
         };
-        cm.value = ctrl.control_mode || "none"; cm.addEventListener("value-changed", e => { e.stopPropagation(); const v = e.detail.value; const cc = [...this._config.controls]; const nn = { ...cc[i] }; if (v && v !== "none") nn.control_mode = v; else delete nn.control_mode; cc[i] = nn; keepOpen(); this._fire({ ...this._config, controls: cc }); });
+        cm.value = ctrl.control_mode || "none";
+        cm.addEventListener("value-changed", e => {
+          e.stopPropagation();
+          const v = e.detail.value || "none";
+          upd("control_mode", v === "none" ? undefined : v);
+          this.renBtn();
+        });
       }
+
+      const sst = box.querySelector(".sst");
+      if (sst) {
+        sst.value = ctrl.slider_style || "inline";
+        sst.addEventListener("change", e => {
+          e.stopPropagation();
+          const v = e.target.value || "inline";
+          upd("slider_style", v === "inline" ? undefined : v);
+        });
+      }
+
+      const sm = box.querySelector(".sm");
+      if (sm) {
+        sm.value = ctrl.slider_mode || "brightness";
+        sm.addEventListener("change", e => {
+          e.stopPropagation();
+          const v = e.target.value || "brightness";
+          upd("slider_mode", v === "brightness" ? undefined : v);
+          this.renBtn();
+        });
+      }
+
 
       // Visibility conditions (Native HA conditions editor — same as card visibility tab)
       const visCondEditor = box.querySelector(".vis-cond-editor");
@@ -4204,7 +4463,7 @@ class OneLineRoomCardEditor extends HTMLElement {
       const v = this._config[k] || "";
       const hex = parseColorToPickerHex(v);
       if (e.value !== hex) e.value = hex;
-      
+
       const container = e.closest(".color-container");
       if (container) {
         const prev = container.querySelector(".cp-preview div");
@@ -4215,8 +4474,8 @@ class OneLineRoomCardEditor extends HTMLElement {
         if (mainField && mainField.value !== v) mainField.value = v;
         // Fallback for fields like standard-badge-bg which might not be inside a .row with cfg
         if (k === "header_info_background") {
-            const bgF = this.shadowRoot.getElementById("standard-badge-bg");
-            if (bgF && bgF.value !== v) bgF.value = v;
+          const bgF = this.shadowRoot.getElementById("standard-badge-bg");
+          if (bgF && bgF.value !== v) bgF.value = v;
         }
       } else {
         // Fallback for pickers not in a color-container (like global-button-bg in old structure)
@@ -4247,7 +4506,7 @@ class OneLineRoomCardEditor extends HTMLElement {
       const box = document.createElement("div");
       box.className = "box";
       box.style.cssText = "border:1px solid var(--divider-color); padding:10px; border-radius:8px; position:relative; margin-top:8px";
-      
+
       const del = document.createElement("ha-icon");
       del.icon = "mdi:delete";
       del.style.cssText = "position:absolute; right:8px; top:8px; cursor:pointer; color:var(--error-color); --mdc-icon-size:18px";

@@ -20,12 +20,17 @@ All notable changes to OneLine Room Card are documented here.
 * Bugfix: **Incomplete Conditions** — Conditions without a configured entity (e.g. immediately after adding one) no longer incorrectly hide the button.
 * Bugfix: **Editor Stability** — The editor re-render cycle has been completely reworked (config-signature comparison instead of fragile boolean flags), so complex editors like the conditions editor are no longer destroyed while editing.
 * Bugfix: **NOT Condition** — The NOT condition now correctly evaluates a `conditions` array (instead of a single `condition` object).
+* Runtime: **Color Temperature Slider for Kelvin-native lights** — `control_mode: slider` + `slider_mode: color_temp` now fully supports lights that expose `min_color_temp_kelvin` / `max_color_temp_kelvin`. The slider range, live Kelvin readout, service call, and gradient direction all work correctly for both Kelvin and legacy mired-based lights.
 
 ---
 
 ## [1.2.4]
 
 * Runtime: **Climate Inline Slider** — `control_mode: slider` now works for `climate` entities. Drag to set the target temperature; the button state shows current → setpoint and updates live while dragging. Closes [#44](https://github.com/lop1505/RoomCard/issues/44).
+* Runtime & Editor: **Universal Sliders and Inline Buttons** — Major architectural update: Sliders and inline buttons are no longer artificially restricted to Lights or Covers! Select `Inline Slider` or `Inline Buttons` natively for any supporting domain (Media Player, Fan, Climate, Numbers, Lights, Covers).
+* Runtime: **Background Slider Mode** — Added a highly requested `Slider Style` selector in the editor! You can now choose between the standard `Inline` slider or a sleek `Background` slider (where the entire button itself turns into a touch-enabled slider track overlaying your button's content — heavily inspired by `slider-button-card`).
+* Runtime: **Smart Tap-vs-Drag Gestures** — If a button has a background slider attached, the system tracks horizontal gestures dynamically. Tapping the button still perfectly triggers standard on/off toggles, while dragging horizontally overrides the tap and fluidly controls the slider level.
+* Runtime: **Color Temperature Slider for Light Buttons** — Extended `control_mode: slider` to allow setting color temperature (mireds) directly. A new dropdown "Slider Mode" lets you toggle between Brightness and Color Temperature in the editor. Includes live Kelvin value readout on drag. Closes [#56](https://github.com/lop1505/RoomCard/issues/56).
 * Runtime: **Window Sensor Chip Colors** — window/door sensor chips in the header support custom colors for open and closed states, plus an option to always show the chip even when closed. Closes [#49](https://github.com/lop1505/RoomCard/issues/49).
 * Runtime: **State-Dependent Button Colors (`color_map`)** — buttons can automatically change icon color and background based on the entity's current state.
 * Runtime: **Configurable Icon Size** — set `icon_size` per button or `global_icon_size` as a card-level default (in px). Closes [#48](https://github.com/lop1505/RoomCard/issues/48).
