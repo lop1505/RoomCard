@@ -2479,8 +2479,8 @@ connectedCallback() {
               </ha-formfield>
             </div>
             
-            <div style="margin-bottom:8px">
-              <ha-selector class="info-line-pos-sel" label="${getTranslation(h, "info_line_position")}"></ha-selector>
+            <div style="margin-bottom:8px; width:100%;">
+              <ha-selector id="info-line-pos-sel" cfg="info_line_position" label="${getTranslation(h, "info_line_position")}" style="width:100%;"></ha-selector>
             </div>
             <div class="image-title" style="margin:12px 0 8px">${getTranslation(h, "badge_bg")}</div>
             <div style="position: relative; display: flex; align-items: flex-end;">
@@ -2932,18 +2932,18 @@ connectedCallback() {
       });
     }
     
-    const infoLinePosSel = this.shadowRoot.querySelector(".info-line-pos-sel");
+    const infoLinePosSel = this.shadowRoot.getElementById("info-line-pos-sel");
     if (infoLinePosSel) {
       infoLinePosSel.hass = h;
       infoLinePosSel.selector = { select: { mode: "dropdown", options: [
-        {value: "header", label: getTranslation(h, "info_position_header")},
-        {value: "below_header", label: getTranslation(h, "info_position_below")}
+        { value: "header", label: getTranslation(h, "info_position_header") },
+        { value: "below_header", label: getTranslation(h, "info_position_below") }
       ]}};
       infoLinePosSel.value = this._config?.info_line_position || "header";
       infoLinePosSel.addEventListener("value-changed", (e) => {
         e.stopPropagation();
         const next = { ...this._config };
-        if (e.detail.value === "header") delete next.info_line_position;
+        if (e.detail.value === "header" || !e.detail.value) delete next.info_line_position;
         else next.info_line_position = e.detail.value;
         this._fire(next);
       });
@@ -3190,24 +3190,39 @@ connectedCallback() {
       quickAdd.open = this._quickAddOpen === true;
       quickAdd.addEventListener("toggle", () => { this._quickAddOpen = quickAdd.open; });
     }
-    if (globalLabelPos) {
+if (globalLabelPos) {
       globalLabelPos.hass = h;
       globalLabelPos.selector = {
         select: {
           mode: "dropdown", options: [
-            { value: "right", label: getTranslation(h, "pos_right") },
-            { value: "bottom", label: getTranslation(h, "pos_bottom") },
-            { value: "top", label: getTranslation(h, "pos_top") },
-            { value: "left", label: getTranslation(h, "pos_left") }
+            { value: "right", label: getTranslation(h, "pos_right") || "Rechts" },
+            { value: "bottom", label: getTranslation(h, "pos_bottom") || "Unten" },
+            { value: "top", label: getTranslation(h, "pos_top") || "Oben" },
+            { value: "left", label: getTranslation(h, "pos_left") || "Links" }
           ]
         }
       };
       globalLabelPos.value = this._config?.global_label_position ?? this._config?.buttons_label_position ?? "right";
       globalLabelPos.addEventListener("value-changed", (ev) => {
         ev.stopPropagation();
-        const v = ev.detail?.value ?? "right";
-        this._fire({ ...this._config, global_label_position: v });
-        this.renBtn();
+        const v = ev.detail?.value;
+        
+        // FIX 1: Wert sofort hart in die UI schreiben
+        ev.target.value = v; 
+        
+        const next = { ...this._config };
+        
+        // FIX 2: YAML sauber halten & veraltete Keys löschen
+        if (v === "right" || !v) {
+          delete next.global_label_position;
+          delete next.buttons_label_position; 
+        } else {
+          next.global_label_position = v;
+          delete next.buttons_label_position;
+        }
+        
+        this._fire(next);
+        // FIX 3: KEIN this.renBtn() aufrufen! Das würde die UI zerstören.
       });
     }
     const globalIconSize = this.shadowRoot.getElementById("global-icon-size");
@@ -4329,27 +4344,82 @@ connectedCallback() {
       const ti = box.querySelector(".ti"); if (ti) { ti.value = ctrl.icon || ""; ti.addEventListener("change", e => { upd("icon", e.target.value); this.renBtn(); }); }
       const tcl = box.querySelector(".tcl"); if (tcl) { tcl.value = ctrl.color || ""; tcl.addEventListener("change", e => { upd("color", e.target.value); this.renBtn(); }); }
       const ts = box.querySelector(".ts"); if (ts) { ts.value = ctrl.state || ""; ts.addEventListener("change", e => { upd("state", e.target.value); this.renBtn(); }); }
-      const ht = box.querySelector(".ht"); ht.hass = h; ht.selector = { number: { min: 40, max: 250, mode: "box", unit_of_measurement: "px" } };
-      ht.value = ctrl.height || 60; ht.addEventListener("value-changed", e => { e.stopPropagation(); upd("height", Number(e.detail.value)); });
-      const wd = box.querySelector(".wd"); wd.hass = h; wd.selector = { select: { mode: "dropdown", options: [{ value: "60", label: "1/1" }, { value: "40", label: "2/3" }, { value: "30", label: "1/2" }, { value: "20", label: "1/3" }, { value: "15", label: "1/4" }, { value: "12", label: "1/5" }, { value: "10", label: "1/6" }] } };
-      wd.value = String(ctrl.width || 15); wd.addEventListener("value-changed", e => { e.stopPropagation(); upd("width", parseInt(e.detail.value)); });
-      const al = box.querySelector(".al"); al.hass = h; al.selector = { select: { mode: "dropdown", options: [{ value: "left", label: getTranslation(h, "left") }, { value: "center", label: getTranslation(h, "center") }, { value: "right", label: getTranslation(h, "right") }] } };
-      al.value = ctrl.align || "center"; al.addEventListener("value-changed", e => { e.stopPropagation(); upd("align", e.detail.value); });
+      
+      const ht = box.querySelector(".ht"); 
+      if (ht) {
+        ht.hass = h; 
+        ht.selector = { number: { min: 40, max: 250, mode: "box", unit_of_measurement: "px" } };
+        ht.value = ctrl.height || 60; 
+        ht.addEventListener("value-changed", e => { 
+          e.stopPropagation(); 
+          e.target.value = e.detail.value; // UI sofort zwingen
+          upd("height", Number(e.detail.value), true); // skipRender = true
+        });
+      }
+      
+ const wd = box.querySelector(".wd"); 
+      if (wd) {
+        wd.hass = h; 
+        wd.selector = { select: { mode: "dropdown", options: [{ value: "60", label: "1/1" }, { value: "40", label: "2/3" }, { value: "30", label: "1/2" }, { value: "20", label: "1/3" }, { value: "15", label: "1/4" }, { value: "12", label: "1/5" }, { value: "10", label: "1/6" }] } };
+        wd.value = String(ctrl.width || 15); 
+        wd.addEventListener("value-changed", e => { 
+          e.stopPropagation(); 
+          if (!e.detail.value) return;
+
+          // 1. UI sofort auf den neuen Text-Wert zwingen (wie bei lp)
+          e.target.value = e.detail.value; 
+
+          // 2. Als Zahl speichern, aber mit 'true' (skipRender) den UI-Abbruch verhindern!
+          upd("width", parseInt(e.detail.value, 10), true); 
+        });
+      }
+      
+      const al = box.querySelector(".al"); 
+      if (al) {
+        al.hass = h; 
+        al.selector = { select: { mode: "dropdown", options: [{ value: "left", label: getTranslation(h, "left") }, { value: "center", label: getTranslation(h, "center") }, { value: "right", label: getTranslation(h, "right") }] } };
+        al.value = ctrl.align || "center"; 
+        al.addEventListener("value-changed", e => { 
+          e.stopPropagation(); 
+          e.target.value = e.detail.value; // UI sofort zwingen
+          upd("align", e.detail.value, true); // skipRender = true
+        });
+      }
+
       const lp = box.querySelector(".lp"); if (lp) {
         lp.hass = h;
         lp.selector = {
           select: {
             mode: "dropdown", options: [
-              { value: "global", label: getTranslation(h, "use_global") },
-              { value: "right", label: getTranslation(h, "pos_right") },
-              { value: "bottom", label: getTranslation(h, "pos_bottom") },
-              { value: "top", label: getTranslation(h, "pos_top") },
-              { value: "left", label: getTranslation(h, "pos_left") }
+              { value: "global", label: getTranslation(h, "use_global") || "Global" },
+              { value: "right", label: getTranslation(h, "pos_right") || "Rechts" },
+              { value: "bottom", label: getTranslation(h, "pos_bottom") || "Unten" },
+              { value: "top", label: getTranslation(h, "pos_top") || "Oben" },
+              { value: "left", label: getTranslation(h, "pos_left") || "Links" }
             ]
           }
         };
         lp.value = ctrl.label_position || "global";
-        lp.addEventListener("value-changed", e => { e.stopPropagation(); upd("label_position", e.detail.value || "global"); this.renBtn(); });
+        lp.addEventListener("value-changed", e => { 
+          e.stopPropagation(); 
+          const val = e.detail.value;
+          
+          // FIX 1: UI sofort zwingen, den Text zu behalten
+          e.target.value = val;
+          
+          if (val === "global" || !val) {
+            keepOpen();
+            const c = [...this._config.controls];
+            delete c[i].label_position;
+            // FIX 2: Signatur aktualisieren, um unnötigen Re-Render zu blockieren
+            this._lastRenderedControlsSig = JSON.stringify(c); 
+            this._fire({ ...this._config, controls: c });
+          } else {
+            // FIX 3: Das 'true' am Ende ist extrem wichtig! Es bedeutet "skipRender = true".
+            // Dadurch wird `this.renBtn()` NICHT ausgeführt und das Dropdown stürzt nicht ab.
+            upd("label_position", val, true); 
+          }
+        });
       }
       const tl = box.querySelector(".tl"); if (tl) {
         tl.hass = h;
@@ -4523,6 +4593,13 @@ connectedCallback() {
       if (k === "humidity_warning_threshold") v = this._config[k] ?? 60;
       if (e.value !== v) e.value = v;
     });
+
+    const infoLinePosSel = this.shadowRoot.getElementById("info-line-pos-sel");
+    if (infoLinePosSel) {
+      const posVal = this._config.info_line_position || "header";
+      if (infoLinePosSel.value !== posVal) infoLinePosSel.value = posVal;
+    }                           
+
     const tapActionSel = this.shadowRoot.getElementById("tap-action");
     const holdActionSel = this.shadowRoot.getElementById("hold-action");
     const dblActionSel = this.shadowRoot.getElementById("dbl-action");
