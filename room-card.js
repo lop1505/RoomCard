@@ -4452,9 +4452,10 @@ const tl = box.querySelector(".tl");
           if (!e.detail.value) return;
           
           const isStateFirst = e.detail.value === "state";
+          const currentStateFirst = this._config.controls[i]?.state_first === true;
           
           // Endlos-Schleife & unnötiges Speichern verhindern
-          if (isStateFirst === (ctrl.state_first === true)) return;
+          if (isStateFirst === currentStateFirst) return;
           
           // 1. UI sofort zwingen, den Text visuell zu behalten
           e.target.value = e.detail.value; 
@@ -4503,13 +4504,15 @@ const tl = box.querySelector(".tl");
         dbl.hass = h; dbl.selector = { select: { mode: "dropdown", options: actOpts } };
         dbl.value = ctrl.double_tap_action?.action || "none"; dbl.addEventListener("value-changed", e => { e.stopPropagation(); updAct("double_tap_action", e.detail.value); });
       }
-      const cm = box.querySelector(".cm"); if (cm) {
-        cm.hass = h; cm.selector = {
+const cm = box.querySelector(".cm"); 
+      if (cm) {
+        cm.hass = h; 
+        cm.selector = {
           select: {
             mode: "dropdown", options: [
-              { value: "none", label: getTranslation(h, "ctrl_default") },
-              { value: "slider", label: getTranslation(h, "ctrl_slider") },
-              { value: "buttons", label: getTranslation(h, "ctrl_buttons") }
+              { value: "none", label: getTranslation(h, "ctrl_default") || "Standard" },
+              { value: "slider", label: getTranslation(h, "ctrl_slider") || "Inline Slider" },
+              { value: "buttons", label: getTranslation(h, "ctrl_buttons") || "Inline Buttons" }
             ]
           }
         };
@@ -4517,8 +4520,31 @@ const tl = box.querySelector(".tl");
         cm.addEventListener("value-changed", e => {
           e.stopPropagation();
           const v = e.detail.value || "none";
-          upd("control_mode", v === "none" ? undefined : v);
-          this.renBtn();
+          const currentMode = this._config.controls[i]?.control_mode || "none";
+          if (v === currentMode) return;
+
+          // 1. Dropdown visuell sofort einrasten lassen
+          e.target.value = v;
+
+          keepOpen();
+          const c = [...this._config.controls];
+          
+          // 2. SAUBERES LÖSCHEN statt undefined
+          if (v === "none") {
+            delete c[i].control_mode;
+          } else {
+            c[i] = { ...c[i], control_mode: v };
+          }
+          
+          // 3. Speichern und UI-Neuaufbau blockieren
+          this._lastRenderedControlsSig = JSON.stringify(c);
+          this._fire({ ...this._config, controls: c });
+
+          // 4. CSS-Trick: Untermenüs verzögerungsfrei ein/ausblenden
+          const sstWrap = box.querySelector(".sst-wrap");
+          const smWrap = box.querySelector(".sm-wrap");
+          if (sstWrap) sstWrap.style.display = v === "slider" ? "block" : "none";
+          if (smWrap) smWrap.style.display = (v === "slider" && r_dom === "light" && r_hasColorTemp) ? "block" : "none";
         });
       }
 
@@ -4526,14 +4552,30 @@ const tl = box.querySelector(".tl");
       if (sst) {
         sst.hass = h;
         sst.selector = { select: { mode: "dropdown", options: [
-          {value: "inline", label: getTranslation(h, "style_inline")},
-          {value: "background", label: getTranslation(h, "style_bg")}
+          {value: "inline", label: getTranslation(h, "style_inline") || "Inline"},
+          {value: "background", label: getTranslation(h, "style_bg") || "Hintergrund"}
         ]}};
         sst.value = ctrl.slider_style || "inline";
         sst.addEventListener("value-changed", e => {
           e.stopPropagation();
           const v = e.detail.value || "inline";
-          upd("slider_style", v === "inline" ? undefined : v);
+          const currentStyle = this._config.controls[i]?.slider_style || "inline";
+          if (v === currentStyle) return;
+
+          e.target.value = v;
+
+          keepOpen();
+          const c = [...this._config.controls];
+          
+          // SAUBERES LÖSCHEN
+          if (v === "inline") {
+            delete c[i].slider_style;
+          } else {
+            c[i] = { ...c[i], slider_style: v };
+          }
+          
+          this._lastRenderedControlsSig = JSON.stringify(c);
+          this._fire({ ...this._config, controls: c });
         });
       }
 
@@ -4541,15 +4583,30 @@ const tl = box.querySelector(".tl");
       if (sm) {
         sm.hass = h;
         sm.selector = { select: { mode: "dropdown", options: [
-          {value: "brightness", label: getTranslation(h, "slider_mode_brightness")},
-          {value: "color_temp", label: getTranslation(h, "slider_mode_color_temp")}
+          {value: "brightness", label: getTranslation(h, "slider_mode_brightness") || "Helligkeit"},
+          {value: "color_temp", label: getTranslation(h, "slider_mode_color_temp") || "Farbtemperatur"}
         ]}};
         sm.value = ctrl.slider_mode || "brightness";
         sm.addEventListener("value-changed", e => {
           e.stopPropagation();
           const v = e.detail.value || "brightness";
-          upd("slider_mode", v === "brightness" ? undefined : v);
-          this.renBtn();
+          const currentMode = this._config.controls[i]?.slider_mode || "brightness";
+          if (v === currentMode) return;
+
+          e.target.value = v;
+
+          keepOpen();
+          const c = [...this._config.controls];
+          
+          // SAUBERES LÖSCHEN
+          if (v === "brightness") {
+            delete c[i].slider_mode;
+          } else {
+            c[i] = { ...c[i], slider_mode: v };
+          }
+          
+          this._lastRenderedControlsSig = JSON.stringify(c);
+          this._fire({ ...this._config, controls: c });
         });
       }
 
