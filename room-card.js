@@ -69,7 +69,7 @@ const TRANSLATIONS = {
     header_name_offset: "Title Position",
     header_sync_offsets: "Synchronize Positions",
     global_button_bg: "Global Button Background",
-    button_bg: "Button Background",
+    button_bg: "Button Background Color",
     show_cover_presets: "Position Presets",
     cover_presets_label: "Preset Values (comma-separated)",
     show_climate_presets: "Temperature Presets",
@@ -141,7 +141,7 @@ const TRANSLATIONS = {
     header_name_offset: "Titel Position",
     header_sync_offsets: "Synchron Bewegen",
     global_button_bg: "Globaler Button Hintergrund",
-    button_bg: "Button Hintergrund",
+    button_bg: "Button Hintergrund Farbe",
     show_cover_presets: "Positions-Voreinstellungen",
     cover_presets_label: "Voreinstellungen (kommagetrennt)",
     show_climate_presets: "Temperatur-Voreinstellungen",
@@ -3285,19 +3285,33 @@ if (globalLabelPos) {
       const emptyHint = this.shadowRoot.getElementById("qa-empty-hint");
       if (emptyHint) emptyHint.classList.toggle("hidden", hasMatch);
     };
-    if (tmplSelect) {
+if (tmplSelect) {
       tmplSelect.hass = h;
       tmplSelect.selector = { select: { mode: "dropdown", options: this._getControlTemplates().map((t) => ({ value: t.id, label: t.label })) } };
-      tmplSelect.value = this._quickAddType;
+      
+      // Einen Frame warten, damit der deutsche Text sauber lädt (Timing-Fix)
+      requestAnimationFrame(() => {
+        tmplSelect.value = this._quickAddType;
+      });
+
       tmplSelect.addEventListener("value-changed", (ev) => {
         ev.stopPropagation();
         const tid = ev.detail.value;
         if (!tid) return;
+        
+        // FIX 1: Das Dropdown sofort zwingen, den Text visuell zu behalten!
+        ev.target.value = tid;
+        
         this._quickAddType = tid;
         const template = this._getTemplateById(tid);
         const domains = template?.domains || [];
         this._quickAddEntity = "";
-        if (tmplEntity) { tmplEntity.selector = domains.length > 0 ? { entity: { domain: domains } } : { entity: {} }; }
+        
+        if (tmplEntity) { 
+          // FIX 2: Das rechte Feld (Entität) sofort optisch leeren, da der Typ gewechselt wurde
+          tmplEntity.value = "";
+          tmplEntity.selector = domains.length > 0 ? { entity: { domain: domains } } : { entity: {} }; 
+        }
         updateQuickAddHints();
       });
     }
@@ -3778,8 +3792,8 @@ if (globalLabelPos) {
               </div>
             </div>
           </div>
-          <div class="row" style="align-items: flex-end;"><ha-selector class="ht" label="${getTranslation(h, "height")}"></ha-selector><ha-selector class="wd" label="${getTranslation(h, "width")}"></ha-selector></div>
-          <div style="position: relative; display: flex; align-items: flex-end; margin-top: 8px;">
+          <div class="row" style="align-items: start;"><ha-selector class="ht" label="${getTranslation(h, "height")}" style="width:100%;"></ha-selector><ha-selector class="wd" label="${getTranslation(h, "width")}" style="width:100%;"></ha-selector></div>
+          <div style="position: relative; display: flex; align-items: flex-end; margin-top: 4px;">
             <ha-textfield class="bg-txt" label="${getTranslation(h, "button_bg")}" style="width: 100%"></ha-textfield>
             <div class="color-container" style="position: absolute; right: 8px; bottom: 8px; z-index: 1;">
                <div class="color-popover">
@@ -4421,18 +4435,33 @@ if (globalLabelPos) {
           }
         });
       }
-      const tl = box.querySelector(".tl"); if (tl) {
+const tl = box.querySelector(".tl"); 
+      if (tl) {
         tl.hass = h;
         tl.selector = {
           select: {
             mode: "dropdown", options: [
-              { value: "state", label: getTranslation(h, "primary_state") },
-              { value: "name", label: getTranslation(h, "primary_name") }
+              { value: "state", label: getTranslation(h, "primary_state") || "Wert zuerst" },
+              { value: "name", label: getTranslation(h, "primary_name") || "Name zuerst" }
             ]
           }
         };
         tl.value = ctrl.state_first === true ? "state" : "name";
-        tl.addEventListener("value-changed", e => { e.stopPropagation(); upd("state_first", e.detail.value === "state"); });
+        tl.addEventListener("value-changed", e => { 
+          e.stopPropagation(); 
+          if (!e.detail.value) return;
+          
+          const isStateFirst = e.detail.value === "state";
+          
+          // Endlos-Schleife & unnötiges Speichern verhindern
+          if (isStateFirst === (ctrl.state_first === true)) return;
+          
+          // 1. UI sofort zwingen, den Text visuell zu behalten
+          e.target.value = e.detail.value; 
+          
+          // 2. Als Boolean speichern, aber mit 'true' (skipRender) den UI-Abbruch verhindern!
+          upd("state_first", isStateFirst, true); 
+        });
       }
       const ss = box.querySelector(".ss"); ss.checked = ctrl.show_state !== false; ss.addEventListener("change", e => { e.stopPropagation(); upd("show_state", e.target.checked); });
       const sl = box.querySelector(".sl"); sl.checked = ctrl.show_label !== false; sl.addEventListener("change", e => { e.stopPropagation(); upd("show_label", e.target.checked); });
