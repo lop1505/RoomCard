@@ -4470,39 +4470,89 @@ const tl = box.querySelector(".tl");
       const hd = box.querySelector(".hd"); hd.checked = !ctrl.hide; hd.addEventListener("change", e => { e.stopPropagation(); upd("hide", !e.target.checked); });
       const tap = box.querySelector(".tap");
       const tapNav = box.querySelector(".tap-nav");
+      
+      // CSS-Trick: Navigations-Pfad-Feld blitzschnell ein/ausblenden
       const toggleTapNav = (action) => {
         if (!tapNav) return;
         tapNav.classList.toggle("hidden", action !== "navigate");
       };
+
+      // FIX: Eigene schnelle Speicherfunktion OHNE this.renBtn()
+      const saveActionFast = (type, val) => {
+        keepOpen();
+        const c = [...this._config.controls];
+        const old = c[i][type] || {};
+        c[i] = { ...c[i], [type]: { ...old, action: val } };
+        this._lastRenderedControlsSig = JSON.stringify(c); // UI-Neuaufbau hart blockieren
+        this._fire({ ...this._config, controls: c });
+      };
+
       if (tap) {
-        tap.hass = h; tap.selector = { select: { mode: "dropdown", options: actOpts } };
+        tap.hass = h; 
+        tap.selector = { select: { mode: "dropdown", options: actOpts } };
         const initialTapAction = ctrl.tap_action?.action || "more-info";
         tap.value = initialTapAction;
         toggleTapNav(initialTapAction);
+        
         tap.addEventListener("value-changed", e => {
           e.stopPropagation();
+          if (!e.detail) return;
           const action = e.detail.value || "more-info";
-          toggleTapNav(action);
-          updAct("tap_action", action);
+          
+          // Verhindert sinnloses Ausführen
+          if (action === (this._config.controls[i]?.tap_action?.action || "more-info")) return;
+          
+          e.target.value = action; // 1. Dropdown zwingen, den Text zu behalten
+          toggleTapNav(action);    // 2. Feld drunter sofort ein-/ausblenden
+          saveActionFast("tap_action", action); // 3. Leise speichern
         });
       }
+      
       if (tapNav) {
         tapNav.value = ctrl.tap_action?.navigation_path || "";
         tapNav.classList.toggle("hidden", ctrl.tap_action?.action !== "navigate");
         tapNav.addEventListener("change", e => {
+          e.stopPropagation();
           const c = [...this._config.controls];
-          const action = e.target.value ? { action: "navigate", navigation_path: e.target.value } : { action: "more-info" };
+          const action = e.target.value ? { action: "navigate", navigation_path: e.target.value } : { action: "navigate" };
           c[i] = { ...c[i], tap_action: action };
+          this._lastRenderedControlsSig = JSON.stringify(c);
           this._fire({ ...this._config, controls: c });
         });
       }
-      const hold = box.querySelector(".hold"); if (hold) {
-        hold.hass = h; hold.selector = { select: { mode: "dropdown", options: actOpts } };
-        hold.value = ctrl.hold_action?.action || "toggle"; hold.addEventListener("value-changed", e => { e.stopPropagation(); updAct("hold_action", e.detail.value); });
+      
+      const hold = box.querySelector(".hold"); 
+      if (hold) {
+        hold.hass = h; 
+        hold.selector = { select: { mode: "dropdown", options: actOpts } };
+        hold.value = ctrl.hold_action?.action || "toggle"; 
+        hold.addEventListener("value-changed", e => { 
+          e.stopPropagation(); 
+          if (!e.detail) return;
+          const action = e.detail.value || "toggle";
+          
+          if (action === (this._config.controls[i]?.hold_action?.action || "toggle")) return;
+          
+          e.target.value = action;
+          saveActionFast("hold_action", action);
+        });
       }
-      const dbl = box.querySelector(".dbl"); if (dbl) {
-        dbl.hass = h; dbl.selector = { select: { mode: "dropdown", options: actOpts } };
-        dbl.value = ctrl.double_tap_action?.action || "none"; dbl.addEventListener("value-changed", e => { e.stopPropagation(); updAct("double_tap_action", e.detail.value); });
+      
+      const dbl = box.querySelector(".dbl"); 
+      if (dbl) {
+        dbl.hass = h; 
+        dbl.selector = { select: { mode: "dropdown", options: actOpts } };
+        dbl.value = ctrl.double_tap_action?.action || "none"; 
+        dbl.addEventListener("value-changed", e => { 
+          e.stopPropagation(); 
+          if (!e.detail) return;
+          const action = e.detail.value || "none";
+          
+          if (action === (this._config.controls[i]?.double_tap_action?.action || "none")) return;
+          
+          e.target.value = action;
+          saveActionFast("double_tap_action", action);
+        });
       }
 const cm = box.querySelector(".cm"); 
       if (cm) {
@@ -4623,27 +4673,65 @@ const cm = box.querySelector(".cm");
       }
 
       const chipsPosSel = box.querySelector(".chips-pos-sel");
-      if (chipsPosSel) {
-        chipsPosSel.hass = h;
-        chipsPosSel.selector = { select: { mode: "dropdown", options: [
-          {value: "bottom", label: getTranslation(h, "chips_bottom")},
-          {value: "top", label: getTranslation(h, "chips_top")}
-        ]}};
-        chipsPosSel.value = ctrl.chips_position || "bottom";
-        chipsPosSel.addEventListener("value-changed", e => { e.stopPropagation(); upd("chips_position", e.detail.value); });
-      }
-
       const chipsList = box.querySelector(".chips-list");
       const addChipBtn = box.querySelector(".add-chip");
-      if (chipsList && addChipBtn) {
-        this._updateSubChipsUI(chipsList, ctrl, i, h);
-        addChipBtn.onclick = () => {
-          const c = [...this._config.controls];
-          const chips = [...(c[i].sub_chips || [])];
-          chips.push({ entity: "" });
-          c[i] = { ...c[i], sub_chips: chips };
-          keepOpen(); this._fire({ ...this._config, controls: c }); this.renBtn();
+      if (chipsPosSel) {
+        chipsPosSel.hass = h; 
+        chipsPosSel.selector = { 
+          select: { 
+            mode: "dropdown", 
+            options: [ 
+              { value: "bottom", label: getTranslation(h, "chips_bottom") || "Unter dem Titel" }, 
+              { value: "top", label: getTranslation(h, "chips_top") || "Über dem Titel" } 
+            ]
+          }
         };
+        chipsPosSel.value = ctrl.chips_position || "bottom";
+        chipsPosSel.addEventListener("value-changed", e => { 
+          e.stopPropagation(); 
+          if (!e.detail.value) return;
+          const v = e.detail.value;
+          const currentPos = this._config.controls[i]?.chips_position || "bottom";
+
+          // Verhindert doppeltes Feuern
+          if (v === currentPos) return;
+
+          // 1. UI-Zwang für das Dropdown
+          e.target.value = v;
+
+          // 2. Leise speichern ohne UI-Neuaufbau (skipRender = true)
+          upd("chips_position", v, true); 
+
+          // 3. Sofortige optische Verschiebung per DOM-Manipulation
+          const btnTxt = box.querySelector(".btn-txt");
+          const previewChips = box.querySelector(".btn-chips");
+          if (previewChips) {
+            if (v === "top") {
+              previewChips.classList.add("chips-top");
+              if (btnTxt) btnTxt.prepend(previewChips);
+            } else {
+              previewChips.classList.remove("chips-top");
+              if (btnTxt) btnTxt.append(previewChips);
+            }
+          }
+        });
+      }
+
+      if (chipsList) {
+        this._updateSubChipsUI(chipsList, ctrl, i, h);
+      }
+      if (addChipBtn && chipsList) {
+        addChipBtn.addEventListener("click", e => {
+          e.preventDefault();
+          e.stopPropagation();
+          const c = [...this._config.controls];
+          const chs = Array.isArray(c[i].sub_chips) ? [...c[i].sub_chips] : [];
+          chs.push({ entity: "" });
+          c[i] = { ...c[i], sub_chips: chs };
+          this._lastRenderedControlsSig = JSON.stringify(c);
+          this._fire({ ...this._config, controls: c });
+          this._updateSubChipsUI(chipsList, c[i], i, h);
+        });
       }
 
       const tpIcon = box.querySelector(".tp-ic");
