@@ -45,7 +45,9 @@ const TRANSLATIONS = {
     show_state: "Show State", show_label: "Show Label", show_icon: "Show Icon", state_first: "State First", text_layout: "Text Order", primary_text: "First line", primary_state: "State / value first", primary_name: "Name first",
     height: "Height", width: "Width", align: "Align", visible: "Visible", left: "Left", center: "Center", right: "Right",
     tap_action: "Tap Action", hold_action: "Hold Action", double_tap_action: "Double Tap Action",
-    act_more: "Details (Default)", act_toggle: "Toggle", act_navigate: "Navigate", act_none: "None",
+    actions: "Actions",
+    act_more: "Details (Default)", act_toggle: "Toggle", act_navigate: "Navigate", act_call_service: "Action (service)", act_none: "None",
+    service: "Service (domain.service)", service_data: "Service Data (JSON)", target_entity: "Target entity",
     live_preview: "Live preview",
     upload_btn: "Upload Image", uploading: "Uploading...", upload_success: "Done!",
     show_name: "Show Title", header_badges: "Badge", badge_add: "Add Info Entry", badge_label: "Label (optional)", badge_background: "Background (rgba)", standard_badge_background: "Standard Badge Background (rgba)", badge_auto_climate_btn: "Automatically add climate control button",
@@ -113,7 +115,9 @@ const TRANSLATIONS = {
     show_state: "Status anzeigen", show_label: "Bezeichnung anzeigen", show_icon: "Icon anzeigen", state_first: "Wert zuerst", text_layout: "Text-Reihenfolge", primary_text: "Erste Zeile", primary_state: "Wert zuerst", primary_name: "Name zuerst",
     height: "Höhe", width: "Breite", align: "Ausrichtung", visible: "Sichtbar", left: "Links", center: "Mitte", right: "Rechts",
     tap_action: "Antippen", hold_action: "Gedrückt halten", double_tap_action: "Doppelklick",
-    act_more: "Details (Standard)", act_toggle: "Umschalten", act_navigate: "Navigieren", act_none: "Nichts",
+    actions: "Aktionen",
+    act_more: "Details (Standard)", act_toggle: "Umschalten", act_navigate: "Navigieren", act_call_service: "Aktion (service)", act_none: "Nichts",
+    service: "Service (domain.service)", service_data: "Service Daten (JSON)", target_entity: "Ziel-Entität",
     live_preview: "Live-Vorschau",
     upload_btn: "Bild hochladen", uploading: "Wird hochgeladen...", upload_success: "Fertig!",
     show_name: "Titel anzeigen", header_badges: "Badge", badge_add: "Info-Eintrag hinzufügen", badge_label: "Bezeichnung (optional)", badge_background: "Hintergrund (rgba)", standard_badge_background: "Standard Badge Hintergrund (rgba)", badge_auto_climate_btn: "Klima-Steuerungs-Button automatisch hinzufügen",
@@ -185,7 +189,9 @@ const TRANSLATIONS = {
     show_state: "Afficher l'état", show_label: "Afficher le libellé", show_icon: "Afficher l’icône", state_first: "Valeur d'abord", text_layout: "Ordre du texte", primary_text: "Première ligne", primary_state: "Valeur d’abord", primary_name: "Nom d’abord",
     height: "Hauteur", width: "Largeur", align: "Alignement", visible: "Visible", left: "Gauche", center: "Centre", right: "Droite",
     tap_action: "Appui court", hold_action: "Appui long", double_tap_action: "Double appui",
-    act_more: "Détails (Défaut)", act_toggle: "Basculer", act_navigate: "Navigation", act_none: "Rien",
+    actions: "Actions",
+    act_more: "Détails (Défaut)", act_toggle: "Basculer", act_navigate: "Navigation", act_call_service: "Action (service)", act_none: "Rien",
+    service: "Service (domain.service)", service_data: "Données du service (JSON)", target_entity: "Entité cible",
     live_preview: "Aperçu en direct",
     upload_btn: "Télécharger une image", uploading: "Téléchargement...", upload_success: "Terminé!",
     show_name: "Afficher le titre", header_badges: "Infos d'en-tête supplémentaires", badge_add: "Ajouter une entrée", badge_label: "Libellé (optionnel)", badge_background: "Arrière-plan (rgba)", standard_badge_background: "Fond du badge climat principal (rgba)",
@@ -1791,20 +1797,21 @@ class OneLineRoomCard extends HTMLElement {
     if (!actionConfig || typeof actionConfig !== 'object') actionConfig = { action: 'none' };
     if (!actionConfig.action) actionConfig.action = "none";
     if (actionConfig.action === "toggle" && config.entity) {
-      const domain = config.entity.split(".")[0];
+      const targetEntity = actionConfig.target?.entity_id || config.entity;
+      const domain = targetEntity.split(".")[0];
       if (domain === "climate" && this._hass) {
-        const state = this._hass.states[config.entity];
+        const state = this._hass.states[targetEntity];
         if (state) {
           actionConfig = !isEntityOff(state)
-            ? { action: "call-service", service: "climate.set_hvac_mode", data: { hvac_mode: STATE_DEFINITIONS.INACTIVE_STATES.off }, target: { entity_id: config.entity } }
-            : { action: "call-service", service: "climate.turn_on", target: { entity_id: config.entity } };
+            ? { action: "call-service", service: "climate.set_hvac_mode", data: { hvac_mode: STATE_DEFINITIONS.INACTIVE_STATES.off }, target: { entity_id: targetEntity } }
+            : { action: "call-service", service: "climate.turn_on", target: { entity_id: targetEntity } };
         }
       }
     }
-    const eventDetail = {
+const eventDetail = {
       config: {
-        entity: config.entity,
-        [actionKey]: { entity: config.entity, ...actionConfig }
+        entity: actionConfig.target?.entity_id || config.entity,
+        [actionKey]: actionConfig
       },
       action: type
     };
@@ -1847,6 +1854,7 @@ class OneLineRoomCardEditor extends HTMLElement {
     this._typoSectionOpen = false;
     this._badgesSectionOpen = false;
     this._cardBehaviorOpen = true;
+    this._actionsSectionOpen = false;
     this._headerSectionOpen = true;
     this._layoutSectionOpen = false;
     this._activeTab = "config";
@@ -2050,12 +2058,17 @@ connectedCallback() {
   }
 
   _applyNavSelectorOptions() {
-    const nav = this.shadowRoot?.getElementById("nav-path");
-    if (!nav) return;
     const options = Array.isArray(this._navOptions) ? this._navOptions : [];
-    nav.selector = { select: { mode: "dropdown", options, custom_value: true } };
-    nav.value = this._config?.tap_action?.navigation_path || "";
-    if (this._hass && nav.hass !== this._hass) nav.hass = this._hass;
+    const applyTo = (id, value) => {
+      const nav = this.shadowRoot?.getElementById(id);
+      if (!nav) return;
+      nav.selector = { select: { mode: "dropdown", options, custom_value: true } };
+      nav.value = value || "";
+      if (this._hass && nav.hass !== this._hass) nav.hass = this._hass;
+    };
+    applyTo("tap-nav-path", this._config?.tap_action?.navigation_path);
+    applyTo("hold-nav-path", this._config?.hold_action?.navigation_path);
+    applyTo("dbl-nav-path", this._config?.double_tap_action?.navigation_path);
   }
 
   _defaultIconForDomain(domain) {
@@ -2300,7 +2313,7 @@ connectedCallback() {
     if (!this._config) return;
     const alreadyRendered = !!this.shadowRoot.innerHTML;
     const domVersion = this.shadowRoot.querySelector("[data-rc-version]")?.dataset?.rcVersion;
-    if (alreadyRendered && domVersion === VERSION) { this.updVal(); if (JSON.stringify(this._config?.controls || []) !== this._lastRenderedControlsSig) this.renBtn(); this._applyNavSelectorOptions(); this._ensureNavOptions(); this._updateSensorsSectionUI(); this._updateImageSectionUI(); this._updateBadgesUI(); this._updateTypographyUI(); this._updateCardBehaviorUI(); this._updateHeaderSectionUI(); this._updateTabUI(); return; }
+    if (alreadyRendered && domVersion === VERSION) { this.updVal(); if (JSON.stringify(this._config?.controls || []) !== this._lastRenderedControlsSig) this.renBtn(); this._applyNavSelectorOptions(); this._ensureNavOptions(); this._updateSensorsSectionUI(); this._updateImageSectionUI(); this._updateBadgesUI(); this._updateTypographyUI(); this._updateCardBehaviorUI(); this._updateActionsSectionUI(); this._updateHeaderSectionUI(); this._updateTabUI(); return; }
     
     this.shadowRoot.innerHTML = "";
     const h = this._hass;
@@ -2431,16 +2444,34 @@ connectedCallback() {
             <ha-selector id="behavior-sel" label="${getTranslation(h, "behavior")}" style="width:100%;"></ha-selector>
           </div>
         </div>
-        <div style="margin-top:12px">
-          <ha-selector id="tap-action" label="${getTranslation(h, "tap_action")}"></ha-selector>
-        </div>
-        <div style="margin-top:12px">
-          <ha-selector id="hold-action" label="${getTranslation(h, "hold_action")}"></ha-selector>
-        </div>
-        <div style="margin-top:12px">
-          <ha-selector id="dbl-action" label="${getTranslation(h, "double_tap_action")}"></ha-selector>
-        </div>
-        <ha-textfield id="nav-path" label="${getTranslation(h, "path")}" style="margin-top:12px; width: 100%;"></ha-textfield>
+        <div id="actions-sec" class="manual-sec" style="margin-top:12px">
+          <div id="actions-head" class="manual-head">
+            <span class="manual-title">${getTranslation(h, "actions")}</span>
+            <ha-icon id="actions-chev" class="manual-chev" icon="mdi:chevron-right"></ha-icon>
+          </div>
+          <div id="actions-sec-content" class="manual-content" hidden>
+            <div style="margin-top:12px">
+              <ha-selector id="tap-action" label="${getTranslation(h, "tap_action")}"></ha-selector>
+              <ha-textfield id="tap-service" label="${getTranslation(h, "service")}" placeholder="domain.service" style="margin-top:12px; width: 100%; display:none"></ha-textfield>
+              <ha-textfield id="tap-service-data" label="${getTranslation(h, "service_data")}" placeholder='{"key":"value"}' style="margin-top:12px; width: 100%; display:none" multiline rows="4"></ha-textfield>
+              <ha-entity-picker id="tap-target" style="margin-top:12px; width: 100%; display:none"></ha-entity-picker>
+              <ha-selector id="tap-nav-path" label="${getTranslation(h, "path")}" placeholder="/lovelace/path" style="margin-top:12px; width: 100%; display:none"></ha-selector>
+            </div>
+            <div style="margin-top:12px">
+              <ha-selector id="hold-action" label="${getTranslation(h, "hold_action")}"></ha-selector>
+              <ha-textfield id="hold-service" label="${getTranslation(h, "service")}" placeholder="domain.service" style="margin-top:12px; width: 100%; display:none"></ha-textfield>
+              <ha-textfield id="hold-service-data" label="${getTranslation(h, "service_data")}" placeholder='{"key":"value"}' style="margin-top:12px; width: 100%; display:none" multiline rows="4"></ha-textfield>
+              <ha-entity-picker id="hold-target" style="margin-top:12px; width: 100%; display:none"></ha-entity-picker>
+              <ha-selector id="hold-nav-path" label="${getTranslation(h, "path")}" placeholder="/lovelace/path" style="margin-top:12px; width: 100%; display:none"></ha-selector>
+            </div>
+            <div style="margin-top:12px">
+              <ha-selector id="dbl-action" label="${getTranslation(h, "double_tap_action")}"></ha-selector>
+              <ha-textfield id="dbl-service" label="${getTranslation(h, "service")}" placeholder="domain.service" style="margin-top:12px; width: 100%; display:none"></ha-textfield>
+              <ha-textfield id="dbl-service-data" label="${getTranslation(h, "service_data")}" placeholder='{"key":"value"}' style="margin-top:12px; width: 100%; display:none" multiline rows="4"></ha-textfield>
+              <ha-entity-picker id="dbl-target" style="margin-top:12px; width: 100%; display:none"></ha-entity-picker>
+              <ha-selector id="dbl-nav-path" label="${getTranslation(h, "path")}" placeholder="/lovelace/path" style="margin-top:12px; width: 100%; display:none"></ha-selector>
+            </div>
+          </div>
         </div>
       </div>
       <div class="sec">
@@ -2753,6 +2784,13 @@ connectedCallback() {
         this._updateCardBehaviorUI();
       });
     }
+    const actionsHead = this.shadowRoot.getElementById("actions-head");
+    if (actionsHead) {
+      actionsHead.addEventListener("click", () => {
+        this._actionsSectionOpen = !this._actionsSectionOpen;
+        this._updateActionsSectionUI();
+      });
+    }
     const headerSecHead = this.shadowRoot.getElementById("header-sec-head");
     if (headerSecHead) {
       headerSecHead.addEventListener("click", () => {
@@ -3033,67 +3071,283 @@ connectedCallback() {
     const tapActionSelect = this.shadowRoot.getElementById("tap-action");
     const holdActionSelect = this.shadowRoot.getElementById("hold-action");
     const dblActionSelect = this.shadowRoot.getElementById("dbl-action");
-    const navSelect = this.shadowRoot.getElementById("nav-path");
+    const tapServiceInput = this.shadowRoot.getElementById("tap-service");
+    const tapServiceDataInput = this.shadowRoot.getElementById("tap-service-data");
+    const tapTargetPicker = this.shadowRoot.getElementById("tap-target");
+    const tapNavPath = this.shadowRoot.getElementById("tap-nav-path");
+    const holdServiceInput = this.shadowRoot.getElementById("hold-service");
+    const holdServiceDataInput = this.shadowRoot.getElementById("hold-service-data");
+    const holdTargetPicker = this.shadowRoot.getElementById("hold-target");
+    const holdNavPath = this.shadowRoot.getElementById("hold-nav-path");
+    const dblServiceInput = this.shadowRoot.getElementById("dbl-service");
+    const dblServiceDataInput = this.shadowRoot.getElementById("dbl-service-data");
+    const dblTargetPicker = this.shadowRoot.getElementById("dbl-target");
+    const dblNavPath = this.shadowRoot.getElementById("dbl-nav-path");
 
-    const updateNavVisibility = (action) => {
-      if (navSelect) navSelect.hidden = action !== "navigate";
+    if (tapTargetPicker) tapTargetPicker.hass = h;
+    if (holdTargetPicker) holdTargetPicker.hass = h;
+    if (dblTargetPicker) dblTargetPicker.hass = h;
+    if (tapNavPath) tapNavPath.hass = h;
+    if (holdNavPath) holdNavPath.hass = h;
+    if (dblNavPath) dblNavPath.hass = h;
+
+const updateActionFields = (action, serviceField, serviceDataField, targetField, navField, actionConfig) => {
+      // Definiere hier, bei welchen Aktionen das Entitäts-Feld angezeigt werden soll
+      const needsTarget = ["call-service", "more-info", "toggle"].includes(action);
+      
+      if (serviceField) serviceField.style.display = action === "call-service" ? "" : "none";
+      if (serviceDataField) serviceDataField.style.display = action === "call-service" ? "" : "none";
+      if (targetField) targetField.style.display = needsTarget ? "" : "none";
+      if (navField) navField.style.display = action === "navigate" ? "" : "none";
+      
+      if (serviceField) serviceField.value = actionConfig?.service || "";
+      if (serviceDataField) {
+        const rawData = actionConfig?.service_data;
+        serviceDataField.value = rawData === undefined ? "" : (typeof rawData === "string" ? rawData : JSON.stringify(rawData, null, 2));
+      }
+      if (targetField) {
+        const entityId = actionConfig?.target?.entity_id;
+        targetField.value = Array.isArray(entityId) ? (entityId[0] || "") : (entityId || "");
+      }
+      if (navField) {
+        navField.value = actionConfig?.navigation_path || "";
+        if (this._hass && navField.hass !== this._hass) navField.hass = this._hass;
+      }
     };
 
     if (tapActionSelect) {
       tapActionSelect.hass = h;
-      tapActionSelect.selector = { select: { mode: "dropdown", options: actOpts } };
+      tapActionSelect.selector = { select: { mode: "dropdown", options: actOpts.concat({ value: "call-service", label: getTranslation(h, "act_call_service") || "Action (service)" }) } };
       tapActionSelect.value = this._config?.tap_action?.action || "more-info";
       tapActionSelect.addEventListener("value-changed", (ev) => {
         ev.stopPropagation();
         const action = ev.detail?.value || "more-info";
         const c = { ...this._config };
         c.tap_action = { ...(c.tap_action || {}), action };
-        if (action !== "navigate") delete c.tap_action.navigation_path;
+ if (action !== "navigate") delete c.tap_action.navigation_path;
+        
+        // Target nur löschen, wenn es nicht eine der drei unterstützten Aktionen ist
+        if (!["call-service", "more-info", "toggle"].includes(action)) {
+          delete c.tap_action.target;
+        }
+        if (action !== "call-service") {
+          delete c.tap_action.service;
+          delete c.tap_action.service_data;
+        }
         if (!c.tap_action.action) delete c.tap_action;
         this._fire(c);
-        updateNavVisibility(action);
+        updateActionFields(action, tapServiceInput, tapServiceDataInput, tapTargetPicker, tapNavPath, c.tap_action);
       });
-      updateNavVisibility(this._config?.tap_action?.action || "more-info");
+      updateActionFields(this._config?.tap_action?.action || "more-info", tapServiceInput, tapServiceDataInput, tapTargetPicker, tapNavPath, this._config?.tap_action);
     }
     if (holdActionSelect) {
       holdActionSelect.hass = h;
-      holdActionSelect.selector = { select: { mode: "dropdown", options: actOpts } };
+      holdActionSelect.selector = { select: { mode: "dropdown", options: actOpts.concat({ value: "call-service", label: getTranslation(h, "act_call_service") || "Action (service)" }) } };
       holdActionSelect.value = this._config?.hold_action?.action || "none";
       holdActionSelect.addEventListener("value-changed", (ev) => {
         ev.stopPropagation();
         const action = ev.detail?.value || "none";
         const c = { ...this._config };
         c.hold_action = { ...(c.hold_action || {}), action };
+        if (action !== "navigate") delete c.hold_action.navigation_path;
+        if (action !== "call-service") {
+          delete c.hold_action.service;
+          delete c.hold_action.service_data;
+          delete c.hold_action.target;
+        }
         if (!c.hold_action.action) delete c.hold_action;
         this._fire(c);
+        updateActionFields(action, holdServiceInput, holdServiceDataInput, holdTargetPicker, holdNavPath, c.hold_action);
       });
+      updateActionFields(this._config?.hold_action?.action || "none", holdServiceInput, holdServiceDataInput, holdTargetPicker, holdNavPath, this._config?.hold_action);
     }
     if (dblActionSelect) {
       dblActionSelect.hass = h;
-      dblActionSelect.selector = { select: { mode: "dropdown", options: actOpts } };
+      dblActionSelect.selector = { select: { mode: "dropdown", options: actOpts.concat({ value: "call-service", label: getTranslation(h, "act_call_service") || "Action (service)" }) } };
       dblActionSelect.value = this._config?.double_tap_action?.action || "none";
       dblActionSelect.addEventListener("value-changed", (ev) => {
         ev.stopPropagation();
         const action = ev.detail?.value || "none";
         const c = { ...this._config };
         c.double_tap_action = { ...(c.double_tap_action || {}), action };
+        if (action !== "navigate") delete c.double_tap_action.navigation_path;
+        if (action !== "call-service") {
+          delete c.double_tap_action.service;
+          delete c.double_tap_action.service_data;
+          delete c.double_tap_action.target;
+        }
         if (!c.double_tap_action.action) delete c.double_tap_action;
+        this._fire(c);
+        updateActionFields(action, dblServiceInput, dblServiceDataInput, dblTargetPicker, dblNavPath, c.double_tap_action);
+      });
+      updateActionFields(this._config?.double_tap_action?.action || "none", dblServiceInput, dblServiceDataInput, dblTargetPicker, dblNavPath, this._config?.double_tap_action);
+    }
+    if (tapServiceInput) {
+      tapServiceInput.addEventListener("change", (ev) => {
+        ev.stopPropagation();
+        const value = trimStr(ev.target.value || "");
+        const c = { ...this._config };
+        c.tap_action = { ...(c.tap_action || {}), action: "call-service" };
+        if (value) c.tap_action.service = value;
+        else delete c.tap_action.service;
         this._fire(c);
       });
     }
-    if (navSelect) {
-      navSelect.hass = h;
-      this._ensureNavOptions();
-      this._applyNavSelectorOptions();
-      navSelect.value = this._config?.tap_action?.navigation_path || "";
-      navSelect.addEventListener("value-changed", (ev) => {
+    if (tapServiceDataInput) {
+      tapServiceDataInput.addEventListener("change", (ev) => {
         ev.stopPropagation();
-        const v = ev.detail?.value ?? "";
+        const raw = trimStr(ev.target.value || "");
+        const c = { ...this._config };
+        c.tap_action = { ...(c.tap_action || {}), action: "call-service" };
+        if (raw) {
+          try { c.tap_action.service_data = JSON.parse(raw); }
+          catch { c.tap_action.service_data = raw; }
+        } else {
+          delete c.tap_action.service_data;
+        }
+        this._fire(c);
+      });
+    }
+    if (tapTargetPicker) {
+      tapTargetPicker.hass = h;
+      tapTargetPicker.addEventListener("value-changed", (ev) => {
+        ev.stopPropagation();
+        const value = trimStr(ev.detail?.value || "");
+        const action = tapActionSelect?.value || this._config?.tap_action?.action || "more-info";
+        const c = { ...this._config };
+        c.tap_action = { ...(c.tap_action || {}), action };
+        const needsTarget = ["call-service", "more-info", "toggle"].includes(action);
+        if (needsTarget && value) c.tap_action.target = { entity_id: value };
+        else delete c.tap_action.target;
+        if (action !== "call-service") {
+          delete c.tap_action.service;
+          delete c.tap_action.service_data;
+        }
+        this._fire(c);
+      });
+    }
+    if (holdServiceInput) {
+      holdServiceInput.addEventListener("change", (ev) => {
+        ev.stopPropagation();
+        const value = trimStr(ev.target.value || "");
+        const c = { ...this._config };
+        c.hold_action = { ...(c.hold_action || {}), action: "call-service" };
+        if (value) c.hold_action.service = value;
+        else delete c.hold_action.service;
+        this._fire(c);
+      });
+    }
+    if (holdServiceDataInput) {
+      holdServiceDataInput.addEventListener("change", (ev) => {
+        ev.stopPropagation();
+        const raw = trimStr(ev.target.value || "");
+        const c = { ...this._config };
+        c.hold_action = { ...(c.hold_action || {}), action: "call-service" };
+        if (raw) {
+          try { c.hold_action.service_data = JSON.parse(raw); }
+          catch { c.hold_action.service_data = raw; }
+        } else {
+          delete c.hold_action.service_data;
+        }
+        this._fire(c);
+      });
+    }
+    if (holdTargetPicker) {
+      holdTargetPicker.hass = h;
+      holdTargetPicker.addEventListener("value-changed", (ev) => {
+        ev.stopPropagation();
+        const value = trimStr(ev.detail?.value || "");
+        const action = holdActionSelect?.value || this._config?.hold_action?.action || "none";
+        const c = { ...this._config };
+        c.hold_action = { ...(c.hold_action || {}), action };
+        const needsTarget = ["call-service", "more-info", "toggle"].includes(action);
+        if (needsTarget && value) c.hold_action.target = { entity_id: value };
+        else delete c.hold_action.target;
+        if (action !== "call-service") {
+          delete c.hold_action.service;
+          delete c.hold_action.service_data;
+        }
+        this._fire(c);
+      });
+    }
+    if (dblServiceInput) {
+      dblServiceInput.addEventListener("change", (ev) => {
+        ev.stopPropagation();
+        const value = trimStr(ev.target.value || "");
+        const c = { ...this._config };
+        c.double_tap_action = { ...(c.double_tap_action || {}), action: "call-service" };
+        if (value) c.double_tap_action.service = value;
+        else delete c.double_tap_action.service;
+        this._fire(c);
+      });
+    }
+    if (dblServiceDataInput) {
+      dblServiceDataInput.addEventListener("change", (ev) => {
+        ev.stopPropagation();
+        const raw = trimStr(ev.target.value || "");
+        const c = { ...this._config };
+        c.double_tap_action = { ...(c.double_tap_action || {}), action: "call-service" };
+        if (raw) {
+          try { c.double_tap_action.service_data = JSON.parse(raw); }
+          catch { c.double_tap_action.service_data = raw; }
+        } else {
+          delete c.double_tap_action.service_data;
+        }
+        this._fire(c);
+      });
+    }
+    if (dblTargetPicker) {
+      dblTargetPicker.hass = h;
+      dblTargetPicker.addEventListener("value-changed", (ev) => {
+        ev.stopPropagation();
+        const value = trimStr(ev.detail?.value || "");
+        const action = dblActionSelect?.value || this._config?.double_tap_action?.action || "none";
+        const c = { ...this._config };
+        c.double_tap_action = { ...(c.double_tap_action || {}), action };
+        const needsTarget = ["call-service", "more-info", "toggle"].includes(action);
+        if (needsTarget && value) c.double_tap_action.target = { entity_id: value };
+        else delete c.double_tap_action.target;
+        if (action !== "call-service") {
+          delete c.double_tap_action.service;
+          delete c.double_tap_action.service_data;
+        }
+        this._fire(c);
+      });
+    }
+    if (tapNavPath) {
+      tapNavPath.addEventListener("value-changed", (ev) => {
+        ev.stopPropagation();
+        const value = trimStr(ev.detail?.value || "");
         const c = { ...this._config };
         c.tap_action = { ...(c.tap_action || {}), action: "navigate" };
-        if (v?.trim()) c.tap_action.navigation_path = v;
+        if (value) c.tap_action.navigation_path = value;
         else delete c.tap_action.navigation_path;
         this._fire(c);
+        updateActionFields("navigate", tapServiceInput, tapServiceDataInput, tapTargetPicker, tapNavPath, c.tap_action);
+      });
+    }
+    if (holdNavPath) {
+      holdNavPath.addEventListener("value-changed", (ev) => {
+        ev.stopPropagation();
+        const value = trimStr(ev.detail?.value || "");
+        const c = { ...this._config };
+        c.hold_action = { ...(c.hold_action || {}), action: "navigate" };
+        if (value) c.hold_action.navigation_path = value;
+        else delete c.hold_action.navigation_path;
+        this._fire(c);
+        updateActionFields("navigate", holdServiceInput, holdServiceDataInput, holdTargetPicker, holdNavPath, c.hold_action);
+      });
+    }
+    if (dblNavPath) {
+      dblNavPath.addEventListener("value-changed", (ev) => {
+        ev.stopPropagation();
+        const value = trimStr(ev.detail?.value || "");
+        const c = { ...this._config };
+        c.double_tap_action = { ...(c.double_tap_action || {}), action: "navigate" };
+        if (value) c.double_tap_action.navigation_path = value;
+        else delete c.double_tap_action.navigation_path;
+        this._fire(c);
+        updateActionFields("navigate", dblServiceInput, dblServiceDataInput, dblTargetPicker, dblNavPath, c.double_tap_action);
       });
     }
     const livePreviewToggle = this.shadowRoot.getElementById("live-preview-toggle");
@@ -3404,6 +3658,15 @@ if (tmplSelect) {
     const chev = this.shadowRoot?.getElementById("card-beh-chev");
     if (content) content.hidden = !this._cardBehaviorOpen;
     if (chev) chev.style.transform = this._cardBehaviorOpen ? "rotate(90deg)" : "";
+  }
+
+  _updateActionsSectionUI() {
+    const section = this.shadowRoot?.getElementById("actions-sec");
+    const content = this.shadowRoot?.getElementById("actions-sec-content");
+    const chev = this.shadowRoot?.getElementById("actions-chev");
+    if (content) content.hidden = !this._actionsSectionOpen;
+    if (section) section.classList.toggle("open", this._actionsSectionOpen);
+    if (chev) chev.style.transform = this._actionsSectionOpen ? "rotate(90deg)" : "";
   }
 
   _updateHeaderSectionUI() {

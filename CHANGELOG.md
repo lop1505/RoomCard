@@ -10,6 +10,8 @@ All notable changes to OneLine Room Card are documented here.
 * Runtime: **Conditional Visibility for Buttons** — Buttons now use the native Home Assistant conditions editor (`ha-card-conditions-editor`), identical to the visibility tab of the card itself. Supports State, Numeric State, Screen, User, Time, AND/OR/NOT, etc.
 * Runtime: **Badge Background Inheritance** — Individual badges automatically inherit the global background color (default badge background) when no custom background color is defined.
 * Runtime: **Info Line Position** — New option `info_line_position: header | below_header`. Controls whether the info line (temperature, humidity, badges) appears inside the header image (default) or as a separate bar between the header and button grid. Closes [#51](https://github.com/lop1505/RoomCard/issues/51).
+* Editor UX: **Action configuration section** now sits under `Card Behavior` and defaults to collapsed for a cleaner editor layout.
+* Editor UX: **Service Data (JSON)** support for `call-service` actions on `tap_action`, `hold_action`, and `double_tap_action`.
 * Refactor Editor UI: **Simplified Manual Color Logic** — removed the `force_color` (header) and `force_color` (buttons) toggle. Manual colors are now applied automatically whenever a value is present in the `color` field. Closes [#59](https://github.com/lop1505/RoomCard/issues/59).
 * Refactor Editor UI: **Unified Collapse Mode dropdown** — The separate `collapsible` toggle, `default_state` dropdown, and `remember_state` toggle have been replaced by a single **Collapse Mode** dropdown with four options: **Disabled** (card is never collapsible), **Collapsed** (starts collapsed, ignores saved state), **Expanded** (starts expanded, ignores saved state), and **Remember** (collapsible, state persisted in `localStorage`). Closes [#65](https://github.com/lop1505/RoomCard/issues/65).
 * Editor UX: **Layout Reorganization** — "Badge" and "Image" sections have been moved up for better accessibility. Added a new **Layout & Position** section for header alignment and offset settings.
@@ -70,6 +72,8 @@ All notable changes to OneLine Room Card are documented here.
 
 ## [1.2.0]
 
+* Editor UX: **Action configuration section** now sits under `Card Behavior` and defaults to collapsed for a cleaner editor layout.
+* Editor UX: **Service Data (JSON)** support for `call-service` actions on `tap_action`, `hold_action`, and `double_tap_action`.
 * Runtime: **Inline Slider Controls** — add a brightness slider directly on light buttons, or a position slider on cover buttons (`control_mode: slider`).
 * Runtime: **Inline Cover Buttons** — add Open / Stop / Close buttons directly on cover tiles (`control_mode: buttons`).
 * Editor UX: New **Control Mode** dropdown per button (Default / Inline Slider / Inline Buttons).

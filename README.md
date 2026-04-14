@@ -52,6 +52,8 @@ Developed with a focus on stability, simple design, and maximum flexibility.
 * 🧼 Show/hide state, label, icon per button
 * ↕️ Label position — Right / Left / Top / Bottom per button and global default
 * 👆 Configurable actions — Tap / Hold / Double Tap per button
+* 🧩 Action service payloads — `call-service` actions now support inline `service_data` JSON in the visual editor
+* 📂 Nested Card Behavior actions — action settings are grouped under `Card Behavior` and default to collapsed
 * 🎯 Button visibility toggle
 * 📴 Unavailable / offline handling — dimmed, non-interactive, with indicator
 
