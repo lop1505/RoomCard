@@ -101,6 +101,7 @@ covers all settings — no YAML required.
 | `global_label_position` | `right` | Default label position for all buttons |
 | `global_icon_size` | `20px` | Default icon size for all buttons |
 | `global_button_background` | — | Default button background (e.g. `rgba(0,0,0,0)`) |
+| `show_card_last_activity` | `false` | Show a header badge with elapsed time since the most recently changed button entity (e.g. `5 min`, `2h 15min`). Auto-refreshes every 60 s. |
 
 #### Sensors & chips
 | Option | Default | Description |
