@@ -42,7 +42,7 @@ const TRANSLATIONS = {
     row_type: "Row Type", type_entity: "Entity", type_template: "Template",
     tmpl_content: "Content (Template)", tmpl_icon: "Icon (Template)", tmpl_color: "Color (Template)", tmpl_state: "State (Template)", tmpl_preview: "Preview",
     tmpl_light: "Light", tmpl_switch: "Switch / Socket", tmpl_climate: "Climate", tmpl_cover: "Cover / Shutter", tmpl_media: "Media Player",
-    show_state: "Show State", show_label: "Show Label", show_icon: "Show Icon", show_last_changed: "Last Changed", lc_just_now: "just now", state_first: "State First", text_layout: "Text Order", primary_text: "First line", primary_state: "State / value first", primary_name: "Name first",
+    show_state: "Show State", show_label: "Show Label", show_icon: "Show Icon", show_last_changed: "Last Changed", show_sparkline: "Show Sparkline", sparkline_hours: "History (hours)", sparkline_refresh: "Sparkline refresh (s)", lc_just_now: "just now", state_first: "State First", text_layout: "Text Order", primary_text: "First line", primary_state: "State / value first", primary_name: "Name first",
     height: "Height", width: "Width", align: "Align", visible: "Visible", left: "Left", center: "Center", right: "Right",
     tap_action: "Tap Action", hold_action: "Hold Action", double_tap_action: "Double Tap Action",
     actions: "Actions",
@@ -114,7 +114,7 @@ const TRANSLATIONS = {
     row_type: "Zeilentyp", type_entity: "Entität", type_template: "Template",
     tmpl_content: "Text (Template)", tmpl_icon: "Icon (Template)", tmpl_color: "Farbe (Template)", tmpl_status: "Status (Template)", tmpl_preview: "Vorschau",
     tmpl_light: "Licht", tmpl_switch: "Schalter / Steckdose", tmpl_climate: "Klima", tmpl_cover: "Rollladen / Abdeckung", tmpl_media: "Media Player",
-    show_state: "Status anzeigen", show_label: "Bezeichnung anzeigen", show_icon: "Icon anzeigen", show_last_changed: "Letzte Änderung", lc_just_now: "gerade eben", state_first: "Wert zuerst", text_layout: "Text-Reihenfolge", primary_text: "Erste Zeile", primary_state: "Wert zuerst", primary_name: "Name zuerst",
+    show_state: "Status anzeigen", show_label: "Bezeichnung anzeigen", show_icon: "Icon anzeigen", show_last_changed: "Letzte Änderung", show_sparkline: "Sparkline anzeigen", sparkline_hours: "Verlauf (Stunden)", sparkline_refresh: "Sparkline-Aktualisierung (s)", lc_just_now: "gerade eben", state_first: "Wert zuerst", text_layout: "Text-Reihenfolge", primary_text: "Erste Zeile", primary_state: "Wert zuerst", primary_name: "Name zuerst",
     height: "Höhe", width: "Breite", align: "Ausrichtung", visible: "Sichtbar", left: "Links", center: "Mitte", right: "Rechts",
     tap_action: "Antippen", hold_action: "Gedrückt halten", double_tap_action: "Doppelklick",
     actions: "Aktionen",
@@ -190,7 +190,7 @@ const TRANSLATIONS = {
     row_type: "Type de ligne", type_entity: "Entité", type_template: "Template",
     tmpl_content: "Contenu (Template)", tmpl_icon: "Icône (Template)", tmpl_color: "Couleur (Template)", tmpl_state: "État (Template)", tmpl_preview: "Aperçu",
     tmpl_light: "Lumière", tmpl_switch: "Interrupteur / Prise", tmpl_climate: "Climatisation", tmpl_cover: "Volet / Store", tmpl_media: "Lecteur multimédia",
-    show_state: "Afficher l’état", show_label: "Afficher le libellé", show_icon: "Afficher l’icône", show_last_changed: "Dernier changement", lc_just_now: "à l’instant", state_first: "Valeur d’abord", text_layout: "Ordre du texte", primary_text: "Première ligne", primary_state: "Valeur d’abord", primary_name: "Nom d’abord",
+    show_state: "Afficher l’état", show_label: "Afficher le libellé", show_icon: "Afficher l’icône", show_last_changed: "Dernier changement", show_sparkline: "Afficher la Sparkline", sparkline_hours: "Historique (heures)", sparkline_refresh: "Rafraîchissement Sparkline (s)", lc_just_now: "à l’instant", state_first: "Valeur d’abord", text_layout: "Ordre du texte", primary_text: "Première ligne", primary_state: "Valeur d’abord", primary_name: "Nom d’abord",
     height: "Hauteur", width: "Largeur", align: "Alignement", visible: "Visible", left: "Gauche", center: "Centre", right: "Droite",
     tap_action: "Appui court", hold_action: "Appui long", double_tap_action: "Double appui",
     actions: "Actions",
@@ -509,6 +509,10 @@ class OneLineRoomCard extends HTMLElement {
     this._cachedEntityIds = null;
     this._activeTimers = new Set();
     this._lastChangedInterval = null;
+    this._sparklineCache = new Map();
+    this._sparklinePending = new Map();
+    this._sparklineInterval = null;
+    this._sparklineRefreshSec = 300;
   }
 
   disconnectedCallback() {
@@ -518,6 +522,11 @@ class OneLineRoomCard extends HTMLElement {
       clearInterval(this._lastChangedInterval);
       this._lastChangedInterval = null;
     }
+    if (this._sparklineInterval) {
+      clearInterval(this._sparklineInterval);
+      this._sparklineInterval = null;
+    }
+    this._sparklinePending.clear();
   }
 
   set hass(hass) {
@@ -547,9 +556,11 @@ class OneLineRoomCard extends HTMLElement {
     this._lastStates = new Map();
     this._lastRenderMetaSig = "";
     this._cachedEntityIds = null;
+    this._sparklineRefreshSec = clampNum(config.sparkline_refresh, 60, 3600, 300);
     if (!this.content) this.render();
     this.updateContent();
     this._setupLastChangedInterval();
+    this._setupSparklineInterval();
   }
 
   _setupLastChangedInterval() {
@@ -562,6 +573,158 @@ class OneLineRoomCard extends HTMLElement {
     if (hasLastChanged || hasCardLastActivity) {
       this._lastChangedInterval = setInterval(() => { this.updateContent(); }, 60000);
     }
+  }
+
+  _hasSparklineControls() {
+    return (this.config?.controls || []).some(ctrl => {
+      const domain = ctrl?.entity?.split?.(".")?.[0];
+      return domain === "sensor" && ctrl.show_sparkline === true;
+    });
+  }
+
+  _setupSparklineInterval() {
+    if (this._sparklineInterval) {
+      clearInterval(this._sparklineInterval);
+      this._sparklineInterval = null;
+    }
+    if (!this._hasSparklineControls()) return;
+    this._sparklineInterval = setInterval(() => {
+      this._refreshSparklineData();
+    }, this._sparklineRefreshSec * 1000);
+    this._refreshSparklineData();
+  }
+
+  _getSparklineCacheKey(entity, hours) {
+    return `${entity}|${hours}`;
+  }
+
+ async _fetchSparklineData(entity, hours) {
+    if (!entity || !this._hass) return [];
+    const key = this._getSparklineCacheKey(entity, hours);
+    if (this._sparklinePending.has(key)) return this._sparklinePending.get(key);
+    const promise = (async () => {
+      try {
+        const start = new Date(Date.now() - hours * 3600000);
+        const result = await this._hass.callWS({
+          type: "history/history_during_period",
+          entity_ids: [entity],
+          start_time: start.toISOString(),
+          end_time: new Date().toISOString(),
+          minimal_response: true,
+          no_attributes: true
+        });
+        
+        // FIX 1: Direkt auf die Entity-Daten aus dem Dictionary zugreifen
+        const raw = result[entity] || (Array.isArray(result) && result.length > 0 ? result[0] : []);
+        const points = [];
+        
+        for (const item of raw) {
+          if (!item) continue;
+          let state; let ts;
+          
+          if (Array.isArray(item)) {
+            state = item[0];
+            ts = item[1] ? new Date(item[1]) : null;
+          } else if (typeof item === "object") {
+            // FIX 2: Fallback auf Minimal Response Keys (s, lc, lu)
+            state = item.state ?? item.s;
+            const timeVal = item.last_changed ?? item.last_updated ?? item.lu ?? item.lc;
+            
+            // HA liefert Timestamps bei minimal_response oft als Unix-Sekunden
+            if (typeof timeVal === "number") {
+              ts = new Date(timeVal * 1000); 
+            } else if (timeVal) {
+              ts = new Date(timeVal);
+            }
+          }
+          
+          if (!ts || state == null) continue;
+          const value = parseFloat(String(state));
+          if (Number.isNaN(value)) continue;
+          points.push({ ts: ts.getTime(), value });
+        }
+        
+        if (points.length === 0) return [];
+        if (points.length === 1) {
+          const value = points[0].value;
+          return [
+            { x: 0, y: value },
+            { x: 1, y: value }
+          ];
+        }
+        const startTime = points[0].ts;
+        let endTime = points[points.length - 1].ts;
+        if (endTime === startTime) endTime = startTime + 1;
+        const normalized = points.map(p => ({ x: (p.ts - startTime) / (endTime - startTime), y: p.value }));
+        return normalized;
+      } catch (err) {
+        return [];
+      } finally {
+        this._sparklinePending.delete(key);
+      }
+    })();
+    this._sparklinePending.set(key, promise);
+    const data = await promise;
+    this._sparklineCache.set(key, data);
+    this._updateSparklineElements(key, data);
+    return data;
+  }
+
+  async _refreshSparklineData() {
+    if (!this._hasSparklineControls() || !this._hass) return;
+    const requests = [];
+    for (const ctrl of this.config.controls || []) {
+      if (ctrl?.show_sparkline !== true) continue;
+      const domain = ctrl?.entity?.split?.(".")?.[0];
+      if (domain !== "sensor") continue;
+      const hours = clampNum(ctrl.sparkline_hours, 1, 168, 24);
+      const key = this._getSparklineCacheKey(ctrl.entity, hours);
+      requests.push(this._fetchSparklineData(ctrl.entity, hours));
+      if (!this._sparklineCache.has(key)) this._sparklineCache.set(key, []);
+    }
+    await Promise.all(requests);
+  }
+
+  _updateSparklineElements(key, data) {
+    const wrappers = this.shadowRoot?.querySelectorAll?.(`.btn-sparkline[data-sparkline-key="${key}"]`) || [];
+    wrappers.forEach(wrapper => {
+      const btn = wrapper.closest(".btn");
+      if (!btn) return;
+      const stroke = getComputedStyle(btn).getPropertyValue("--icon-color") || "currentColor";
+      if (!data || data.length === 0) {
+        wrapper.style.display = "none";
+        const svg = wrapper.querySelector("svg"); if (svg) svg.innerHTML = "";
+      } else {
+        wrapper.style.display = "block";
+        this._drawSparkline(wrapper, data, stroke.trim() || "currentColor");
+      }
+    });
+  }
+
+  _drawSparkline(wrapper, normalizedPoints, stroke) {
+    const svg = wrapper.querySelector("svg");
+    if (!svg) return;
+    if (!normalizedPoints || normalizedPoints.length === 0) {
+      svg.innerHTML = "";
+      return;
+    }
+    const points = normalizedPoints.map(p => ({
+      x: Math.max(0, Math.min(100, p.x * 100)),
+      y: Number.isFinite(p.y) ? p.y : 0
+    }));
+    const maxVal = Math.max(...points.map(p => p.y));
+    const minVal = Math.min(...points.map(p => p.y));
+    const range = maxVal - minVal;
+    const scaled = points.map(p => {
+      const y = range === 0
+        ? 11
+        : Math.max(2, Math.min(20, 20 - ((p.y - minVal) / range) * 18));
+      return `${p.x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(" ");
+    svg.innerHTML = `
+      <line x1="0" y1="20" x2="100" y2="20" stroke="${stroke}" stroke-opacity="0.2" stroke-width="1" vector-effect="non-scaling-stroke" />
+      <polyline points="${scaled}" fill="none" stroke="${stroke}" stroke-opacity="0.95" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+    `;
   }
 
   getCardSize() {
@@ -603,7 +766,8 @@ class OneLineRoomCard extends HTMLElement {
         .chip.info { background: #E3F2FD; color: #1976D2; }
         .chip.custom { background: var(--chip-bg); color: var(--chip-color); }
         .controls { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px; }
-        .btn { position: relative; display: flex; align-items: center; gap: 10px; padding: 0 10px; border-radius: 12px; cursor: pointer; background: var(--rc-btn-bg, var(--btn-bg, var(--card-background-color, rgba(128,128,128,0.05)))); border: 1px solid transparent; flex-grow: 1; flex-shrink: 1; min-width: 0; overflow: hidden; box-sizing: border-box; transition: background 0.2s; user-select: none; -webkit-user-select: none; touch-action: manipulation; -webkit-tap-highlight-color: transparent; flex-basis: var(--btn-flex-basis, auto); height: var(--btn-height, 60px); justify-content: var(--btn-justify, center); }
+        .btn { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 0 10px; border-radius: 12px; cursor: pointer; background: var(--rc-btn-bg, var(--btn-bg, var(--card-background-color, rgba(128,128,128,0.05)))); border: 1px solid transparent; flex-grow: 1; flex-shrink: 1; min-width: 0; overflow: hidden; box-sizing: border-box; transition: background 0.2s; user-select: none; -webkit-user-select: none; touch-action: manipulation; -webkit-tap-highlight-color: transparent; flex-basis: var(--btn-flex-basis, auto); min-height: var(--btn-height, 60px); justify-content: var(--btn-justify, center); }
+        .btn.has-sparkline { height: auto; align-items: stretch; overflow: visible; }
         .btn.label-right { flex-direction: row; align-items: center; justify-content: var(--btn-justify, center); gap: 10px; padding: 0 10px; }
         .btn.label-left { flex-direction: row-reverse; align-items: center; justify-content: var(--btn-justify, center); gap: 10px; padding: 0 10px; }
         .btn.label-bottom { flex-direction: column; justify-content: flex-start; align-items: center; gap: 1px; padding: 2px 4px; overflow: hidden; }
@@ -639,6 +803,10 @@ class OneLineRoomCard extends HTMLElement {
         .btn ha-icon { color: var(--rc-icon-color, var(--icon-color, grey)); --mdc-icon-size: 20px; }
         .btn-name { font-size: 13px; font-weight: 600; color: var(--primary-text-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
         .btn-state { font-size: 11px; color: var(--secondary-text-color); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+        .btn-sparkline { width: 100%; flex: 0 0 100%; order: 99; align-self: stretch; min-height: 28px; margin-top: 6px; display: flex; align-items: center; padding: 4px 6px; border-radius: 12px; background: rgba(255,255,255,0.06); box-sizing: border-box; }
+        .btn-sparkline svg { width: 100%; height: 22px; display: block; overflow: visible; }
+        .btn-sparkline polyline { fill: none; vector-effect: non-scaling-stroke; }
+        .btn.has-sparkline .btn-txt { flex: 1 1 auto; } /* Erlaubt dem Text-Container zu wachsen */
         .warn { position: absolute; top: 4px; right: 4px; color: #d32f2f; --mdc-icon-size: 16px; background: rgba(255,255,255,0.8); border-radius: 50%; padding: 1px; }
         .warn.warn-offline { color: var(--warning-color, var(--secondary-text-color)); background: var(--card-background-color, rgba(255,255,255,0.85)); }
         .btn.has-inline-ctrl { flex-direction: column; align-items: stretch; padding: 6px 10px; gap: 4px; height: auto; min-height: var(--btn-height, 60px); }
@@ -1434,6 +1602,8 @@ class OneLineRoomCard extends HTMLElement {
     btn.style.setProperty("--icon-color", col);
     btn.style.setProperty("--btn-bg", bg);
 
+    this._renderBtnSparkline(btn, ctrl, col);
+
     // Inline controls
     const controlMode = ctrl.control_mode;
     const sliderCaps = this._getSliderCapabilities(domain, st, ctrl);
@@ -1718,6 +1888,40 @@ class OneLineRoomCard extends HTMLElement {
       }
     } else {
       btn.classList.remove("has-inline-ctrl");
+    }
+  }
+
+  _renderBtnSparkline(btn, ctrl, color) {
+    const entityId = ctrl.entity;
+    const domain = entityId?.split?.(".")?.[0];
+    const enabled = ctrl.show_sparkline === true && domain === "sensor";
+    const hours = clampNum(ctrl.sparkline_hours, 1, 168, 24);
+    const key = this._getSparklineCacheKey(entityId, hours);
+    let wrapper = btn.querySelector(".btn-sparkline");
+    if (!enabled) {
+      if (wrapper) wrapper.remove();
+      return;
+    }
+    if (!wrapper) {
+      wrapper = document.createElement("div");
+      wrapper.className = "btn-sparkline";
+      wrapper.innerHTML = `<svg viewBox="0 0 100 22" preserveAspectRatio="none"></svg>`;
+      btn.appendChild(wrapper);
+    }
+    btn.classList.toggle("has-sparkline", enabled);
+    wrapper.dataset.sparklineKey = key;
+    wrapper.dataset.sparklineEntity = entityId || "";
+    wrapper.dataset.sparklineHours = String(hours);
+
+    const data = this._sparklineCache.has(key) ? this._sparklineCache.get(key) : undefined;
+    if (!data || data.length === 0) {
+      wrapper.style.display = "none";
+    } else {
+      wrapper.style.display = "block";
+      this._drawSparkline(wrapper, data, color || "currentColor");
+    }
+    if (!this._sparklinePending.has(key) && !this._sparklineCache.has(key)) {
+      this._fetchSparklineData(entityId, hours);
     }
   }
 
@@ -2509,11 +2713,14 @@ connectedCallback() {
             <ha-switch id="live-preview-toggle" checked></ha-switch>
           </ha-formfield>
         </div>
-        <div style="display: flex; align-items: flex-end; gap: 12px;">
-          <div style="position: relative; flex: 1.2; display: flex; align-items: flex-end;">
+        <div style="display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap;">
+          <div style="position: relative; flex: 1.2; display: flex; align-items: flex-end; min-width:220px;">
             <ha-textfield label="${getTranslation(h, "name")}" cfg="name" class="i" style="width: 100%;"></ha-textfield>
-            <ha-switch id="show-name-toggle" checked title="${getTranslation(h, "show_name")}"
+            <ha-switch id="show-name-toggle" checked title="${getTranslation(h, "show_name")}" 
                        style="position: absolute; right: 8px; bottom: 28px; --mdc-switch-size: 20px; z-index: 1; transform: scale(0.8);"></ha-switch>
+          </div>
+          <div style="position:relative;width:140px;flex-shrink:0;">
+            <ha-textfield label="${getTranslation(h, "sparkline_refresh")}" cfg="sparkline_refresh" class="i" type="number" placeholder="300" style="width:100%;"></ha-textfield>
           </div>
           <div style="position:relative;width:180px;flex-shrink:0;">
             <ha-selector id="behavior-sel" label="${getTranslation(h, "behavior")}" style="width:100%;"></ha-selector>
@@ -4304,6 +4511,10 @@ if (tmplSelect) {
           <div class="tmpl-preview"><span>${getTranslation(h, "tmpl_preview")}:</span> <ha-icon class="tp-ic"></ha-icon> <span class="tp-tx"></span></div>
         </details>
         <div class="row" style="margin-top:8px; align-items:center"><ha-selector class="al" label="${getTranslation(h, "align")}"></ha-selector><ha-selector class="lp" label="${getTranslation(h, "label_position")}"></ha-selector><ha-selector class="tl" label="${getTranslation(h, "text_layout")}"></ha-selector><ha-formfield label="${getTranslation(h, "show_state")}"><ha-switch class="ss" checked></ha-switch></ha-formfield><ha-formfield label="${getTranslation(h, "show_label")}"><ha-switch class="sl" checked></ha-switch></ha-formfield><ha-formfield label="${getTranslation(h, "show_icon")}"><ha-switch class="si" checked></ha-switch></ha-formfield><ha-formfield label="${getTranslation(h, "show_last_changed")}"><ha-switch class="slc"></ha-switch></ha-formfield><ha-formfield label="${getTranslation(h, "visible")}"><ha-switch class="hd" checked></ha-switch></ha-formfield></div>
+        <div class="row sensor-only ${hideEntity}" style="margin-top:8px; align-items:center">
+          <ha-formfield label="${getTranslation(h, "show_sparkline")}"><ha-switch class="sps"></ha-switch></ha-formfield>
+          <ha-textfield class="sh" label="${getTranslation(h, "sparkline_hours")}" type="number" placeholder="24" style="max-width:100px"></ha-textfield>
+        </div>
         <div class="entity-only ${hideEntity}" style="margin-top:12px; border-top:1px solid var(--divider-color); padding-top:12px">
            <ha-textfield class="isz" label="${getTranslation(h, "icon_size")}" type="number" style="max-width:120px" placeholder="20"></ha-textfield>
            <ha-selector class="cm" label="${getTranslation(h, "control_mode")}"></ha-selector>
@@ -4636,6 +4847,12 @@ if (tmplSelect) {
         }
       }
       
+      const sensorOnly = box.querySelector(".sensor-only");
+      if (sensorOnly) {
+        const isSensor = ctrlDomain === "sensor";
+        sensorOnly.hidden = !isSensor;
+        sensorOnly.style.display = isSensor ? "" : "none";
+      }
       const lightOnly = box.querySelector(".light-only");
       if (lightOnly) {
         lightOnly.hidden = ctrlDomain !== "light";
@@ -4732,7 +4949,15 @@ if (tmplSelect) {
               rebuildSwatches();
             });
             addBtn.addEventListener("pointerdown", e => e.stopPropagation());
-            addBtn.addEventListener("click", e => { e.stopPropagation(); addPicker.click(); });
+            addBtn.addEventListener("click", e => {
+              e.stopPropagation();
+              if (typeof addPicker.showPicker === "function") {
+                addPicker.showPicker();
+              } else {
+                addPicker.click();
+              }
+            });
+            addPicker.addEventListener("click", e => e.stopPropagation());
             addWrap.appendChild(addPicker);
             addWrap.appendChild(addBtn);
             cfvContainer.appendChild(addWrap);
@@ -4948,6 +5173,30 @@ const tl = box.querySelector(".tl");
       const sl = box.querySelector(".sl"); sl.checked = ctrl.show_label !== false; sl.addEventListener("change", e => { e.stopPropagation(); upd("show_label", e.target.checked); });
       const si = box.querySelector(".si"); si.checked = ctrl.show_icon !== false; si.addEventListener("change", e => { e.stopPropagation(); upd("show_icon", e.target.checked); });
       const slc = box.querySelector(".slc"); if (slc) { slc.checked = ctrl.show_last_changed === true; slc.addEventListener("change", e => { e.stopPropagation(); upd("show_last_changed", e.target.checked); }); }
+      const sps = box.querySelector(".sps"); if (sps) { sps.checked = ctrl.show_sparkline === true; sps.addEventListener("change", e => {
+        e.stopPropagation();
+        const c = [...this._config.controls];
+        const next = { ...c[i] };
+        if (e.target.checked) next.show_sparkline = true; else delete next.show_sparkline;
+        c[i] = next;
+        keepOpen();
+        this._fire({ ...this._config, controls: c });
+      }); }
+      const sh = box.querySelector(".sh"); if (sh) {
+        sh.value = ctrl.sparkline_hours || "";
+        sh.addEventListener("change", e => {
+          e.stopPropagation();
+          const raw = trimStr(e.target.value || "");
+          const num = raw === "" ? undefined : Number(raw);
+          const c = [...this._config.controls];
+          const next = { ...c[i] };
+          if (Number.isFinite(num) && num > 0) next.sparkline_hours = Math.round(num);
+          else delete next.sparkline_hours;
+          c[i] = next;
+          keepOpen();
+          this._fire({ ...this._config, controls: c });
+        });
+      }
       const hd = box.querySelector(".hd"); hd.checked = !ctrl.hide; hd.addEventListener("change", e => { e.stopPropagation(); upd("hide", !e.target.checked); });
       const tap = box.querySelector(".tap");
       const tapNav = box.querySelector(".tap-nav");
