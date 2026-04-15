@@ -50,6 +50,7 @@ Developed with a focus on stability, simple design, and maximum flexibility.
 * 🎨 Custom icon map (`icon_map`) — per-state icon overrides
 * 📐 Configurable icon size — per button or global default
 * 🧼 Show/hide state, label, icon per button
+* 🕐 Time since last change — `show_last_changed: true` shows elapsed time on the button (e.g. "2h 15min"), combined with state as "on · 2h"
 * ↕️ Label position — Right / Left / Top / Bottom per button and global default
 * 👆 Configurable actions — Tap / Hold / Double Tap per button
 * 🧩 Action service payloads — `call-service` actions now support inline `service_data` JSON in the visual editor
@@ -130,6 +131,8 @@ covers all settings — no YAML required.
 | `climate_presets` | — | Temperature preset values |
 | `show_color_favorites` | `false` | Show light color favorite swatches |
 | `color_favorites` | — | List of `#hex` or `r,g,b` colors |
+| `show_state` | `true` | Show entity state text on button |
+| `show_last_changed` | `false` | Show elapsed time since last state change (e.g. `2h 15min`). Combined with `show_state` renders as `on · 2h`. Auto-refreshes every 60 s. |
 | `tap_action` | `more-info` | `toggle` · `more-info` · `none` |
 | `hold_action` | `toggle` | — |
 | `double_tap_action` | `none` | — |

@@ -23,6 +23,9 @@ All notable changes to OneLine Room Card are documented here.
 * Bugfix: **Editor Stability** — The editor re-render cycle has been completely reworked (config-signature comparison instead of fragile boolean flags), so complex editors like the conditions editor are no longer destroyed while editing.
 * Bugfix: **NOT Condition** — The NOT condition now correctly evaluates a `conditions` array (instead of a single `condition` object).
 * Runtime: **Color Temperature Slider for Kelvin-native lights** — `control_mode: slider` + `slider_mode: color_temp` now fully supports lights that expose `min_color_temp_kelvin` / `max_color_temp_kelvin`. The slider range, live Kelvin readout, service call, and gradient direction all work correctly for both Kelvin and legacy mired-based lights.
+* Runtime: **Time Since Last Change** — New per-button option `show_last_changed: true`. Displays the elapsed time since the entity last changed state directly on the button. Format: < 60 s → "just now", < 60 min → "12 min", < 24 h → "2h 15min", ≥ 24 h → "3d". When combined with `show_state: true`, both are shown as e.g. `on · 2h`. Auto-refreshes every 60 seconds. Closes [#61](https://github.com/lop1505/RoomCard/issues/61).
+* Editor UX: **"Last Changed" toggle** — New per-button toggle in the Buttons tab (alongside Show State / Show Label / Show Icon) to enable `show_last_changed` without editing YAML.
+* Runtime: **Card-Level Last Activity Badge** — New card-level option `show_card_last_activity: true`. Automatically finds the most recently changed entity among all button controls and displays the elapsed time as a badge in the header info line (e.g. "5 min", "2h 15min"). Updates every 60 s. Removed the now-redundant `last_activity_entity` / `last_activity_label` editor fields.
 
 ---
 

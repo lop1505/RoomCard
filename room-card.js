@@ -42,7 +42,7 @@ const TRANSLATIONS = {
     row_type: "Row Type", type_entity: "Entity", type_template: "Template",
     tmpl_content: "Content (Template)", tmpl_icon: "Icon (Template)", tmpl_color: "Color (Template)", tmpl_state: "State (Template)", tmpl_preview: "Preview",
     tmpl_light: "Light", tmpl_switch: "Switch / Socket", tmpl_climate: "Climate", tmpl_cover: "Cover / Shutter", tmpl_media: "Media Player",
-    show_state: "Show State", show_label: "Show Label", show_icon: "Show Icon", state_first: "State First", text_layout: "Text Order", primary_text: "First line", primary_state: "State / value first", primary_name: "Name first",
+    show_state: "Show State", show_label: "Show Label", show_icon: "Show Icon", show_last_changed: "Last Changed", lc_just_now: "just now", state_first: "State First", text_layout: "Text Order", primary_text: "First line", primary_state: "State / value first", primary_name: "Name first",
     height: "Height", width: "Width", align: "Align", visible: "Visible", left: "Left", center: "Center", right: "Right",
     tap_action: "Tap Action", hold_action: "Hold Action", double_tap_action: "Double Tap Action",
     actions: "Actions",
@@ -80,7 +80,8 @@ const TRANSLATIONS = {
     color_favorites_label: "Colors ('#hex' or 'r,g,b', comma-separated)",
     sub_chips: "Sub-Chips", chip_add: "Add Chip", chip_entity: "Entity", chip_attribute: "Attribute (optional)", chip_icon: "Icon (optional)", chip_label: "Label (optional)", chips_position: "Chip Position", chips_top: "Above title", chips_bottom: "Below title",
     vis_add: "Add Condition", vis_eq: "State is equal", vis_neq: "State is not equal", vis_above: "State is strictly greater than", vis_below: "State is strictly less than",
-    info_line_position: "Info Line Position", info_position_header: "Inside header (default)", info_position_below: "Below header"
+    info_line_position: "Info Line Position", info_position_header: "Inside header (default)", info_position_below: "Below header",
+    last_activity_title: "Last Activity", last_activity_show: "Show last activity"
   },
   de: {
     empty: "Leer", low: "Niedrig", critical: "Kritisch", window: "Fenster", general: "Allgemein",
@@ -112,7 +113,7 @@ const TRANSLATIONS = {
     row_type: "Zeilentyp", type_entity: "Entität", type_template: "Template",
     tmpl_content: "Text (Template)", tmpl_icon: "Icon (Template)", tmpl_color: "Farbe (Template)", tmpl_status: "Status (Template)", tmpl_preview: "Vorschau",
     tmpl_light: "Licht", tmpl_switch: "Schalter / Steckdose", tmpl_climate: "Klima", tmpl_cover: "Rollladen / Abdeckung", tmpl_media: "Media Player",
-    show_state: "Status anzeigen", show_label: "Bezeichnung anzeigen", show_icon: "Icon anzeigen", state_first: "Wert zuerst", text_layout: "Text-Reihenfolge", primary_text: "Erste Zeile", primary_state: "Wert zuerst", primary_name: "Name zuerst",
+    show_state: "Status anzeigen", show_label: "Bezeichnung anzeigen", show_icon: "Icon anzeigen", show_last_changed: "Letzte Änderung", lc_just_now: "gerade eben", state_first: "Wert zuerst", text_layout: "Text-Reihenfolge", primary_text: "Erste Zeile", primary_state: "Wert zuerst", primary_name: "Name zuerst",
     height: "Höhe", width: "Breite", align: "Ausrichtung", visible: "Sichtbar", left: "Links", center: "Mitte", right: "Rechts",
     tap_action: "Antippen", hold_action: "Gedrückt halten", double_tap_action: "Doppelklick",
     actions: "Aktionen",
@@ -154,7 +155,8 @@ const TRANSLATIONS = {
     color_favorites_label: "Farben ('#hex' oder 'r,g,b', kommagetrennt)",
     sub_chips: "Sub-Chips", chip_add: "Chip hinzufügen", chip_entity: "Entität", chip_attribute: "Attribut (optional)", chip_icon: "Icon (optional)", chip_label: "Bezeichnung (optional)", chips_position: "Chip-Position", chips_top: "Über dem Titel", chips_bottom: "Unter dem Titel",
     vis_add: "Bedingung hinzufügen", vis_eq: "Zustand ist gleich", vis_neq: "Zustand ist nicht gleich", vis_above: "Numerisch größer als", vis_below: "Numerisch kleiner als",
-    info_line_position: "Info-Zeile Position", info_position_header: "Im Header (Standard)", info_position_below: "Unter dem Header"
+    info_line_position: "Info-Zeile Position", info_position_header: "Im Header (Standard)", info_position_below: "Unter dem Header",
+    last_activity_title: "Letzte Aktivität", last_activity_show: "Letzte Aktivität anzeigen"
   },
   fr: {
     empty: "Vide", low: "Faible", critical: "Critique", window: "Fenêtre", general: "Général",
@@ -186,7 +188,7 @@ const TRANSLATIONS = {
     row_type: "Type de ligne", type_entity: "Entité", type_template: "Template",
     tmpl_content: "Contenu (Template)", tmpl_icon: "Icône (Template)", tmpl_color: "Couleur (Template)", tmpl_state: "État (Template)", tmpl_preview: "Aperçu",
     tmpl_light: "Lumière", tmpl_switch: "Interrupteur / Prise", tmpl_climate: "Climatisation", tmpl_cover: "Volet / Store", tmpl_media: "Lecteur multimédia",
-    show_state: "Afficher l'état", show_label: "Afficher le libellé", show_icon: "Afficher l’icône", state_first: "Valeur d'abord", text_layout: "Ordre du texte", primary_text: "Première ligne", primary_state: "Valeur d’abord", primary_name: "Nom d’abord",
+    show_state: "Afficher l’état", show_label: "Afficher le libellé", show_icon: "Afficher l’icône", show_last_changed: "Dernier changement", lc_just_now: "à l’instant", state_first: "Valeur d’abord", text_layout: "Ordre du texte", primary_text: "Première ligne", primary_state: "Valeur d’abord", primary_name: "Nom d’abord",
     height: "Hauteur", width: "Largeur", align: "Alignement", visible: "Visible", left: "Gauche", center: "Centre", right: "Droite",
     tap_action: "Appui court", hold_action: "Appui long", double_tap_action: "Double appui",
     actions: "Actions",
@@ -221,7 +223,8 @@ const TRANSLATIONS = {
     climate_presets_label: "Températures (séparées par virgule)",
     show_color_favorites: "Couleurs favorites",
     color_favorites_label: "Couleurs ('#hex' ou 'r,g,b', virgule)",
-    info_line_position: "Position ligne info", info_position_header: "Dans l'en-tête (défaut)", info_position_below: "Sous l'en-tête"
+    info_line_position: "Position ligne info", info_position_header: "Dans l'en-tête (défaut)", info_position_below: "Sous l'en-tête",
+    last_activity_title: "Dernière activité", last_activity_show: "Afficher la dernière activité"
   }
 };
 
@@ -475,6 +478,22 @@ const resolveTemplateCtrl = (ctrl, h) => {
 };
 
 // =============================================================================
+// LAST CHANGED HELPER
+// =============================================================================
+function formatLastChanged(lastChanged, hass) {
+  if (!lastChanged) return "";
+  const elapsedSec = Math.floor((Date.now() - new Date(lastChanged)) / 1000);
+  if (elapsedSec < 60) return getTranslation(hass, "lc_just_now");
+  const elapsedMin = Math.floor(elapsedSec / 60);
+  if (elapsedMin < 60) return `${elapsedMin} min`;
+  const elapsedHours = Math.floor(elapsedMin / 60);
+  const remMin = elapsedMin % 60;
+  if (elapsedHours < 24) return remMin > 0 ? `${elapsedHours}h ${remMin}min` : `${elapsedHours}h`;
+  const elapsedDays = Math.floor(elapsedHours / 24);
+  return `${elapsedDays}d`;
+}
+
+// =============================================================================
 // MAIN CARD CLASS
 // =============================================================================
 class OneLineRoomCard extends HTMLElement {
@@ -486,11 +505,16 @@ class OneLineRoomCard extends HTMLElement {
     this._lastRenderMetaSig = "";
     this._cachedEntityIds = null;
     this._activeTimers = new Set();
+    this._lastChangedInterval = null;
   }
 
   disconnectedCallback() {
     this._activeTimers.forEach(clearTimeout);
     this._activeTimers.clear();
+    if (this._lastChangedInterval) {
+      clearInterval(this._lastChangedInterval);
+      this._lastChangedInterval = null;
+    }
   }
 
   set hass(hass) {
@@ -522,6 +546,19 @@ class OneLineRoomCard extends HTMLElement {
     this._cachedEntityIds = null;
     if (!this.content) this.render();
     this.updateContent();
+    this._setupLastChangedInterval();
+  }
+
+  _setupLastChangedInterval() {
+    if (this._lastChangedInterval) {
+      clearInterval(this._lastChangedInterval);
+      this._lastChangedInterval = null;
+    }
+    const hasLastChanged = (this.config?.controls || []).some(c => c.show_last_changed === true);
+    const hasCardLastActivity = this.config?.show_card_last_activity === true;
+    if (hasLastChanged || hasCardLastActivity) {
+      this._lastChangedInterval = setInterval(() => { this.updateContent(); }, 60000);
+    }
   }
 
   getCardSize() {
@@ -828,13 +865,32 @@ class OneLineRoomCard extends HTMLElement {
       const unit = st.attributes.unit_of_measurement || "";
       const showBadgeName = badge.show_name !== false;
       const displayLabel = badge.label || st.attributes.friendly_name || badge.entity;
+      const isLastChanged = badge.show_last_changed === true && st.last_changed;
+      const displayVal = isLastChanged ? formatLastChanged(st.last_changed, h) : `${val}${unit ? " " + unit : ""}`;
       infoParts.push({
         text: showBadgeName
-          ? `${displayLabel}: ${val}${unit ? " " + unit : ""}`
-          : `${val}${unit ? " " + unit : ""}`,
+          ? `${displayLabel}${isLastChanged ? " · " : ": "}${displayVal}`
+          : displayVal,
         background: trimStr(badge.background) || standardHeaderBadgeBackground
       });
     });
+    if (c.show_card_last_activity === true) {
+      const controls = Array.isArray(c.controls) ? c.controls : [];
+      let latestChanged = null;
+      let latestTime = 0;
+      controls.forEach(ctrl => {
+        if (!ctrl?.entity) return;
+        const st = h.states[ctrl.entity];
+        if (!st?.last_changed) return;
+        const t = new Date(st.last_changed).getTime();
+        if (t > latestTime) { latestTime = t; latestChanged = st; }
+      });
+      if (latestChanged) {
+        const elapsed = formatLastChanged(latestChanged.last_changed, h);
+        infoParts.push({ text: elapsed, background: standardHeaderBadgeBackground });
+      }
+    }
+
     infoEl.replaceChildren();
     if (infoBarEl) infoBarEl.replaceChildren();
 
@@ -1274,7 +1330,14 @@ class OneLineRoomCard extends HTMLElement {
         : s);
     const showState = isTemplate ? ctrl.show_state === true : ctrl.show_state !== false;
     const showLabel = ctrl.show_label !== false;
-    const stateHtml = showState ? `<span class="btn-state">${stateText}</span>` : "";
+    const showLastChanged = ctrl.show_last_changed === true && !isTemplate && !!st?.last_changed;
+    const elapsedText = showLastChanged ? formatLastChanged(st.last_changed, h) : "";
+    const stateHtml = (() => {
+      if (showState && showLastChanged) return `<span class="btn-state">${stateText} · ${elapsedText}</span>`;
+      if (showState) return `<span class="btn-state">${stateText}</span>`;
+      if (showLastChanged) return `<span class="btn-state">${elapsedText}</span>`;
+      return "";
+    })();
     const labelHtml = showLabel ? `<span class="btn-name">${nameTxt}</span>` : "";
     const showIcon = ctrl.show_icon !== false;
     const stateFirst = ctrl.state_first === true;
@@ -2474,6 +2537,7 @@ connectedCallback() {
           </div>
         </div>
       </div>
+      </div>
       <div class="sec">
         <div id="header-sec-head" class="sec-head" style="cursor:pointer;user-select:none;padding:4px 0">
           <h3>${getTranslation(h, "header")}</h3>
@@ -2527,6 +2591,14 @@ connectedCallback() {
                  </div>
               </div>
             </div>
+
+            <div class="image-title" style="margin:12px 0 8px">${getTranslation(h, "last_activity_title")}</div>
+            <div class="row" style="margin-bottom: 8px; align-items:center;">
+              <ha-formfield label="${getTranslation(h, "last_activity_show")}">
+                <ha-switch id="hla-show"></ha-switch>
+              </ha-formfield>
+            </div>
+
 
             <div style="border-top:1px solid var(--divider-color);margin:16px 0 12px"></div>
             <div id="badges-list"></div>
@@ -3784,6 +3856,17 @@ if (tmplSelect) {
       };
     }
 
+    const hlaShow = content.querySelector("#hla-show");
+    if (hlaShow) {
+      hlaShow.checked = this._config?.show_card_last_activity === true;
+      hlaShow.addEventListener("change", (ev) => {
+        ev.stopPropagation();
+        const c = { ...this._config };
+        if (ev.target.checked) c.show_card_last_activity = true;
+        else delete c.show_card_last_activity;
+        this._fire(c);
+      });
+    }
     const list = content.querySelector("#badges-list");
     if (!list) return;
 
@@ -3834,7 +3917,7 @@ if (tmplSelect) {
       box.appendChild(ep);
 
       const labelRow = document.createElement("div");
-      labelRow.style.cssText = "position: relative; display:flex; align-items: flex-end; margin-bottom:8px;";
+      labelRow.style.cssText = "display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px;";
 
       const lf = document.createElement("ha-textfield");
       lf.label = getTranslation(h, "badge_label");
@@ -3847,18 +3930,32 @@ if (tmplSelect) {
       });
       labelRow.appendChild(lf);
 
-      const toggleWrap = document.createElement("div");
-      toggleWrap.style.cssText = "position: absolute; right: 8px; bottom: 28px; z-index: 1;";
+      const toggleRow = document.createElement("div");
+      toggleRow.style.cssText = "display: flex; gap: 16px; align-items: center; padding-left: 4px;";
+
+      const nameFormfield = document.createElement("ha-formfield");
+      nameFormfield.label = getTranslation(h, "show_name");
       const nameSwitch = document.createElement("ha-switch");
       nameSwitch.checked = badge.show_name !== false;
-      nameSwitch.title = getTranslation(h, "show_name");
-      nameSwitch.style.cssText = "transform: scale(0.8); cursor: pointer;";
       nameSwitch.addEventListener("change", (ev) => {
         ev.stopPropagation();
         updBadge(idx, "show_name", ev.target.checked !== false);
       });
-      toggleWrap.appendChild(nameSwitch);
-      labelRow.appendChild(toggleWrap);
+      nameFormfield.appendChild(nameSwitch);
+      toggleRow.appendChild(nameFormfield);
+
+      const lcFormfield = document.createElement("ha-formfield");
+      lcFormfield.label = getTranslation(h, "show_last_changed");
+      const lcSwitch = document.createElement("ha-switch");
+      lcSwitch.checked = badge.show_last_changed === true;
+      lcSwitch.addEventListener("change", (ev) => {
+        ev.stopPropagation();
+        updBadge(idx, "show_last_changed", ev.target.checked === true);
+      });
+      lcFormfield.appendChild(lcSwitch);
+      toggleRow.appendChild(lcFormfield);
+
+      labelRow.appendChild(toggleRow);
       box.appendChild(labelRow);
 
       const bgRow = document.createElement("div");
@@ -3996,6 +4093,7 @@ if (tmplSelect) {
     if (!this._config?.controls) return;
     const div = this.shadowRoot.getElementById("b"); if (!div) return;
     const h = this._hass;
+    if (!h) return;
     this._syncControlIds();
     const actOpts = [
       { value: "more-info", label: getTranslation(h, "act_more") || "Details (Default)" },
@@ -4084,7 +4182,7 @@ if (tmplSelect) {
           <ha-textfield class="ts" label="${getTranslation(h, "tmpl_state")}"></ha-textfield>
           <div class="tmpl-preview"><span>${getTranslation(h, "tmpl_preview")}:</span> <ha-icon class="tp-ic"></ha-icon> <span class="tp-tx"></span></div>
         </details>
-        <div class="row" style="margin-top:8px; align-items:center"><ha-selector class="al" label="${getTranslation(h, "align")}"></ha-selector><ha-selector class="lp" label="${getTranslation(h, "label_position")}"></ha-selector><ha-selector class="tl" label="${getTranslation(h, "text_layout")}"></ha-selector><ha-formfield label="${getTranslation(h, "show_state")}"><ha-switch class="ss" checked></ha-switch></ha-formfield><ha-formfield label="${getTranslation(h, "show_label")}"><ha-switch class="sl" checked></ha-switch></ha-formfield><ha-formfield label="${getTranslation(h, "show_icon")}"><ha-switch class="si" checked></ha-switch></ha-formfield><ha-formfield label="${getTranslation(h, "visible")}"><ha-switch class="hd" checked></ha-switch></ha-formfield></div>
+        <div class="row" style="margin-top:8px; align-items:center"><ha-selector class="al" label="${getTranslation(h, "align")}"></ha-selector><ha-selector class="lp" label="${getTranslation(h, "label_position")}"></ha-selector><ha-selector class="tl" label="${getTranslation(h, "text_layout")}"></ha-selector><ha-formfield label="${getTranslation(h, "show_state")}"><ha-switch class="ss" checked></ha-switch></ha-formfield><ha-formfield label="${getTranslation(h, "show_label")}"><ha-switch class="sl" checked></ha-switch></ha-formfield><ha-formfield label="${getTranslation(h, "show_icon")}"><ha-switch class="si" checked></ha-switch></ha-formfield><ha-formfield label="${getTranslation(h, "show_last_changed")}"><ha-switch class="slc"></ha-switch></ha-formfield><ha-formfield label="${getTranslation(h, "visible")}"><ha-switch class="hd" checked></ha-switch></ha-formfield></div>
         <div class="entity-only ${hideEntity}" style="margin-top:12px; border-top:1px solid var(--divider-color); padding-top:12px">
            <ha-textfield class="isz" label="${getTranslation(h, "icon_size")}" type="number" style="max-width:120px" placeholder="20"></ha-textfield>
            <ha-selector class="cm" label="${getTranslation(h, "control_mode")}"></ha-selector>
@@ -4109,8 +4207,6 @@ if (tmplSelect) {
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
             <ha-formfield label="${getTranslation(h, "show_climate_presets")}"><ha-switch class="sctp"></ha-switch></ha-formfield>
             <ha-textfield class="ctpv" label="${getTranslation(h, "climate_presets_label")}" placeholder="0, 18, 20, auto, max" style="flex:1;min-width:160px"></ha-textfield>
-          </div>
-        </div>
           </div>
         </div>
         <div class="entity-only ${hideEntity}" style="margin-top:8px; border-top:1px solid var(--divider-color); padding-top:8px">
@@ -4730,6 +4826,7 @@ const tl = box.querySelector(".tl");
       const ss = box.querySelector(".ss"); ss.checked = ctrl.show_state !== false; ss.addEventListener("change", e => { e.stopPropagation(); upd("show_state", e.target.checked); });
       const sl = box.querySelector(".sl"); sl.checked = ctrl.show_label !== false; sl.addEventListener("change", e => { e.stopPropagation(); upd("show_label", e.target.checked); });
       const si = box.querySelector(".si"); si.checked = ctrl.show_icon !== false; si.addEventListener("change", e => { e.stopPropagation(); upd("show_icon", e.target.checked); });
+      const slc = box.querySelector(".slc"); if (slc) { slc.checked = ctrl.show_last_changed === true; slc.addEventListener("change", e => { e.stopPropagation(); upd("show_last_changed", e.target.checked); }); }
       const hd = box.querySelector(".hd"); hd.checked = !ctrl.hide; hd.addEventListener("change", e => { e.stopPropagation(); upd("hide", !e.target.checked); });
       const tap = box.querySelector(".tap");
       const tapNav = box.querySelector(".tap-nav");
@@ -5075,6 +5172,11 @@ const cm = box.querySelector(".cm");
       const isColld = this._config?.default_state === "collapsed";
       const v = !isColl ? "fixed" : (!noRem ? "remember" : (isColld ? "collapsed" : "expanded"));
       if (behaviorSel.value !== v) behaviorSel.value = v;
+    }
+    const hlaShow = this.shadowRoot.getElementById("hla-show");
+    if (hlaShow) {
+      const v = this._config?.show_card_last_activity === true;
+      if (hlaShow.checked !== v) hlaShow.checked = v;
     }
     ["name", "info"].forEach(type => {
       const weightSel = this.shadowRoot.getElementById(`header-${type}-weight-sel`);
