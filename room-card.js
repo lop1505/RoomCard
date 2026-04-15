@@ -65,6 +65,7 @@ const TRANSLATIONS = {
     header: "Header", configuration: "Configuration",
     color_map: "State Colors", color_map_add: "Add State Color", color_map_state: "State",
     window_always_show: "Always Show (incl. closed)", window_open_color: "Open Color", window_closed_color: "Closed Color",
+    window_open_states: "Open States (comma-separated)", window_state_colors: "State Colors", window_state_colors_add: "Add State Color",
     sensors: "Sensors",
     icon_size: "Icon Size", global_icon_size: "Global Icon Size (px)",
     header_info_offset: "Info Line Position",
@@ -140,6 +141,7 @@ const TRANSLATIONS = {
     header: "Header", configuration: "Konfiguration",
     color_map: "Zustandsfarben", color_map_add: "Farbe hinzufügen", color_map_state: "Zustand",
     window_always_show: "Immer anzeigen (auch geschlossen)", window_open_color: "Farbe geöffnet", window_closed_color: "Farbe geschlossen",
+    window_open_states: "Geöffnete Zustände (kommagetrennt)", window_state_colors: "Zustandsfarben", window_state_colors_add: "Farbe hinzufügen",
     sensors: "Sensoren",
     icon_size: "Icon-Größe", global_icon_size: "Globale Icon-Größe (px)",
     header_info_offset: "Info-Zeile Position",
@@ -210,6 +212,7 @@ const TRANSLATIONS = {
     header: "En-tête", configuration: "Configuration",
     color_map: "Couleurs par état", color_map_add: "Ajouter couleur", color_map_state: "État",
     window_always_show: "Toujours afficher (incl. fermé)", window_open_color: "Couleur ouvert", window_closed_color: "Couleur fermé",
+    window_open_states: "États ouverts (séparés par virgule)", window_state_colors: "Couleurs par état", window_state_colors_add: "Ajouter couleur",
     sensors: "Capteurs",
     icon_size: "Taille icône", global_icon_size: "Taille icône globale (px)",
     header_info_offset: "Position ligne info",
@@ -948,12 +951,21 @@ class OneLineRoomCard extends HTMLElement {
     const windowAlwaysShow = c.window_always_show === true;
     const windowOpenColor = trimStr(c.window_open_color) || "#FFA000";
     const windowClosedColor = trimStr(c.window_closed_color) || "#9E9E9E";
+    // Configurable open states — "on" is always included for backward compatibility
+    const windowOpenStates = Array.isArray(c.window_open_states) && c.window_open_states.length > 0
+      ? [...new Set(["on", ...c.window_open_states.map(s => String(s).toLowerCase().trim())])]
+      : ["on", "open"];
+    // Optional per-state color overrides (object: { stateName: "#color" })
+    const windowStateColors = (c.window_state_colors && typeof c.window_state_colors === "object") ? c.window_state_colors : {};
     (Array.isArray(effectiveWindowSensors) ? effectiveWindowSensors : []).forEach(s => {
       const st = h.states[s];
       if (!st) return;
-      const isOpen = isEntityOn(st);
+      const stateVal = String(st.state).toLowerCase().trim();
+      const isOpen = windowOpenStates.includes(stateVal);
       if (!isOpen && !windowAlwaysShow) return;
-      const chipColor = isOpen ? windowOpenColor : windowClosedColor;
+      // Per-state color override takes priority, then open/closed default
+      const perStateColor = windowStateColors[st.state] || windowStateColors[stateVal];
+      const chipColor = perStateColor || (isOpen ? windowOpenColor : windowClosedColor);
       const isHex = /^#[0-9A-F]{6}$/i.test(chipColor);
       const chipBg = isHex ? chipColor + "33" : `color-mix(in srgb, ${chipColor} 20%, transparent)`;
       const icon = isOpen ? "mdi:window-open-variant" : "mdi:window-shutter";
@@ -2751,10 +2763,18 @@ connectedCallback() {
                  </div>
                  <div class="cp-preview">
                     <div></div>
-                    <input type="color" id="window-closed-color-picker" class="cl-p i" cfg="window_closed_color" title="${getTranslation(h, "color")}" 
+                    <input type="color" id="window-closed-color-picker" class="cl-p i" cfg="window_closed_color" title="${getTranslation(h, "color")}"
                            style="position: absolute; inset: 0; opacity: 0; cursor: pointer; border: none; padding: 0; width: 100%; height: 100%;">
                  </div>
               </div>
+            </div>
+            <ha-textfield id="window-open-states" label="${getTranslation(h, "window_open_states")}" placeholder="on, open, tilted" style="width:100%;margin-top:8px"></ha-textfield>
+            <div id="window-state-colors-section" style="margin-top:8px">
+              <div class="tmpl-label" style="font-size:11px;font-weight:600;opacity:0.6;margin-bottom:6px">${getTranslation(h, "window_state_colors")}</div>
+              <div id="window-state-colors-list"></div>
+              <mwc-button id="window-state-colors-add" raised label="${getTranslation(h, "window_state_colors_add")}">
+                <ha-icon icon="mdi:plus" slot="icon"></ha-icon>
+              </mwc-button>
             </div>
             <div style="border-top:1px solid var(--divider-color);margin:10px 0 8px"></div>
             <div class="image-title" style="font-size:11px;font-weight:600;opacity:0.6;margin-bottom:6px">${getTranslation(h, "battery_label")}</div>
@@ -2937,7 +2957,7 @@ connectedCallback() {
 
     this.shadowRoot.querySelectorAll(".i").forEach(e => {
       const k = e.getAttribute("cfg");
-      if (k === "window_sensors") e.selector = { entity: { domain: "binary_sensor", device_class: ["window", "door", "garage_door"], multiple: true } };
+      if (k === "window_sensors") e.selector = { entity: { domain: ["binary_sensor", "sensor"], multiple: true } };
       else if (k === "battery_sensors") e.selector = { entity: { device_class: "battery", multiple: true } };
       if (this._hass) e.hass = this._hass;
       const evType = (e.localName === "ha-textfield" || e.localName === "input") ? "change" : "value-changed";
@@ -3032,6 +3052,107 @@ connectedCallback() {
         const val = ev.target.value;
         this._fire({ ...this._config, window_closed_color: val });
         if (windowClosedColorField) windowClosedColorField.value = val;
+      });
+    }
+    // window_open_states text field (comma-separated)
+    const windowOpenStatesField = this.shadowRoot.getElementById("window-open-states");
+    if (windowOpenStatesField) {
+      const currentStates = Array.isArray(this._config?.window_open_states)
+        ? this._config.window_open_states.join(", ")
+        : (this._config?.window_open_states || "");
+      windowOpenStatesField.value = currentStates;
+      windowOpenStatesField.addEventListener("change", (ev) => {
+        ev.stopPropagation();
+        const raw = ev.target.value.trim();
+        const next = { ...this._config };
+        if (raw) {
+          const arr = raw.split(",").map(s => s.trim()).filter(Boolean);
+          next.window_open_states = arr;
+        } else {
+          delete next.window_open_states;
+        }
+        this._fire(next);
+      });
+    }
+    // window_state_colors dynamic section
+    const renderWindowStateColors = () => {
+      const list = this.shadowRoot.getElementById("window-state-colors-list");
+      if (!list) return;
+      list.innerHTML = "";
+      const colorMap = (this._config?.window_state_colors && typeof this._config.window_state_colors === "object")
+        ? this._config.window_state_colors : {};
+      Object.entries(colorMap).forEach(([state, color]) => {
+        const row = document.createElement("div");
+        row.className = "cl-row";
+        row.style.cssText = "margin-bottom:6px;align-items:center;";
+        const stateField = document.createElement("ha-textfield");
+        stateField.label = getTranslation(h, "color_map_state");
+        stateField.value = state;
+        stateField.style.cssText = "flex:1;margin-bottom:0;";
+        stateField.addEventListener("change", (ev) => {
+          ev.stopPropagation();
+          const newKey = ev.target.value.trim();
+          const newMap = { ...(this._config?.window_state_colors || {}) };
+          const colorVal = newMap[state] ?? color;
+          delete newMap[state];
+          if (newKey) newMap[newKey] = colorVal;
+          const next = { ...this._config };
+          if (Object.keys(newMap).length > 0) next.window_state_colors = newMap; else delete next.window_state_colors;
+          this._fire(next);
+          renderWindowStateColors();
+        });
+        const colorField = document.createElement("ha-textfield");
+        colorField.label = getTranslation(h, "color");
+        colorField.value = color;
+        colorField.style.cssText = "flex:1;margin-bottom:0;margin-left:6px;";
+        colorField.addEventListener("change", (ev) => {
+          ev.stopPropagation();
+          const newMap = { ...(this._config?.window_state_colors || {}) };
+          newMap[state] = ev.target.value;
+          this._fire({ ...this._config, window_state_colors: newMap });
+          if (cmPicker) cmPicker.value = parseColorToPickerHex(ev.target.value);
+        });
+        const cmPicker = document.createElement("input");
+        cmPicker.type = "color";
+        cmPicker.className = "cl-p";
+        cmPicker.value = parseColorToPickerHex(color || "#ffffff");
+        cmPicker.style.cssText = "margin-left:6px;";
+        cmPicker.title = getTranslation(h, "color");
+        cmPicker.addEventListener("change", (ev) => {
+          ev.stopPropagation();
+          const newMap = { ...(this._config?.window_state_colors || {}) };
+          newMap[state] = ev.target.value;
+          this._fire({ ...this._config, window_state_colors: newMap });
+          colorField.value = ev.target.value;
+        });
+        const delBtn = document.createElement("button");
+        delBtn.type = "button";
+        delBtn.className = "badge-del-btn";
+        delBtn.innerHTML = `<ha-icon icon="mdi:delete-outline"></ha-icon>`;
+        delBtn.addEventListener("click", (ev) => {
+          ev.stopPropagation();
+          const newMap = { ...(this._config?.window_state_colors || {}) };
+          delete newMap[state];
+          const next = { ...this._config };
+          if (Object.keys(newMap).length > 0) next.window_state_colors = newMap; else delete next.window_state_colors;
+          this._fire(next);
+          renderWindowStateColors();
+        });
+        row.appendChild(stateField); row.appendChild(colorField); row.appendChild(cmPicker); row.appendChild(delBtn);
+        list.appendChild(row);
+      });
+    };
+    renderWindowStateColors();
+    const windowStateColorsAddBtn = this.shadowRoot.getElementById("window-state-colors-add");
+    if (windowStateColorsAddBtn) {
+      windowStateColorsAddBtn.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        const newMap = { ...(this._config?.window_state_colors || {}) };
+        let newKey = "state"; let idx = 1;
+        while (newKey in newMap) { newKey = `state${idx++}`; }
+        newMap[newKey] = "#ffffff";
+        this._fire({ ...this._config, window_state_colors: newMap });
+        renderWindowStateColors();
       });
     }
     const badgesHead = this.shadowRoot.getElementById("badges-head");

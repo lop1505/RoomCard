@@ -110,10 +110,12 @@ covers all settings — no YAML required.
 | `target_temp_sensor` | — | Target temperature sensor |
 | `humid_sensor` | — | Humidity sensor (overrides climate) |
 | `humidity_warning_threshold` | `60` | Humidity warning threshold (%) |
-| `window_sensors` | — | List of window/door binary sensors |
+| `window_sensors` | — | List of window/door sensors (`binary_sensor` or `sensor` domain) |
 | `window_always_show` | `false` | Show chip even when closed |
 | `window_open_color` | `#FFA000` | Chip color when open |
 | `window_closed_color` | `#9E9E9E` | Chip color when closed |
+| `window_open_states` | `["on","open"]` | List of state values treated as "open" (e.g. `["offen","gekippt"]` for custom sensors). `on` is always included automatically for backward compatibility. |
+| `window_state_colors` | — | Per-state color overrides, e.g. `{ offen: "#FFA000", gekippt: "#FFD740" }` |
 | `battery_sensors` | — | List of battery sensors |
 
 #### Buttons (`controls`)
