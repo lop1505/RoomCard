@@ -119,6 +119,7 @@ covers all settings — no YAML required.
 | `window_open_states` | `["on","open"]` | List of state values treated as "open" (e.g. `["offen","gekippt"]` for custom sensors). `on` is always included automatically for backward compatibility. |
 | `window_state_colors` | — | Per-state color overrides, e.g. `{ offen: "#FFA000", gekippt: "#FFD740" }` |
 | `alert_sensors` | — | List of alert sensors. Use strings for simple state-based alerts, or object entries for threshold-based alerts (`above`, `below`, `min`, `max`, `state`). |
+| `alert_chip_mode` | `expanded` | Display mode for active alert sensors: `expanded` (show individual chips) or `collapsed` (show count badge, click to see all). |
 | `alert_border_color` | `#d32f2f` | Border color used when an alert sensor is active. |
 | `battery_sensors` | — | List of battery sensors |
 

@@ -923,6 +923,12 @@ class OneLineRoomCard extends HTMLElement {
       }
     });
     (Array.isArray(cfg.header_badges) ? cfg.header_badges : []).forEach((b) => add(b?.entity));
+
+    // Add problem entities for monitoring
+    if (cfg.problem_detection !== "off") {
+      (Array.isArray(cfg.problem_entities) ? cfg.problem_entities : []).forEach(add);
+    }
+
     return Array.from(ids);
   }
 
@@ -1194,17 +1200,40 @@ class OneLineRoomCard extends HTMLElement {
       .map(s => this._normalizeAlertSensorConfig(s))
       .filter(Boolean);
     let alertSensorWarn = false;
+    const activeAlerts = [];
+
     normalizedAlertSensors.forEach(cfg => {
       const st = h.states[cfg.entity];
       if (!st) return;
       if (this._isAlertSensorActive(cfg, st)) {
         alertSensorWarn = true;
-        // Fügt den Chip auf der Karte hinzu, wenn der Alarm-Sensor auslöst
         const label = st.attributes.friendly_name || cfg.entity;
         const icon = st.attributes.icon || "mdi:alert-circle-outline";
-        ch.innerHTML += `<div class="chip alert"><ha-icon icon="${icon}" style="--mdc-icon-size:14px"></ha-icon> ${label}</div>`;
+        activeAlerts.push({
+          entity_id: cfg.entity,
+          friendly_name: label,
+          icon: icon,
+          state: st.state
+        });
       }
     });
+
+    // Render alerts: either collapsed (count badge) or expanded (individual chips)
+    const alertChipMode = c.alert_chip_mode || "expanded";
+    if (alertChipMode === "collapsed" && activeAlerts.length > 0) {
+      // Show only count badge
+      const chip = document.createElement("div");
+      chip.className = "chip alert";
+      chip.innerHTML = `<ha-icon icon="mdi:alert" style="--mdc-icon-size:14px"></ha-icon> ${activeAlerts.length}`;
+      chip.style.cursor = "pointer";
+      chip.addEventListener("click", () => this._showAlertDialog(activeAlerts));
+      ch.appendChild(chip);
+    } else if (alertChipMode === "expanded" && activeAlerts.length > 0) {
+      // Show individual chips
+      activeAlerts.forEach(alert => {
+        ch.innerHTML += `<div class="chip alert"><ha-icon icon="${alert.icon}" style="--mdc-icon-size:14px"></ha-icon> ${alert.friendly_name}</div>`;
+      });
+    }
     // Configurable open states — "on" is always included for backward compatibility
     const windowOpenStates = Array.isArray(c.window_open_states) && c.window_open_states.length > 0
       ? [...new Set(["on", ...c.window_open_states.map(s => String(s).toLowerCase().trim())])]
@@ -1381,6 +1410,173 @@ class OneLineRoomCard extends HTMLElement {
     };
     apply();
     requestAnimationFrame(() => requestAnimationFrame(apply));
+  }
+
+  _showAlertDialog(alerts) {
+    // Create dialog element
+    const dialog = document.createElement("div");
+    dialog.className = "alert-dialog-container";
+    dialog.innerHTML = `
+      <div class="alert-dialog-backdrop"></div>
+      <div class="alert-dialog">
+        <div class="alert-dialog-header">
+          <h2>Active Alerts</h2>
+          <button class="alert-dialog-close" aria-label="Close">✕</button>
+        </div>
+        <div class="alert-dialog-content">
+          <div class="alert-entity-list">
+            ${alerts.map(alert => `
+              <div class="alert-entity-row" data-entity="${alert.entity_id}">
+                <ha-icon icon="${alert.icon}" style="color: #FF5252 !important; --mdc-icon-size: 24px;"></ha-icon>
+                <span class="alert-entity-name">${alert.friendly_name}</span>
+                <span class="alert-entity-state">${alert.state}</span>
+              </div>
+            `).join("")}
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Add styles
+    const style = document.createElement("style");
+    style.textContent = `
+      .alert-dialog-container {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .alert-dialog-backdrop {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        cursor: pointer;
+      }
+      .alert-dialog {
+        position: relative;
+        z-index: 10001;
+        background: var(--ha-card-background, white);
+        border-radius: 12px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+        max-height: 80vh;
+        width: 90%;
+        max-width: 400px;
+        display: flex;
+        flex-direction: column;
+      }
+      .alert-dialog-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+      }
+      .alert-dialog-header h2 {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 600;
+      }
+      .alert-dialog-close {
+        background: none;
+        border: none;
+        font-size: 24px;
+        cursor: pointer;
+        color: var(--primary-text-color, #000);
+        padding: 0;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .alert-dialog-close:hover {
+        background: rgba(0, 0, 0, 0.05);
+        border-radius: 4px;
+      }
+      .alert-dialog-content {
+        flex: 1;
+        overflow-y: auto;
+        padding: 0;
+      }
+      .alert-entity-list {
+        display: flex;
+        flex-direction: column;
+      }
+      .alert-entity-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 16px;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        cursor: pointer;
+        transition: background-color 0.15s;
+      }
+      .alert-entity-row:last-child {
+        border-bottom: none;
+      }
+      .alert-entity-row:hover {
+        background-color: rgba(0, 0, 0, 0.03);
+      }
+      .alert-entity-icon {
+        flex-shrink: 0;
+        color: #FF5252 !important;
+        --mdc-icon-size: 24px;
+      }
+      .alert-entity-name {
+        flex: 1;
+        font-weight: 500;
+        color: var(--primary-text-color);
+      }
+      .alert-entity-state {
+        font-size: 12px;
+        color: var(--secondary-text-color, #888);
+        text-transform: capitalize;
+      }
+    `;
+    dialog.appendChild(style);
+
+    // Add to shadow root
+    this.shadowRoot.appendChild(dialog);
+
+    // Event listeners
+    const closeBtn = dialog.querySelector(".alert-dialog-close");
+    const backdrop = dialog.querySelector(".alert-dialog-backdrop");
+
+    const closeDialog = () => {
+      dialog.remove();
+    };
+
+    closeBtn.addEventListener("click", closeDialog);
+    backdrop.addEventListener("click", closeDialog);
+
+    // Escape key handler
+    const handleEscape = (e) => {
+      if (e.key === "Escape") {
+        closeDialog();
+        document.removeEventListener("keydown", handleEscape);
+      }
+    };
+    document.addEventListener("keydown", handleEscape);
+
+    // Entity row click handlers
+    dialog.querySelectorAll(".alert-entity-row").forEach(row => {
+      row.addEventListener("click", () => {
+        const entityId = row.dataset.entity;
+        if (entityId && this._hass) {
+          this._fireAction("more-info", { entity: entityId });
+        }
+        closeDialog();
+        document.removeEventListener("keydown", handleEscape);
+      });
+    });
   }
 
   _checkConditions(conditions, h) {
@@ -3080,6 +3276,10 @@ connectedCallback() {
               <mwc-button id="alert-sensors-add" raised label="${getTranslation(h, "alert_sensor_add")}">
                 <ha-icon icon="mdi:plus" slot="icon"></ha-icon>
               </mwc-button>
+              <div style="margin-top:12px;padding:8px;background:rgba(0,0,0,0.1);border-radius:6px;display:flex;align-items:center;justify-content:space-between">
+                <div style="font-size:12px;font-weight:500">Show as badges (collapsed)</div>
+                <ha-switch id="alert-chip-mode-toggle"></ha-switch>
+              </div>
             </div>
             <div id="alert-border-color-row" style="position: relative; display: flex; align-items: flex-end; margin-top: 8px;">
               <ha-textfield label="${getTranslation(h, "alert_border_color")}" id="alert-border-color" cfg="alert_border_color" style="width: 100%"></ha-textfield>
@@ -3640,6 +3840,18 @@ connectedCallback() {
     }
 
     renderAlertSensors();
+
+    // Alert Chip Mode toggle
+    const alertChipModeToggle = this.shadowRoot.getElementById("alert-chip-mode-toggle");
+    if (alertChipModeToggle) {
+      const isCollapsed = this._config?.alert_chip_mode === "collapsed";
+      alertChipModeToggle.checked = isCollapsed;
+      alertChipModeToggle.addEventListener("change", (e) => {
+        const mode = e.target.checked ? "collapsed" : "expanded";
+        this._fire({ ...this._config, alert_chip_mode: mode });
+      });
+    }
+
     const badgesHead = this.shadowRoot.getElementById("badges-head");
     if (badgesHead) {
       badgesHead.addEventListener("click", () => {
