@@ -25,6 +25,7 @@ Developed with a focus on stability, simple design, and maximum flexibility.
 * 🖼️ Built-in image uploader — upload room backgrounds directly in the editor
 * 🧭 Quick Add — add buttons from existing entity types in one click
 * 🖱️ Drag & drop reordering, bulk expand/collapse, collapsible button entries
+* ⚡ **Area-Based Auto-Setup** — bind a card to a Home Assistant area to automatically populate all controls, climate, sensors, and batteries in seconds
 
 **Header**
 * 🌡️ Smart climate integration — temperature, humidity and target temp auto-populated
@@ -91,6 +92,7 @@ covers all settings — no YAML required.
 | Option | Default | Description |
 |---|---|---|
 | `name` | — | Room name |
+| `area` | — | **[Auto-Setup]** Home Assistant Area ID to auto-populate controls and sensors |
 | `entity` | — | Main entity (drives header icon color) |
 | `image` | — | Header background image URL |
 | `header_height` | `120` | Header image height in px (`0` = hidden) |
@@ -133,6 +135,31 @@ alert_sensors:
     below: 25
   - entity: binary_sensor.door
     state: open
+```
+
+## ⚡ Area-Based Auto-Setup
+
+The card can be **rapidly configured from a Home Assistant Area** without manual entity selection. Bind the card to an area, and it automatically populates:
+
+- **Controls** — all controllable entities (lights, switches, covers, fans, media players, locks) in preferred domain order
+- **Climate Entity** — main thermostat/climate device from the area
+- **Temperature/Humidity Sensors** — auto-discovered from climate attributes or sensor entities
+- **Window/Door Sensors** — all `binary_sensor` and `sensor` entities with `device_class: window` or `device_class: door`
+- **Battery Sensors** — all entities with `device_class: battery`
+
+**How to use:**
+1. In the editor, navigate to **Configuration** → **Area Setup**
+2. Select the Home Assistant Area (e.g., "Living Room")
+3. Click **"Generate from Area"**
+4. The card auto-populates with all relevant entities
+
+After generation, you can manually adjust or remove any auto-populated items. The `area` field is purely an editor-time convenience and does not lock the config to future area changes.
+
+```yaml
+# Minimal setup example
+type: custom:oneline-room-card
+# Area auto-setup will populate the rest:
+area: living_room
 ```
 
 #### Buttons (`controls`)

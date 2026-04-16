@@ -164,7 +164,7 @@ const TRANSLATIONS = {
     info_line_position: "Info-Zeile Position", info_position_header: "Im Header (Standard)", info_position_below: "Unter dem Header",
     last_activity_title: "Letzte Aktivität", last_activity_show: "Letzte Aktivität anzeigen",
     presence_sensor: "Anwesenheits-Sensor (Bewegung/Person)", presence_detected: "Anwesend", image_entity: "Licht-Entität (für Graustufen-Effekt)",
-    area_setup: "Flächen-Setup", area_setup_desc: "Steuern und Sensoren automatisch aus Flächenentitäten einbinden", area_picker: "Home Assistant Fläche", area_generate: "Aus Fläche generieren", area_no_entities: "Keine Entitäten in dieser Fläche gefunden"
+    area_setup: "Bereich-Setup", area_setup_desc: "Steuern und Sensoren automatisch aus dem Bereich einbinden", area_picker: "Home Assistant Bereich", area_generate: "Aus Bereich generieren", area_no_entities: "Keine Entitäten in diesem Bereich gefunden"
   },
   fr: {
     empty: "Vide", low: "Faible", critical: "Critique", window: "Fenêtre", general: "Général",
@@ -2811,11 +2811,21 @@ connectedCallback() {
   async _getAreaEntities(areaId) {
     if (!this._hass || !areaId) return [];
     try {
-      const entries = await this._hass.callWS({ type: "config/entity_registry/list" });
-      const areaEntries = (Array.isArray(entries) ? entries : []).filter(
-        (e) => e.area_id === areaId && !e.disabled_by
+      // Get all devices in the area
+      const devices = await this._hass.callWS({ type: "config/device_registry/list" });
+      const areaDevices = (Array.isArray(devices) ? devices : []).filter(
+        (d) => d.area_id === areaId && !d.disabled_by
       );
-      return areaEntries;
+
+      const deviceIds = new Set(areaDevices.map(d => d.id));
+
+      // Get all entities and filter by device_id or direct area_id
+      const entries = await this._hass.callWS({ type: "config/entity_registry/list" });
+
+      const areaEntities = (Array.isArray(entries) ? entries : []).filter(
+        (e) => !e.disabled_by && (e.area_id === areaId || deviceIds.has(e.device_id))
+      );
+      return areaEntities;
     } catch (err) {
       console.error("Error fetching area entities:", err);
       return [];
@@ -2942,6 +2952,16 @@ connectedCallback() {
   }
 
 
+  _ensureAreaOptions() {
+  const areaPicker = this.shadowRoot?.getElementById("area-picker");
+  if (!areaPicker) return;
+  areaPicker.hass = this._hass;
+  if (!areaPicker.selector) {
+    areaPicker.selector = { area: {} };
+  }
+}
+
+  async _ensureNavOptions() {
     if (!this._hass || this._navOptionsLoaded) return;
     this._navOptionsLoaded = true;
     try {
@@ -3014,7 +3034,7 @@ connectedCallback() {
     if (!this._config) return;
     const alreadyRendered = !!this.shadowRoot.innerHTML;
     const domVersion = this.shadowRoot.querySelector("[data-rc-version]")?.dataset?.rcVersion;
-    if (alreadyRendered && domVersion === VERSION) { this.updVal(); if (JSON.stringify(this._config?.controls || []) !== this._lastRenderedControlsSig) this.renBtn(); this._applyNavSelectorOptions(); this._ensureNavOptions(); this._updateAreaSetupUI(); this._updateSensorsSectionUI(); this._updateImageSectionUI(); this._updateBadgesUI(); this._updateTypographyUI(); this._updateCardBehaviorUI(); this._updateActionsSectionUI(); this._updateHeaderSectionUI(); this._updateTabUI(); return; }
+    if (alreadyRendered && domVersion === VERSION) { this.updVal(); if (JSON.stringify(this._config?.controls || []) !== this._lastRenderedControlsSig) this.renBtn(); this._applyNavSelectorOptions(); this._ensureNavOptions(); this._ensureAreaOptions(); this._updateAreaSetupUI(); this._updateSensorsSectionUI(); this._updateImageSectionUI(); this._updateBadgesUI(); this._updateTypographyUI(); this._updateCardBehaviorUI(); this._updateActionsSectionUI(); this._updateHeaderSectionUI(); this._updateTabUI(); return; }
     
     this.shadowRoot.innerHTML = "";
     const h = this._hass;
@@ -3566,10 +3586,11 @@ connectedCallback() {
       areaPicker.hass = this._hass;
       areaPicker.selector = { area: {} };
       areaPicker.value = this._selectedArea || "";
-      areaPicker.onvaluechanged = (e) => {
+      areaPicker.addEventListener("value-changed", (e) => {
         e.stopPropagation();
         this._selectedArea = e.detail?.value || "";
-      };
+      });
+      if (this._areaSelectorOpen) this._ensureAreaOptions(); 
     }
     const cardBehHead = this.shadowRoot.getElementById("card-beh-head");
     if (cardBehHead) {
@@ -4509,6 +4530,7 @@ const updateActionFields = (action, serviceField, serviceDataField, targetField,
     }
     this._applyNavSelectorOptions();
     this._ensureNavOptions();
+    this._ensureAreaOptions();
 
     const tmplSelect = this.shadowRoot.getElementById("tmpl-select");
     const tmplEntity = this.shadowRoot.getElementById("tmpl-entity");
@@ -4733,6 +4755,7 @@ if (tmplSelect) {
     const chev = this.shadowRoot?.getElementById("area-setup-chev");
     if (content) content.hidden = !this._areaSelectorOpen;
     if (chev) chev.style.transform = this._areaSelectorOpen ? "rotate(90deg)" : "";
+    if (this._areaSelectorOpen) this._ensureAreaOptions();
   }
 
   _updateCardBehaviorUI() {

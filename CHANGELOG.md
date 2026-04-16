@@ -4,6 +4,8 @@ All notable changes to OneLine Room Card are documented here.
 
 ## [1.2.5]
 
+* Editor UX: **Area-Based Auto-Setup** — New "Area Setup" section at the top of the Configuration tab. Select a Home Assistant Area and click "Generate from Area" to automatically populate all controls, climate entity, temperature/humidity sensors, window sensors, and battery sensors in seconds. Ideal for rapid configuration of new room cards. Area binding is editor-time only and does not lock the config to live area changes. Closes [#54](https://github.com/lop1505/RoomCard/issues/54).
+* Editor UX: **Area Setup Details** — The auto-generation intelligently filters entities by domain (lights, switches, covers, fans, media players, locks), discovers sensors by device_class (window, door, battery), and uses climate entity attributes as fallback for temperature/humidity. Devices in the area are scanned for their associated entities if not directly area-assigned.
 * Runtime: **Sub-Chips on Buttons** — Buttons can now display small overlay chips (e.g. for temperature or status of custom sensors). Fully configurable with icon, attribute, and label.
 * Runtime: **Sub-Chip Label + State combined** — When a sub-chip has both a `label` and a state value, both are combined in the display (e.g. "Window: open"). `{state}` in the label is still replaced directly.
 * Runtime: **Sub-Chip Position** — New per-button option `chips_position: top | bottom`. Controls whether sub-chips appear above or below the button title. Applies to all chips of a button together.
