@@ -118,7 +118,21 @@ covers all settings — no YAML required.
 | `window_closed_color` | `#9E9E9E` | Chip color when closed |
 | `window_open_states` | `["on","open"]` | List of state values treated as "open" (e.g. `["offen","gekippt"]` for custom sensors). `on` is always included automatically for backward compatibility. |
 | `window_state_colors` | — | Per-state color overrides, e.g. `{ offen: "#FFA000", gekippt: "#FFD740" }` |
+| `alert_sensors` | — | List of alert sensors. Use strings for simple state-based alerts, or object entries for threshold-based alerts (`above`, `below`, `min`, `max`, `state`). |
+| `alert_border_color` | `#d32f2f` | Border color used when an alert sensor is active. |
 | `battery_sensors` | — | List of battery sensors |
+
+Example alert sensor config:
+```yaml
+alert_sensors:
+  - sensor.co2
+  - entity: sensor.temperature
+    above: 28
+  - entity: sensor.humidity
+    below: 25
+  - entity: binary_sensor.door
+    state: open
+```
 
 #### Buttons (`controls`)
 | Option | Default | Description |

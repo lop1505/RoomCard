@@ -66,6 +66,7 @@ const TRANSLATIONS = {
     color_map: "State Colors", color_map_add: "Add State Color", color_map_state: "State",
     window_always_show: "Always Show (incl. closed)", window_open_color: "Open Color", window_closed_color: "Closed Color",
     window_open_states: "Open States (comma-separated)", window_state_colors: "State Colors", window_state_colors_add: "Add State Color",
+    alert_sensors: "Alert Sensors", alert_sensor_add: "Add Alert Sensor", alert_sensor_entity: "Sensor", alert_sensor_above: "Above", alert_sensor_below: "Below", alert_sensor_state: "State", alert_border_color: "Card Border Color",
     sensors: "Sensors",
     icon_size: "Icon Size", global_icon_size: "Global Icon Size (px)",
     header_info_offset: "Info Line Position",
@@ -82,7 +83,8 @@ const TRANSLATIONS = {
     sub_chips: "Sub-Chips", chip_add: "Add Chip", chip_entity: "Entity", chip_attribute: "Attribute (optional)", chip_icon: "Icon (optional)", chip_label: "Label (optional)", chips_position: "Chip Position", chips_top: "Above title", chips_bottom: "Below title",
     vis_add: "Add Condition", vis_eq: "State is equal", vis_neq: "State is not equal", vis_above: "State is strictly greater than", vis_below: "State is strictly less than",
     info_line_position: "Info Line Position", info_position_header: "Inside header (default)", info_position_below: "Below header",
-    last_activity_title: "Last Activity", last_activity_show: "Show last activity"
+    last_activity_title: "Last Activity", last_activity_show: "Show last activity",
+    presence_sensor: "Presence Sensor (Motion/Person)", presence_detected: "Present", image_entity: "Light Entity (for Grayscale)"
   },
   de: {
     empty: "Leer", low: "Niedrig", critical: "Kritisch", window: "Fenster", general: "Allgemein",
@@ -142,6 +144,7 @@ const TRANSLATIONS = {
     color_map: "Zustandsfarben", color_map_add: "Farbe hinzufügen", color_map_state: "Zustand",
     window_always_show: "Immer anzeigen (auch geschlossen)", window_open_color: "Farbe geöffnet", window_closed_color: "Farbe geschlossen",
     window_open_states: "Geöffnete Zustände (kommagetrennt)", window_state_colors: "Zustandsfarben", window_state_colors_add: "Farbe hinzufügen",
+    alert_sensors: "Alarm-Sensoren", alert_sensor_add: "Alarm-Sensor hinzufügen", alert_sensor_entity: "Sensor", alert_sensor_above: "Über", alert_sensor_below: "Unter", alert_sensor_state: "Zustand", alert_border_color: "Kartenrahmenfarbe",
     sensors: "Sensoren",
     icon_size: "Icon-Größe", global_icon_size: "Globale Icon-Größe (px)",
     header_info_offset: "Info-Zeile Position",
@@ -158,7 +161,8 @@ const TRANSLATIONS = {
     sub_chips: "Sub-Chips", chip_add: "Chip hinzufügen", chip_entity: "Entität", chip_attribute: "Attribut (optional)", chip_icon: "Icon (optional)", chip_label: "Bezeichnung (optional)", chips_position: "Chip-Position", chips_top: "Über dem Titel", chips_bottom: "Unter dem Titel",
     vis_add: "Bedingung hinzufügen", vis_eq: "Zustand ist gleich", vis_neq: "Zustand ist nicht gleich", vis_above: "Numerisch größer als", vis_below: "Numerisch kleiner als",
     info_line_position: "Info-Zeile Position", info_position_header: "Im Header (Standard)", info_position_below: "Unter dem Header",
-    last_activity_title: "Letzte Aktivität", last_activity_show: "Letzte Aktivität anzeigen"
+    last_activity_title: "Letzte Aktivität", last_activity_show: "Letzte Aktivität anzeigen",
+    presence_sensor: "Anwesenheits-Sensor (Bewegung/Person)", presence_detected: "Anwesend", image_entity: "Licht-Entität (für Graustufen-Effekt)"
   },
   fr: {
     empty: "Vide", low: "Faible", critical: "Critique", window: "Fenêtre", general: "Général",
@@ -213,6 +217,7 @@ const TRANSLATIONS = {
     color_map: "Couleurs par état", color_map_add: "Ajouter couleur", color_map_state: "État",
     window_always_show: "Toujours afficher (incl. fermé)", window_open_color: "Couleur ouvert", window_closed_color: "Couleur fermé",
     window_open_states: "États ouverts (séparés par virgule)", window_state_colors: "Couleurs par état", window_state_colors_add: "Ajouter couleur",
+    alert_sensors: "Capteurs d'alerte", alert_sensor_add: "Ajouter un capteur d'alerte", alert_sensor_entity: "Capteur", alert_sensor_above: "Supérieur à", alert_sensor_below: "Inférieur à", alert_sensor_state: "État", alert_border_color: "Couleur du contour de la carte",
     sensors: "Capteurs",
     icon_size: "Taille icône", global_icon_size: "Taille icône globale (px)",
     header_info_offset: "Position ligne info",
@@ -227,7 +232,8 @@ const TRANSLATIONS = {
     show_color_favorites: "Couleurs favorites",
     color_favorites_label: "Couleurs ('#hex' ou 'r,g,b', virgule)",
     info_line_position: "Position ligne info", info_position_header: "Dans l'en-tête (défaut)", info_position_below: "Sous l'en-tête",
-    last_activity_title: "Dernière activité", last_activity_show: "Afficher la dernière activité"
+    last_activity_title: "Dernière activité", last_activity_show: "Afficher la dernière activité",
+    presence_sensor: "Capteur de présence", presence_detected: "Présent", image_entity: "Entité lumineuse (effet N&B)"
   }
 };
 
@@ -749,9 +755,11 @@ class OneLineRoomCard extends HTMLElement {
         ha-card { position: relative; overflow: hidden; border-radius: 16px; background: none; border: none; cursor: default; }
         ha-card.warning-battery { outline: 2px solid var(--error-color, #d32f2f); outline-offset: -2px; }
         ha-card.warning-humidity { outline: 2px solid var(--info-color, #2196F3); outline-offset: -2px; box-shadow: 0 0 0 2px rgba(33,150,243,0.35), 0 0 12px rgba(33,150,243,0.35), 0 0 22px rgba(33,150,243,0.25); }
+        ha-card.alert-sensor { outline: 2px solid var(--rc-alert-border-color, var(--error-color, #d32f2d)); outline-offset: -2px; box-shadow: 0 0 0 2px rgba(211,47,47,0.15); }
         .container { display: flex; flex-direction: column; background: var(--ha-card-background, rgba(255,255,255,0.1)); border-radius: 16px; }
         .img-box { position: relative; width: 100%; height: 120px; overflow: hidden; border-radius: 16px 16px 0 0; background: #444; cursor: pointer; }
-        .img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .img { width: 100%; height: 100%; object-fit: cover; display: block; transition: filter 0.8s ease; }
+        .img.grayscale { filter: grayscale(100%) brightness(0.6); }
         .overlay { position: absolute; top: 0; left: 0; width: 100%; padding: 12px; box-sizing: border-box; background: linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%); display: flex; align-items: center; gap: 12px; }
         .text { display: flex; flex: 1; min-width: 0; flex-direction: column; align-items: flex-start; color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
         ha-icon { color: var(--icon-color, white); }
@@ -894,8 +902,11 @@ class OneLineRoomCard extends HTMLElement {
     add(cfg.temp_sensor);
     add(cfg.target_temp_sensor);
     add(cfg.humid_sensor);
+    add(cfg.image_entity);
+    add(cfg.presence_sensor);
     (Array.isArray(cfg.window_sensors) ? cfg.window_sensors : []).forEach(add);
     (Array.isArray(cfg.battery_sensors) ? cfg.battery_sensors : []).forEach(add);
+    (Array.isArray(cfg.alert_sensors) ? cfg.alert_sensors : []).forEach((s) => add(typeof s === "string" ? s : s?.entity));
     (Array.isArray(cfg.controls) ? cfg.controls : []).forEach((ctrl) => {
       add(ctrl?.entity);
       if (Array.isArray(ctrl.visibility)) {
@@ -932,6 +943,46 @@ class OneLineRoomCard extends HTMLElement {
       attrs.brightness ?? "",
       rgb
     ].join("|");
+  }
+
+  _normalizeAlertSensorConfig(cfg) {
+    if (!cfg) return null;
+    if (typeof cfg === "string") return { entity: cfg };
+    if (typeof cfg === "object") {
+      const normalized = { ...cfg };
+      if (normalized.state && typeof normalized.state === "string") {
+        normalized.state = normalized.state.split(",").map(s => String(s).toLowerCase().trim()).filter(Boolean);
+      } else if (Array.isArray(normalized.state)) {
+        normalized.state = normalized.state.map(s => String(s).toLowerCase().trim()).filter(Boolean);
+      }
+      return normalized;
+    }
+    return null;
+  }
+
+  _isAlertSensorActive(alertCfg, stateObj) {
+    if (!alertCfg || !stateObj) return false;
+    const st = stateObj.state;
+    const current = String(st).toLowerCase().trim();
+
+    const normalized = this._normalizeAlertSensorConfig(alertCfg);
+    if (!normalized || !normalized.entity) return false;
+
+    if (Array.isArray(normalized.state) && normalized.state.length > 0) {
+      return normalized.state.includes(current);
+    }
+
+    const numeric = Number(stateObj.state);
+    const hasNumeric = Number.isFinite(numeric);
+    const compareNumber = (value) => Number.isFinite(Number(value)) ? Number(value) : NaN;
+    const above = compareNumber(normalized.above ?? normalized.min);
+    const below = compareNumber(normalized.below ?? normalized.max);
+
+    if (!Number.isNaN(above) && hasNumeric && numeric > above) return true;
+    if (!Number.isNaN(below) && hasNumeric && numeric < below) return true;
+
+    const activeStates = ["on", "open", "true", "active", "alarm", "warning", "detected", "triggered", "problem", "motion", "error"];
+    return activeStates.includes(current);
   }
 
   _getRenderMetaSignature(hass) {
@@ -983,7 +1034,16 @@ class OneLineRoomCard extends HTMLElement {
     // --- NEW: DYNAMIC UNIT ---
     const unit = h.config.unit_system.temperature || "°C";
 
-    this.shadowRoot.getElementById("bg").src = c.image || "/static/images/card_media/cover.png";
+    const bg = this.shadowRoot.getElementById("bg");
+    if (bg) {
+      bg.src = c.image || "/static/images/card_media/cover.png";
+      if (c.image_entity && h.states[c.image_entity]) {
+        const isOff = !isEntityActive(h.states[c.image_entity], c.image_entity);
+        bg.classList.toggle("grayscale", isOff);
+      } else {
+        bg.classList.remove("grayscale");
+      }
+    }
     const imgBox = this.shadowRoot.querySelector(".img-box");
     if (imgBox) {
       const hh = c.header_height !== undefined ? Number(c.header_height) : NaN;
@@ -1116,9 +1176,35 @@ class OneLineRoomCard extends HTMLElement {
       const txt = getTranslation(h, "high_humidity");
       ch.innerHTML += `<div class="chip humidity"><ha-icon icon="mdi:water-alert" style="--mdc-icon-size:14px"></ha-icon> ${txt}</div>`;
     }
+    if (c.presence_sensor && h.states[c.presence_sensor]) {
+      const pState = h.states[c.presence_sensor];
+      const isActive = ["on", "home", "active", "detected"].includes(String(pState.state).toLowerCase().trim());
+      if (isActive) {
+        const pLabel = pState.attributes?.friendly_name || getTranslation(h, "presence_detected");
+        const isPerson = String(pState.entity_id).startsWith("person.");
+        const pIcon = pState.attributes?.icon || (isPerson ? "mdi:account" : "mdi:motion-sensor");
+        ch.innerHTML += `<div class="chip" style="background: rgba(76, 175, 80, 0.15); color: #4CAF50;"><ha-icon icon="${pIcon}" style="--mdc-icon-size:14px"></ha-icon> ${pLabel}</div>`;
+      }
+    }
     const windowAlwaysShow = c.window_always_show === true;
     const windowOpenColor = trimStr(c.window_open_color) || "#FFA000";
     const windowClosedColor = trimStr(c.window_closed_color) || "#9E9E9E";
+    const effectiveAlertSensors = Array.isArray(c.alert_sensors) ? c.alert_sensors : [];
+    const normalizedAlertSensors = effectiveAlertSensors
+      .map(s => this._normalizeAlertSensorConfig(s))
+      .filter(Boolean);
+    let alertSensorWarn = false;
+    normalizedAlertSensors.forEach(cfg => {
+      const st = h.states[cfg.entity];
+      if (!st) return;
+      if (this._isAlertSensorActive(cfg, st)) {
+        alertSensorWarn = true;
+        // Fügt den Chip auf der Karte hinzu, wenn der Alarm-Sensor auslöst
+        const label = st.attributes.friendly_name || cfg.entity;
+        const icon = st.attributes.icon || "mdi:alert-circle-outline";
+        ch.innerHTML += `<div class="chip alert"><ha-icon icon="${icon}" style="--mdc-icon-size:14px"></ha-icon> ${label}</div>`;
+      }
+    });
     // Configurable open states — "on" is always included for backward compatibility
     const windowOpenStates = Array.isArray(c.window_open_states) && c.window_open_states.length > 0
       ? [...new Set(["on", ...c.window_open_states.map(s => String(s).toLowerCase().trim())])]
@@ -1145,6 +1231,9 @@ class OneLineRoomCard extends HTMLElement {
     if (cardEl) {
       cardEl.classList.toggle("warning-battery", batteryWarn);
       cardEl.classList.toggle("warning-humidity", !batteryWarn && humidityWarn);
+      cardEl.classList.toggle("alert-sensor", !batteryWarn && !humidityWarn && alertSensorWarn);
+      if (trimStr(c.alert_border_color)) cardEl.style.setProperty("--rc-alert-border-color", trimStr(c.alert_border_color));
+      else cardEl.style.removeProperty("--rc-alert-border-color");
 
       const setPxProp = (k, v, def) => {
         if (v !== undefined && v !== null && v !== "") {
@@ -2832,6 +2921,7 @@ connectedCallback() {
             <ha-icon id="image-chev" class="image-chev" icon="mdi:chevron-right"></ha-icon>
           </div>
           <div id="image-content" class="image-content" hidden>
+            <ha-entity-picker label="${getTranslation(h, "image_entity")}" cfg="image_entity" class="i" allow-custom-entity include-domains='["light", "switch", "input_boolean", "group"]' style="margin-bottom: 8px;"></ha-entity-picker>
             <img id="prev-img" class="preview">
             <ha-textfield id="img-url-field" cfg="image" class="i" icon="mdi:image"></ha-textfield>
             <div class="upload-row">
@@ -2941,6 +3031,7 @@ connectedCallback() {
           </div>
           <div id="sensors-content" class="manual-content" hidden>
             <div class="image-title" style="font-size:11px;font-weight:600;opacity:0.6;margin-bottom:6px">${getTranslation(h, "sensors_manual")}</div>
+            <ha-entity-picker label="${getTranslation(h, "presence_sensor")}" cfg="presence_sensor" class="i" allow-custom-entity include-domains='["person", "binary_sensor", "device_tracker"]'></ha-entity-picker>
             <ha-entity-picker label="${getTranslation(h, "temp_label")}" cfg="temp_sensor" class="i" allow-custom-entity></ha-entity-picker>
             <ha-entity-picker label="${getTranslation(h, "target_temp_label")}" cfg="target_temp_sensor" class="i" allow-custom-entity></ha-entity-picker>
             <ha-entity-picker label="${getTranslation(h, "humid_label")}" cfg="humid_sensor" class="i" allow-custom-entity></ha-entity-picker>
@@ -2982,6 +3073,26 @@ connectedCallback() {
               <mwc-button id="window-state-colors-add" raised label="${getTranslation(h, "window_state_colors_add")}">
                 <ha-icon icon="mdi:plus" slot="icon"></ha-icon>
               </mwc-button>
+            </div>
+            <div id="alert-sensors-section" style="margin-top:8px">
+              <div class="tmpl-label" style="font-size:11px;font-weight:600;opacity:0.6;margin-bottom:6px">${getTranslation(h, "alert_sensors")}</div>
+              <div id="alert-sensors-list"></div>
+              <mwc-button id="alert-sensors-add" raised label="${getTranslation(h, "alert_sensor_add")}">
+                <ha-icon icon="mdi:plus" slot="icon"></ha-icon>
+              </mwc-button>
+            </div>
+            <div id="alert-border-color-row" style="position: relative; display: flex; align-items: flex-end; margin-top: 8px;">
+              <ha-textfield label="${getTranslation(h, "alert_border_color")}" id="alert-border-color" cfg="alert_border_color" style="width: 100%"></ha-textfield>
+              <div class="color-container" style="position: absolute; right: 8px; bottom: 8px; z-index: 1;">
+                 <div class="color-popover">
+                    <ha-textfield id="alert-border-color-popover" cfg="alert_border_color" placeholder="#hex" style="width: 100%; margin-bottom: 0; --mdc-text-field-fill-color: rgba(255,255,255,0.1); --mdc-text-field-ink-color: white;"></ha-textfield>
+                 </div>
+                 <div class="cp-preview">
+                    <div></div>
+                    <input type="color" id="alert-border-color-picker" class="cl-p" cfg="alert_border_color" title="${getTranslation(h, "color")}" 
+                           style="position: absolute; inset: 0; opacity: 0; cursor: pointer; border: none; padding: 0; width: 100%; height: 100%;">
+                 </div>
+              </div>
             </div>
             <div style="border-top:1px solid var(--divider-color);margin:10px 0 8px"></div>
             <div class="image-title" style="font-size:11px;font-weight:600;opacity:0.6;margin-bottom:6px">${getTranslation(h, "battery_label")}</div>
@@ -3164,7 +3275,7 @@ connectedCallback() {
 
     this.shadowRoot.querySelectorAll(".i").forEach(e => {
       const k = e.getAttribute("cfg");
-      if (k === "window_sensors") e.selector = { entity: { domain: ["binary_sensor", "sensor"], multiple: true } };
+      if (k === "window_sensors" || k === "alert_sensors") e.selector = { entity: { domain: ["binary_sensor", "sensor"], multiple: true } };
       else if (k === "battery_sensors") e.selector = { entity: { device_class: "battery", multiple: true } };
       if (this._hass) e.hass = this._hass;
       const evType = (e.localName === "ha-textfield" || e.localName === "input") ? "change" : "value-changed";
@@ -3259,6 +3370,28 @@ connectedCallback() {
         const val = ev.target.value;
         this._fire({ ...this._config, window_closed_color: val });
         if (windowClosedColorField) windowClosedColorField.value = val;
+      });
+    }
+    const alertBorderColorField = this.shadowRoot.getElementById("alert-border-color");
+    const alertBorderColorPicker = this.shadowRoot.getElementById("alert-border-color-picker");
+    if (alertBorderColorField) {
+      alertBorderColorField.value = this._config?.alert_border_color || "";
+      alertBorderColorField.addEventListener("change", (ev) => {
+        ev.stopPropagation();
+        const val = trimStr(ev.target.value || "");
+        const next = { ...this._config };
+        if (val) next.alert_border_color = val; else delete next.alert_border_color;
+        this._fire(next);
+        if (alertBorderColorPicker) alertBorderColorPicker.value = parseColorToPickerHex(val || "#d32f2f");
+      });
+    }
+    if (alertBorderColorPicker) {
+      alertBorderColorPicker.value = parseColorToPickerHex(this._config?.alert_border_color || "#d32f2f");
+      alertBorderColorPicker.addEventListener("change", (ev) => {
+        ev.stopPropagation();
+        const val = ev.target.value;
+        this._fire({ ...this._config, alert_border_color: val });
+        if (alertBorderColorField) alertBorderColorField.value = val;
       });
     }
     // window_open_states text field (comma-separated)
@@ -3362,6 +3495,151 @@ connectedCallback() {
         renderWindowStateColors();
       });
     }
+
+    const renderAlertSensors = (sourceInput) => {
+      const list = this.shadowRoot.getElementById("alert-sensors-list");
+      if (!list) return;
+      list.innerHTML = "";
+      const source = Array.isArray(sourceInput)
+        ? sourceInput
+        : (Array.isArray(this._config?.alert_sensors) ? this._config.alert_sensors : []);
+        
+      // FIX: Fehlende Normierungs-Logik für den Editor hinzugefügt
+      const normalizeAlertSensorConfig = (cfg) => {
+        if (!cfg) return null;
+        if (typeof cfg === "string") return { entity: cfg };
+        if (typeof cfg === "object") {
+          const normalized = { ...cfg };
+          if (normalized.state && typeof normalized.state === "string") {
+            normalized.state = normalized.state.split(",").map(s => String(s).toLowerCase().trim()).filter(Boolean);
+          } else if (Array.isArray(normalized.state)) {
+            normalized.state = normalized.state.map(s => String(s).toLowerCase().trim()).filter(Boolean);
+          }
+          return normalized;
+        }
+        return null;
+      };
+
+      source.forEach((item, idx) => {
+        const cfg = normalizeAlertSensorConfig(item) || { entity: "" };
+        const row = document.createElement("div");
+        row.style.cssText = "display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;";
+
+        const headerRow = document.createElement("div");
+        headerRow.className = "badge-head-row";
+        const entityLabel = document.createElement("span");
+        entityLabel.className = "badge-entity-label";
+        entityLabel.textContent = cfg.entity
+          ? (h.states[cfg.entity]?.attributes?.friendly_name || cfg.entity)
+          : getTranslation(h, "alert_sensor_entity");
+        const deleteBtn = document.createElement("button");
+        deleteBtn.type = "button";
+        deleteBtn.className = "badge-del-btn";
+        deleteBtn.innerHTML = `<ha-icon icon="mdi:delete-outline"></ha-icon>`;
+        deleteBtn.addEventListener("click", (ev) => {
+          ev.stopPropagation();
+          const arr = [...(this._config?.alert_sensors || [])];
+          arr.splice(idx, 1);
+          const next = { ...this._config };
+          if (arr.length > 0) next.alert_sensors = arr; else delete next.alert_sensors;
+          this._fire(next);
+          renderAlertSensors();
+        });
+        headerRow.appendChild(entityLabel);
+        headerRow.appendChild(deleteBtn);
+        row.appendChild(headerRow);
+
+        const entityPicker = document.createElement("ha-entity-picker");
+        entityPicker.label = getTranslation(h, "alert_sensor_entity");
+        entityPicker.allowCustomEntity = true;
+        entityPicker.selector = { entity: { domain: ["binary_sensor", "sensor"] } };
+        entityPicker.hass = h;
+        entityPicker.value = cfg.entity || "";
+        entityPicker.style.cssText = "flex:1 1 220px;min-width:200px;";
+        entityPicker.addEventListener("value-changed", (ev) => {
+          ev.stopPropagation();
+          const value = ev.detail?.value || "";
+          const arr = [...(this._config?.alert_sensors || [])];
+          arr[idx] = { ...cfg, entity: value };
+          this._fire({ ...this._config, alert_sensors: arr });
+          renderAlertSensors();
+        });
+
+        const aboveField = document.createElement("ha-textfield");
+        aboveField.label = getTranslation(h, "alert_sensor_above");
+        aboveField.type = "number";
+        aboveField.value = cfg.above !== undefined ? String(cfg.above) : "";
+        aboveField.style.cssText = "flex:1 1 120px;min-width:100px;";
+        aboveField.addEventListener("change", (ev) => {
+          ev.stopPropagation();
+          const val = trimStr(ev.target.value || "");
+          const arr = [...(this._config?.alert_sensors || [])];
+          const nextCfg = { ...cfg };
+          if (val === "") delete nextCfg.above; else nextCfg.above = Number(val);
+          arr[idx] = nextCfg;
+          this._fire({ ...this._config, alert_sensors: arr });
+          renderAlertSensors();
+        });
+
+        const belowField = document.createElement("ha-textfield");
+        belowField.label = getTranslation(h, "alert_sensor_below");
+        belowField.type = "number";
+        belowField.value = cfg.below !== undefined ? String(cfg.below) : "";
+        belowField.style.cssText = "flex:1 1 120px;min-width:100px;";
+        belowField.addEventListener("change", (ev) => {
+          ev.stopPropagation();
+          const val = trimStr(ev.target.value || "");
+          const arr = [...(this._config?.alert_sensors || [])];
+          const nextCfg = { ...cfg };
+          if (val === "") delete nextCfg.below; else nextCfg.below = Number(val);
+          arr[idx] = nextCfg;
+          this._fire({ ...this._config, alert_sensors: arr });
+          renderAlertSensors();
+        });
+
+        const stateField = document.createElement("ha-textfield");
+        stateField.label = getTranslation(h, "alert_sensor_state");
+        stateField.value = Array.isArray(cfg.state) ? cfg.state.join(", ") : (cfg.state || "");
+        stateField.style.cssText = "flex:1 1 120px;min-width:100px;";
+        stateField.addEventListener("change", (ev) => {
+          ev.stopPropagation();
+          const raw = trimStr(ev.target.value || "");
+          const arr = [...(this._config?.alert_sensors || [])];
+          const nextCfg = { ...cfg };
+          if (raw === "") delete nextCfg.state;
+          else nextCfg.state = raw.split(",").map(s => s.trim()).filter(Boolean);
+          arr[idx] = nextCfg;
+          this._fire({ ...this._config, alert_sensors: arr });
+          renderAlertSensors();
+        });
+
+        const controlsRow = document.createElement("div");
+        controlsRow.style.cssText = "display:flex;flex-wrap:wrap;gap:8px;width:100%;";
+        controlsRow.appendChild(aboveField);
+        controlsRow.appendChild(belowField);
+        controlsRow.appendChild(stateField);
+
+        row.appendChild(entityPicker);
+        row.appendChild(controlsRow);
+        list.appendChild(row);
+      });
+    };
+
+    const alertSensorsAddBtn = this.shadowRoot.getElementById("alert-sensors-add");
+    if (alertSensorsAddBtn) {
+      const handleAddAlertSensor = (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation(); // FIX: Verhindert Side-Effects im HA-Editor
+        const arr = [...(this._config?.alert_sensors || [])];
+        arr.push({ entity: "" });
+        this._fire({ ...this._config, alert_sensors: arr });
+        renderAlertSensors(arr);
+      };
+      alertSensorsAddBtn.addEventListener("click", handleAddAlertSensor);
+      alertSensorsAddBtn.onclick = handleAddAlertSensor;
+    }
+
+    renderAlertSensors();
     const badgesHead = this.shadowRoot.getElementById("badges-head");
     if (badgesHead) {
       badgesHead.addEventListener("click", () => {
@@ -4102,6 +4380,7 @@ if (tmplSelect) {
       c.target_temp_sensor,
       c.humid_sensor,
       ...(Array.isArray(c.window_sensors) ? c.window_sensors : []),
+      ...(Array.isArray(c.alert_sensors) ? c.alert_sensors : []),
       ...(Array.isArray(c.battery_sensors) ? c.battery_sensors : [])
     ].filter((v) => v && String(v).trim() !== "").length;
     const label = getTranslation(this._hass, "sensors");
