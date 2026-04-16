@@ -84,7 +84,8 @@ const TRANSLATIONS = {
     vis_add: "Add Condition", vis_eq: "State is equal", vis_neq: "State is not equal", vis_above: "State is strictly greater than", vis_below: "State is strictly less than",
     info_line_position: "Info Line Position", info_position_header: "Inside header (default)", info_position_below: "Below header",
     last_activity_title: "Last Activity", last_activity_show: "Show last activity",
-    presence_sensor: "Presence Sensor (Motion/Person)", presence_detected: "Present", image_entity: "Light Entity (for Grayscale)"
+    presence_sensor: "Presence Sensor (Motion/Person)", presence_detected: "Present", image_entity: "Light Entity (for Grayscale)",
+    area_setup: "Area Setup", area_setup_desc: "Automatically populate controls and sensors from area entities", area_picker: "Home Assistant Area", area_generate: "Generate from Area", area_no_entities: "No entities found in this area"
   },
   de: {
     empty: "Leer", low: "Niedrig", critical: "Kritisch", window: "Fenster", general: "Allgemein",
@@ -162,7 +163,8 @@ const TRANSLATIONS = {
     vis_add: "Bedingung hinzufügen", vis_eq: "Zustand ist gleich", vis_neq: "Zustand ist nicht gleich", vis_above: "Numerisch größer als", vis_below: "Numerisch kleiner als",
     info_line_position: "Info-Zeile Position", info_position_header: "Im Header (Standard)", info_position_below: "Unter dem Header",
     last_activity_title: "Letzte Aktivität", last_activity_show: "Letzte Aktivität anzeigen",
-    presence_sensor: "Anwesenheits-Sensor (Bewegung/Person)", presence_detected: "Anwesend", image_entity: "Licht-Entität (für Graustufen-Effekt)"
+    presence_sensor: "Anwesenheits-Sensor (Bewegung/Person)", presence_detected: "Anwesend", image_entity: "Licht-Entität (für Graustufen-Effekt)",
+    area_setup: "Flächen-Setup", area_setup_desc: "Steuern und Sensoren automatisch aus Flächenentitäten einbinden", area_picker: "Home Assistant Fläche", area_generate: "Aus Fläche generieren", area_no_entities: "Keine Entitäten in dieser Fläche gefunden"
   },
   fr: {
     empty: "Vide", low: "Faible", critical: "Critique", window: "Fenêtre", general: "Général",
@@ -2421,6 +2423,8 @@ class OneLineRoomCardEditor extends HTMLElement {
     this._actionsSectionOpen = false;
     this._headerSectionOpen = true;
     this._layoutSectionOpen = false;
+    this._areaSelectorOpen = false;
+    this._selectedArea = "";
     this._activeTab = "config";
     this._controlIds = [];
     this._nextControlId = 1;
@@ -2804,7 +2808,140 @@ connectedCallback() {
     }
   }
 
-  async _ensureNavOptions() {
+  async _getAreaEntities(areaId) {
+    if (!this._hass || !areaId) return [];
+    try {
+      const entries = await this._hass.callWS({ type: "config/entity_registry/list" });
+      const areaEntries = (Array.isArray(entries) ? entries : []).filter(
+        (e) => e.area_id === areaId && !e.disabled_by
+      );
+      return areaEntries;
+    } catch (err) {
+      console.error("Error fetching area entities:", err);
+      return [];
+    }
+  }
+
+  _findFirstEntityByDomain(entities, domain) {
+    if (!Array.isArray(entities)) return null;
+    const found = entities.find(e => e.entity_id?.startsWith(`${domain}.`));
+    return found || null;
+  }
+
+  _groupEntitiesByDomain(entities) {
+    if (!Array.isArray(entities)) return {};
+    const grouped = {};
+    entities.forEach(e => {
+      const domain = e.entity_id?.split(".")?.[0];
+      if (!domain) return;
+      if (!grouped[domain]) grouped[domain] = [];
+      grouped[domain].push(e);
+    });
+    return grouped;
+  }
+
+  _buildControlsFromEntities(entitiesByDomain) {
+    if (!entitiesByDomain || typeof entitiesByDomain !== "object") return [];
+
+    const preferredDomainOrder = ["light", "switch", "cover", "fan", "media_player", "lock"];
+    const controls = [];
+
+    for (const domain of preferredDomainOrder) {
+      const entities = entitiesByDomain[domain] || [];
+      for (const entity of entities) {
+        const template = this._getTemplateById(domain);
+        if (template) {
+          const control = this._buildControlFromTemplate(template, entity.entity_id);
+          if (control) controls.push(control);
+        }
+      }
+    }
+
+    return controls;
+  }
+
+  _resolveTemperatureSensor(climateEntity, entities) {
+    if (!Array.isArray(entities)) return null;
+
+    // Try to find a temperature sensor in the area
+    const tempSensors = entities.filter(e =>
+      (e.entity_id?.startsWith("sensor.") || e.entity_id?.startsWith("input_number.")) &&
+      (e.device_class === "temperature" || e.entity_id?.toLowerCase().includes("temp"))
+    );
+
+    return tempSensors[0] || null;
+  }
+
+  _resolveHumiditySensor(climateEntity, entities) {
+    if (!Array.isArray(entities)) return null;
+
+    // Try to find a humidity sensor in the area
+    const humidSensors = entities.filter(e =>
+      (e.entity_id?.startsWith("sensor.") || e.entity_id?.startsWith("input_number.")) &&
+      (e.device_class === "humidity" || e.entity_id?.toLowerCase().includes("humid"))
+    );
+
+    return humidSensors[0] || null;
+  }
+
+  _findSensorsByDeviceClass(entities, deviceClasses, domains = ["binary_sensor", "sensor"]) {
+    if (!Array.isArray(entities) || !Array.isArray(deviceClasses)) return [];
+
+    const found = entities.filter(e => {
+      const eDomain = e.entity_id?.split(".")?.[0];
+      return domains.includes(eDomain) && deviceClasses.includes(e.device_class);
+    });
+
+    return found.map(e => e.entity_id);
+  }
+
+  async _generateFromArea(areaId) {
+    if (!areaId || !this._hass) return;
+
+    try {
+      const entities = await this._getAreaEntities(areaId);
+      if (!entities || entities.length === 0) {
+        console.warn(getTranslation(this._hass, "area_no_entities"));
+        return;
+      }
+
+      // 1. CLIMATE: First climate entity
+      const climateEntity = this._findFirstEntityByDomain(entities, "climate");
+
+      // 2. CONTROLS: Group by domain, create buttons in preferred order
+      const entitiesByDomain = this._groupEntitiesByDomain(entities);
+      const controls = this._buildControlsFromEntities(entitiesByDomain);
+
+      // 3. TEMPERATURE SENSOR
+      const tempSensor = this._resolveTemperatureSensor(climateEntity, entities);
+
+      // 4. HUMIDITY SENSOR
+      const humidSensor = this._resolveHumiditySensor(climateEntity, entities);
+
+      // 5. WINDOW SENSORS: All binary_sensor + sensor with device_class window/door
+      const windowSensors = this._findSensorsByDeviceClass(entities, ["window", "door"], ["binary_sensor", "sensor"]);
+
+      // 6. BATTERY SENSORS: All entities with device_class battery
+      const batterySensors = this._findSensorsByDeviceClass(entities, ["battery"]);
+
+      // Update config with all generated values
+      const newConfig = {
+        ...this._config,
+        entity: climateEntity?.entity_id || (this._config.entity || ""),
+        temp_sensor: tempSensor?.entity_id || (this._config.temp_sensor || ""),
+        humid_sensor: humidSensor?.entity_id || (this._config.humid_sensor || ""),
+        window_sensors: windowSensors.length > 0 ? windowSensors : (this._config.window_sensors || []),
+        battery_sensors: batterySensors.length > 0 ? batterySensors : (this._config.battery_sensors || []),
+        controls: [...(this._config.controls || []), ...controls]
+      };
+
+      this._fire(newConfig);
+    } catch (err) {
+      console.error("Error generating from area:", err);
+    }
+  }
+
+
     if (!this._hass || this._navOptionsLoaded) return;
     this._navOptionsLoaded = true;
     try {
@@ -2877,7 +3014,7 @@ connectedCallback() {
     if (!this._config) return;
     const alreadyRendered = !!this.shadowRoot.innerHTML;
     const domVersion = this.shadowRoot.querySelector("[data-rc-version]")?.dataset?.rcVersion;
-    if (alreadyRendered && domVersion === VERSION) { this.updVal(); if (JSON.stringify(this._config?.controls || []) !== this._lastRenderedControlsSig) this.renBtn(); this._applyNavSelectorOptions(); this._ensureNavOptions(); this._updateSensorsSectionUI(); this._updateImageSectionUI(); this._updateBadgesUI(); this._updateTypographyUI(); this._updateCardBehaviorUI(); this._updateActionsSectionUI(); this._updateHeaderSectionUI(); this._updateTabUI(); return; }
+    if (alreadyRendered && domVersion === VERSION) { this.updVal(); if (JSON.stringify(this._config?.controls || []) !== this._lastRenderedControlsSig) this.renBtn(); this._applyNavSelectorOptions(); this._ensureNavOptions(); this._updateAreaSetupUI(); this._updateSensorsSectionUI(); this._updateImageSectionUI(); this._updateBadgesUI(); this._updateTypographyUI(); this._updateCardBehaviorUI(); this._updateActionsSectionUI(); this._updateHeaderSectionUI(); this._updateTabUI(); return; }
     
     this.shadowRoot.innerHTML = "";
     const h = this._hass;
@@ -2987,6 +3124,26 @@ connectedCallback() {
         <button id="tab-buttons-btn" class="tab-btn">${getTranslation(h, "buttons")}</button>
       </div>
       <div id="tab-config-panel">
+      <div class="sec">
+        <div id="area-setup-head" class="sec-head" style="cursor:pointer;user-select:none;padding:4px 0">
+          <h3>${getTranslation(h, "area_setup")}</h3>
+          <ha-icon id="area-setup-chev" icon="mdi:chevron-right" style="--mdc-icon-size:18px;opacity:0.7;transition:transform 0.15s ease"></ha-icon>
+        </div>
+        <div id="area-setup-content">
+          <div style="margin-bottom: 12px; font-size: 12px; opacity: 0.7;">
+            ${getTranslation(h, "area_setup_desc")}
+          </div>
+          <div style="display: flex; gap: 12px; align-items: flex-end; margin-bottom: 12px;">
+            <div style="flex: 1; min-width: 200px;">
+              <ha-selector id="area-picker" label="${getTranslation(h, "area_picker")}"></ha-selector>
+            </div>
+            <mwc-button id="area-generate" raised>
+              <ha-icon icon="mdi:plus" slot="icon"></ha-icon>
+              ${getTranslation(h, "area_generate")}
+            </mwc-button>
+          </div>
+        </div>
+      </div>
       <div class="sec">
         <div id="card-beh-head" class="sec-head" style="cursor:pointer;user-select:none;padding:4px 0">
           <h3>${getTranslation(h, "card_behavior")}</h3>
@@ -3386,6 +3543,33 @@ connectedCallback() {
     if (uploadBtn && fileInput) {
       uploadBtn.addEventListener("click", () => fileInput.click());
       fileInput.addEventListener("change", (e) => this._handleUpload(e));
+    }
+    const areaSetupHead = this.shadowRoot.getElementById("area-setup-head");
+    if (areaSetupHead) {
+      areaSetupHead.addEventListener("click", () => {
+        this._areaSelectorOpen = !this._areaSelectorOpen;
+        this._updateAreaSetupUI();
+      });
+    }
+    const areaGenerateBtn = this.shadowRoot.getElementById("area-generate");
+    if (areaGenerateBtn) {
+      areaGenerateBtn.addEventListener("click", async () => {
+        const areaPicker = this.shadowRoot.getElementById("area-picker");
+        const area = areaPicker?.value || this._selectedArea;
+        if (area) {
+          await this._generateFromArea(area);
+        }
+      });
+    }
+    const areaPicker = this.shadowRoot.getElementById("area-picker");
+    if (areaPicker) {
+      areaPicker.hass = this._hass;
+      areaPicker.selector = { area: {} };
+      areaPicker.value = this._selectedArea || "";
+      areaPicker.onvaluechanged = (e) => {
+        e.stopPropagation();
+        this._selectedArea = e.detail?.value || "";
+      };
     }
     const cardBehHead = this.shadowRoot.getElementById("card-beh-head");
     if (cardBehHead) {
@@ -4523,6 +4707,7 @@ if (tmplSelect) {
     }
     this._updateBulkToggleButton();
     this.updVal(); this.updCp(); this.renBtn(); this.updPreview();
+    this._updateAreaSetupUI();
     this._updateSensorsSectionUI();
     this._updateImageSectionUI();
     this._updateTypographyUI();
@@ -4541,6 +4726,13 @@ if (tmplSelect) {
     if (buttonsPanel) buttonsPanel.hidden = isConfig;
     if (configBtn) configBtn.classList.toggle("active", isConfig);
     if (buttonsBtn) buttonsBtn.classList.toggle("active", !isConfig);
+  }
+
+  _updateAreaSetupUI() {
+    const content = this.shadowRoot?.getElementById("area-setup-content");
+    const chev = this.shadowRoot?.getElementById("area-setup-chev");
+    if (content) content.hidden = !this._areaSelectorOpen;
+    if (chev) chev.style.transform = this._areaSelectorOpen ? "rotate(90deg)" : "";
   }
 
   _updateCardBehaviorUI() {
