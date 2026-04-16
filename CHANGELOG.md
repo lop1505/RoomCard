@@ -2,11 +2,48 @@
 
 All notable changes to OneLine Room Card are documented here.
 
+## [1.2.5]
+
+* Editor UX: **Area-Based Auto-Setup** — New "Area Setup" section at the top of the Configuration tab. Select a Home Assistant Area and click "Generate from Area" to automatically populate all controls, climate entity, temperature/humidity sensors, window sensors, and battery sensors in seconds. Ideal for rapid configuration of new room cards. Area binding is editor-time only and does not lock the config to live area changes. Closes [#54](https://github.com/lop1505/RoomCard/issues/54).
+* Editor UX: **Area Setup Details** — The auto-generation intelligently filters entities by domain (lights, switches, covers, fans, media players, locks), discovers sensors by device_class (window, door, battery), and uses climate entity attributes as fallback for temperature/humidity. Devices in the area are scanned for their associated entities if not directly area-assigned.
+* Runtime: **Sub-Chips on Buttons** — Buttons can now display small overlay chips (e.g. for temperature or status of custom sensors). Fully configurable with icon, attribute, and label.
+* Runtime: **Sub-Chip Label + State combined** — When a sub-chip has both a `label` and a state value, both are combined in the display (e.g. "Window: open"). `{state}` in the label is still replaced directly.
+* Runtime: **Sub-Chip Position** — New per-button option `chips_position: top | bottom`. Controls whether sub-chips appear above or below the button title. Applies to all chips of a button together.
+* Runtime: **Conditional Visibility for Buttons** — Buttons now use the native Home Assistant conditions editor (`ha-card-conditions-editor`), identical to the visibility tab of the card itself. Supports State, Numeric State, Screen, User, Time, AND/OR/NOT, etc.
+* Runtime: **Badge Background Inheritance** — Individual badges automatically inherit the global background color (default badge background) when no custom background color is defined.
+* Runtime: **Info Line Position** — New option `info_line_position: header | below_header`. Controls whether the info line (temperature, humidity, badges) appears inside the header image (default) or as a separate bar between the header and button grid. Closes [#51](https://github.com/lop1505/RoomCard/issues/51).
+* Editor UX: **Action configuration section** now sits under `Card Behavior` and defaults to collapsed for a cleaner editor layout.
+* Editor UX: **Service Data (JSON)** support for `call-service` actions on `tap_action`, `hold_action`, and `double_tap_action`.
+* Refactor Editor UI: **Simplified Manual Color Logic** — removed the `force_color` (header) and `force_color` (buttons) toggle. Manual colors are now applied automatically whenever a value is present in the `color` field. Closes [#59](https://github.com/lop1505/RoomCard/issues/59).
+* Refactor Editor UI: **Unified Collapse Mode dropdown** — The separate `collapsible` toggle, `default_state` dropdown, and `remember_state` toggle have been replaced by a single **Collapse Mode** dropdown with four options: **Disabled** (card is never collapsible), **Collapsed** (starts collapsed, ignores saved state), **Expanded** (starts expanded, ignores saved state), and **Remember** (collapsible, state persisted in `localStorage`). Closes [#65](https://github.com/lop1505/RoomCard/issues/65).
+* Editor UX: **Layout Reorganization** — "Badge" and "Image" sections have been moved up for better accessibility. Added a new **Layout & Position** section for header alignment and offset settings.
+* Editor UX: **Transparent Button Background Shortcuts** — added Editor presets (e.g. Transparent, Subtle, Tinted) to quickly apply pre-defined background colors to buttons. Applicable locally, and globally. Closes [#64](https://github.com/lop1505/RoomCard/issues/64).
+* Runtime: **Per-Button CSS Custom Property Targeting** — Buttons now render a `data-entity` attribute in the DOM, making it very easy to target specific buttons with `card-mod` (e.g., `.btn[data-entity="light.living_room"]`). Closes [#53](https://github.com/lop1505/RoomCard/issues/53).
+* Runtime: **Sensor Sparklines on Buttons** — New per-button option `show_sparkline: true` for sensors, with `sparkline_hours` to control history range. Line charts appear directly on button tiles and refresh automatically using `sparkline_refresh` seconds. Closes [#55](https://github.com/lop1505/RoomCard/issues/55).
+* Runtime: **Configurable Alert Sensors** — Added `alert_sensors` plus `alert_border_color` to highlight the card border when configured alert sensors report an active state. Closes [#57](https://github.com/lop1505/RoomCard/issues/57).
+* Runtime: **Alert Chip Display Modes** — New `alert_chip_mode` option to toggle between `expanded` (show all active alert sensors as individual chips) and `collapsed` (show count badge, click to view all alerts in a dialog). Closes [#54](https://github.com/lop1505/RoomCard/issues/54).
+* Editor UX: **Alert Chip Mode Toggle** — New toggle in the Alert Sensors section to switch between Expanded and Collapsed display modes.
+* Editor UX: **Unified Color Picker Synchronization** — Standardized all color fields to use native pickers + hex fields with real-time synchronization. Fixed bugs where color changes were not always reflected immediately.
+* Editor UX: **Fix scroll jump in button editor** — the editor dialog no longer scrolls back to the top of the button section after every config change (toggle, dropdown, text input). Closes [#68](https://github.com/lop1505/RoomCard/issues/68).
+* Bugfix: **Incomplete Conditions** — Conditions without a configured entity (e.g. immediately after adding one) no longer incorrectly hide the button.
+* Bugfix: **Editor Stability** — The editor re-render cycle has been completely reworked (config-signature comparison instead of fragile boolean flags), so complex editors like the conditions editor are no longer destroyed while editing.
+* Bugfix: **NOT Condition** — The NOT condition now correctly evaluates a `conditions` array (instead of a single `condition` object).
+* Runtime: **Color Temperature Slider for Kelvin-native lights** — `control_mode: slider` + `slider_mode: color_temp` now fully supports lights that expose `min_color_temp_kelvin` / `max_color_temp_kelvin`. The slider range, live Kelvin readout, service call, and gradient direction all work correctly for both Kelvin and legacy mired-based lights.
+* Runtime: **Time Since Last Change** — New per-button option `show_last_changed: true`. Displays the elapsed time since the entity last changed state directly on the button. Format: < 60 s → "just now", < 60 min → "12 min", < 24 h → "2h 15min", ≥ 24 h → "3d". When combined with `show_state: true`, both are shown as e.g. `on · 2h`. Auto-refreshes every 60 seconds. Closes [#61](https://github.com/lop1505/RoomCard/issues/61).
+* Editor UX: **"Last Changed" toggle** — New per-button toggle in the Buttons tab (alongside Show State / Show Label / Show Icon) to enable `show_last_changed` without editing YAML.
+* Runtime: **Card-Level Last Activity Badge** — New card-level option `show_card_last_activity: true`. Automatically finds the most recently changed entity among all button controls and displays the elapsed time as a badge in the header info line (e.g. "5 min", "2h 15min"). Updates every 60 s. Removed the now-redundant `last_activity_entity` / `last_activity_label` editor fields.
+* Runtime: **Multi-State Window/Door Sensor Support** — Window sensor chips now support arbitrary sensor domains (not just `binary_sensor`) and configurable open states via `window_open_states` (default: `["on", "open"]`). The state `on` is always implicitly included regardless of configuration, so existing `binary_sensor` window chips continue to work without any YAML changes. Per-state color overrides via `window_state_colors` (object mapping state → color). Closes [#52](https://github.com/lop1505/RoomCard/issues/52).
+* Editor UX: **Window Sensor enhancements** — Entity picker for window sensors now accepts `sensor` domain. New `window_open_states` text field (comma-separated, `on` always included automatically) and `window_state_colors` key-value section in the Sensors editor.
+
 ---
 
 ## [1.2.4]
 
 * Runtime: **Climate Inline Slider** — `control_mode: slider` now works for `climate` entities. Drag to set the target temperature; the button state shows current → setpoint and updates live while dragging. Closes [#44](https://github.com/lop1505/RoomCard/issues/44).
+* Runtime & Editor: **Universal Sliders and Inline Buttons** — Major architectural update: Sliders and inline buttons are no longer artificially restricted to Lights or Covers! Select `Inline Slider` or `Inline Buttons` natively for any supporting domain (Media Player, Fan, Climate, Numbers, Lights, Covers).
+* Runtime: **Background Slider Mode** — Added a highly requested `Slider Style` selector in the editor! You can now choose between the standard `Inline` slider or a sleek `Background` slider (where the entire button itself turns into a touch-enabled slider track overlaying your button's content — heavily inspired by `slider-button-card`).
+* Runtime: **Smart Tap-vs-Drag Gestures** — If a button has a background slider attached, the system tracks horizontal gestures dynamically. Tapping the button still perfectly triggers standard on/off toggles, while dragging horizontally overrides the tap and fluidly controls the slider level.
+* Runtime: **Color Temperature Slider for Light Buttons** — Extended `control_mode: slider` to allow setting color temperature (mireds) directly. A new dropdown "Slider Mode" lets you toggle between Brightness and Color Temperature in the editor. Includes live Kelvin value readout on drag. Closes [#56](https://github.com/lop1505/RoomCard/issues/56).
 * Runtime: **Window Sensor Chip Colors** — window/door sensor chips in the header support custom colors for open and closed states, plus an option to always show the chip even when closed. Closes [#49](https://github.com/lop1505/RoomCard/issues/49).
 * Runtime: **State-Dependent Button Colors (`color_map`)** — buttons can automatically change icon color and background based on the entity's current state.
 * Runtime: **Configurable Icon Size** — set `icon_size` per button or `global_icon_size` as a card-level default (in px). Closes [#48](https://github.com/lop1505/RoomCard/issues/48).
@@ -46,6 +83,8 @@ All notable changes to OneLine Room Card are documented here.
 
 ## [1.2.0]
 
+* Editor UX: **Action configuration section** now sits under `Card Behavior` and defaults to collapsed for a cleaner editor layout.
+* Editor UX: **Service Data (JSON)** support for `call-service` actions on `tap_action`, `hold_action`, and `double_tap_action`.
 * Runtime: **Inline Slider Controls** — add a brightness slider directly on light buttons, or a position slider on cover buttons (`control_mode: slider`).
 * Runtime: **Inline Cover Buttons** — add Open / Stop / Close buttons directly on cover tiles (`control_mode: buttons`).
 * Editor UX: New **Control Mode** dropdown per button (Default / Inline Slider / Inline Buttons).
