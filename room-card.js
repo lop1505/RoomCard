@@ -4330,6 +4330,12 @@ if (tmplSelect) {
             <ha-textfield class="ctpv" label="${getTranslation(h, "climate_presets_label")}" placeholder="0, 18, 20, auto, max" style="flex:1;min-width:160px"></ha-textfield>
           </div>
         </div>
+        <div class="entity-only light-only ${hideEntity}" style="margin-top:8px; border-top:1px solid var(--divider-color); padding-top:8px">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <ha-formfield label="${getTranslation(h, "show_color_favorites")}"><ha-switch class="scf"></ha-switch></ha-formfield>
+            <div class="cfv-swatches" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-height:28px"></div>
+          </div>
+        </div>
         <div class="entity-only ${hideEntity}" style="margin-top:8px; border-top:1px solid var(--divider-color); padding-top:8px">
           <div class="image-title" style="margin-bottom:8px; font-weight:bold">${getTranslation(h, "sub_chips")}</div>
           <div style="margin-bottom:8px">
@@ -5377,9 +5383,12 @@ const cm = box.querySelector(".cm");
       box.className = "box";
       box.style.cssText = "border:1px solid var(--divider-color); padding:10px; border-radius:8px; position:relative; margin-top:8px";
 
-      const del = document.createElement("ha-icon");
-      del.icon = "mdi:delete";
-      del.style.cssText = "position:absolute; right:8px; top:8px; cursor:pointer; color:var(--error-color); --mdc-icon-size:18px";
+      const del = document.createElement("button");
+      del.type = "button";
+      del.setAttribute("aria-label", "Delete");
+      del.title = "Delete";
+      del.style.cssText = "position:absolute; right:4px; top:4px; z-index:2; width:34px; height:34px; border:0; border-radius:50%; background:transparent; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0; color:var(--error-color);";
+      del.innerHTML = `<ha-icon icon="mdi:delete" style="--mdc-icon-size:20px;color:var(--error-color)"></ha-icon>`;
       del.onclick = (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -5389,7 +5398,7 @@ const cm = box.querySelector(".cm");
         c[ctrlIdx] = { ...c[ctrlIdx], sub_chips: chs };
         this._lastRenderedControlsSig = JSON.stringify(c);
         this._fire({ ...this._config, controls: c });
-        this.renBtn();
+        this._updateSubChipsUI(container, c[ctrlIdx], ctrlIdx, h);
       };
       box.appendChild(del);
 
@@ -5397,7 +5406,7 @@ const cm = box.querySelector(".cm");
       ep.label = getTranslation(h, "chip_entity");
       ep.hass = h;
       ep.value = chip.entity || "";
-      ep.style.width = "100%";
+      ep.style.width = "calc(100% - 38px)";
       ep.addEventListener("value-changed", e => { e.stopPropagation(); ep.value = e.detail.value; updChip(chipIdx, "entity", e.detail.value); });
       box.appendChild(ep);
 
@@ -5441,7 +5450,7 @@ const cm = box.querySelector(".cm");
 // =============================================================================
 
 const patchExistingEditor = (ExistingEditor, NewEditor) => {
-  const methods = ["render", "updVal", "updCp", "renBtn", "setConfig", "_fire", "_handleUpload", "updPreview", "connectedCallback", "disconnectedCallback", "_ensureEditorState", "_emitConfigNow", "_flushPendingConfig", "_handlePrimarySave", "_updateBadgesUI", "_updateTypographyUI", "_updateCardBehaviorUI", "_updateHeaderSectionUI", "_updateTabUI", "_updateSensorsSectionUI", "_areAllButtonsExpanded", "_toggleAllButtonsExpanded"];
+  const methods = ["render", "updVal", "updCp", "renBtn", "setConfig", "_fire", "_handleUpload", "updPreview", "connectedCallback", "disconnectedCallback", "_ensureEditorState", "_emitConfigNow", "_flushPendingConfig", "_handlePrimarySave", "_updateBadgesUI", "_updateTypographyUI", "_updateCardBehaviorUI", "_updateHeaderSectionUI", "_updateTabUI", "_updateSensorsSectionUI", "_updateSubChipsUI", "_areAllButtonsExpanded", "_toggleAllButtonsExpanded"];
   methods.forEach((name) => {
     if (typeof NewEditor.prototype[name] === "function") {
       ExistingEditor.prototype[name] = NewEditor.prototype[name];
