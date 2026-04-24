@@ -23,9 +23,8 @@ Developed with a focus on stability, simple design, and maximum flexibility.
 **Editor**
 * 🖱️ Full visual editor — no YAML required, with live preview
 * 🖼️ Built-in image uploader — upload room backgrounds directly in the editor
-* 🧭 Quick Add — add buttons from existing entity types in one click
+* 🧭 Quick Add — add buttons from existing entity types in one click, including `select` / `input_select`
 * 🖱️ Drag & drop reordering, bulk expand/collapse, collapsible button entries
-* ⚡ **Area-Based Auto-Setup** — bind a card to a Home Assistant area to automatically populate all controls, climate, sensors, and batteries in seconds
 
 **Header**
 * 🌡️ Smart climate integration — temperature, humidity and target temp auto-populated
@@ -41,9 +40,12 @@ Developed with a focus on stability, simple design, and maximum flexibility.
 
 **Buttons**
 * 📏 Flexible sizing — width (1/3, 1/4, …) and height per button
-* 🎛️ Inline slider — brightness (light), position (cover), temperature (climate)
+* 🎛️ Inline slider — brightness (light), position (cover), temperature (climate), volume (media player)
 * 🔘 Inline cover buttons — Open / Stop / Close directly on the tile
+* ▶️ Media player controls — transport buttons, volume slider, source/sound-mode chips and optional media title
+* 🔽 Select / Input Select buttons — add dropdown-style entities and control options with inline Previous / Next buttons
 * 🎨 Color Favorites — tap-to-set RGB swatches on light buttons
+* 💡 Brightness presets — tap-to-set brightness chips for lights (e.g. 25% / 50% / 75% / 100%)
 * 🌡️ Climate presets — tap-to-set temperature presets (fixed, `auto`, `max`)
 * 📐 Cover position presets — tap-to-set position presets (default: 0% / 50% / 100%)
 * 🎨 State-dependent colors (`color_map`) — icon color and background by entity state
@@ -51,8 +53,7 @@ Developed with a focus on stability, simple design, and maximum flexibility.
 * 🎨 Custom icon map (`icon_map`) — per-state icon overrides
 * 📐 Configurable icon size — per button or global default
 * 🧼 Show/hide state, label, icon per button
-* � Sensor sparklines — `show_sparkline: true` enables a small history line chart on sensor buttons with configurable `sparkline_hours`
-* �🕐 Time since last change — `show_last_changed: true` shows elapsed time on the button (e.g. "2h 15min"), combined with state as "on · 2h"
+* 🕐 Time since last change — `show_last_changed: true` shows elapsed time on the button (e.g. "2h 15min"), combined with state as "on · 2h"
 * ↕️ Label position — Right / Left / Top / Bottom per button and global default
 * 👆 Configurable actions — Tap / Hold / Double Tap per button
 * 🧩 Action service payloads — `call-service` actions now support inline `service_data` JSON in the visual editor
@@ -92,7 +93,6 @@ covers all settings — no YAML required.
 | Option | Default | Description |
 |---|---|---|
 | `name` | — | Room name |
-| `area` | — | **[Auto-Setup]** Home Assistant Area ID to auto-populate controls and sensors |
 | `entity` | — | Main entity (drives header icon color) |
 | `image` | — | Header background image URL |
 | `header_height` | `120` | Header image height in px (`0` = hidden) |
@@ -105,7 +105,6 @@ covers all settings — no YAML required.
 | `global_icon_size` | `20px` | Default icon size for all buttons |
 | `global_button_background` | — | Default button background (e.g. `rgba(0,0,0,0)`) |
 | `show_card_last_activity` | `false` | Show a header badge with elapsed time since the most recently changed button entity (e.g. `5 min`, `2h 15min`). Auto-refreshes every 60 s. |
-| `sparkline_refresh` | `300` | Global refresh interval for sensor button sparklines in seconds. |
 
 #### Sensors & chips
 | Option | Default | Description |
@@ -120,47 +119,7 @@ covers all settings — no YAML required.
 | `window_closed_color` | `#9E9E9E` | Chip color when closed |
 | `window_open_states` | `["on","open"]` | List of state values treated as "open" (e.g. `["offen","gekippt"]` for custom sensors). `on` is always included automatically for backward compatibility. |
 | `window_state_colors` | — | Per-state color overrides, e.g. `{ offen: "#FFA000", gekippt: "#FFD740" }` |
-| `alert_sensors` | — | List of alert sensors. Use strings for simple state-based alerts, or object entries for threshold-based alerts (`above`, `below`, `min`, `max`, `state`). |
-| `alert_chip_mode` | `expanded` | Display mode for active alert sensors: `expanded` (show individual chips) or `collapsed` (show count badge, click to see all). |
-| `alert_border_color` | `#d32f2f` | Border color used when an alert sensor is active. |
 | `battery_sensors` | — | List of battery sensors |
-
-Example alert sensor config:
-```yaml
-alert_sensors:
-  - sensor.co2
-  - entity: sensor.temperature
-    above: 28
-  - entity: sensor.humidity
-    below: 25
-  - entity: binary_sensor.door
-    state: open
-```
-
-## ⚡ Area-Based Auto-Setup
-
-The card can be **rapidly configured from a Home Assistant Area** without manual entity selection. Bind the card to an area, and it automatically populates:
-
-- **Controls** — all controllable entities (lights, switches, covers, fans, media players, locks) in preferred domain order
-- **Climate Entity** — main thermostat/climate device from the area
-- **Temperature/Humidity Sensors** — auto-discovered from climate attributes or sensor entities
-- **Window/Door Sensors** — all `binary_sensor` and `sensor` entities with `device_class: window` or `device_class: door`
-- **Battery Sensors** — all entities with `device_class: battery`
-
-**How to use:**
-1. In the editor, navigate to **Configuration** → **Area Setup**
-2. Select the Home Assistant Area (e.g., "Living Room")
-3. Click **"Generate from Area"**
-4. The card auto-populates with all relevant entities
-
-After generation, you can manually adjust or remove any auto-populated items. The `area` field is purely an editor-time convenience and does not lock the config to future area changes.
-
-```yaml
-# Minimal setup example
-type: custom:oneline-room-card
-# Area auto-setup will populate the rest:
-area: living_room
-```
 
 #### Buttons (`controls`)
 | Option | Default | Description |
@@ -169,9 +128,14 @@ area: living_room
 | `name` | — | Display label |
 | `width` | `15` | Relative width (1–60) |
 | `height` | `60` | Height in px |
-| `control_mode` | — | `slider` · `buttons` (covers only) |
+| `control_mode` | — | `slider` · `buttons` · `full` (media player `full` combines volume slider and transport controls) |
 | `color_map` | — | Per-state icon color map |
 | `icon_map` | — | Per-state icon map |
+| `show_media_sources` | `false` | Show media player source chips from `source_list` |
+| `show_media_sound_modes` | `false` | Show media player sound-mode chips from `sound_mode_list` |
+| `show_media_title` | `false` | Show current media title/artist instead of the raw state |
+| `show_brightness_presets` | `false` | Show light brightness preset chips |
+| `brightness_presets` | `[25,50,75,100]` | Brightness preset values in percent |
 | `show_cover_presets` | `false` | Show cover position preset chips |
 | `cover_presets` | `[0,50,100]` | Position preset values |
 | `show_climate_presets` | `false` | Show climate temperature preset chips |
@@ -179,8 +143,6 @@ area: living_room
 | `show_color_favorites` | `false` | Show light color favorite swatches |
 | `color_favorites` | — | List of `#hex` or `r,g,b` colors |
 | `show_state` | `true` | Show entity state text on button |
-| `show_sparkline` | `false` | Show a sparkline history chart on sensor buttons. |
-| `sparkline_hours` | `24` | History range in hours for the sensor sparkline. |
 | `show_last_changed` | `false` | Show elapsed time since last state change (e.g. `2h 15min`). Combined with `show_state` renders as `on · 2h`. Auto-refreshes every 60 s. |
 | `tap_action` | `more-info` | `toggle` · `more-info` · `none` |
 | `hold_action` | `toggle` | — |
