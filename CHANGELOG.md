@@ -2,10 +2,19 @@
 
 All notable changes to OneLine Room Card are documented here.
 
+## [1.2.6]
+
+* Runtime & Editor: **Select / Input Select Support** — Added `select` and `input_select` as Quick Add templates. Select-style entities can now be added from the visual editor and controlled with inline previous/next buttons via `control_mode: buttons`. Closes [#70](https://github.com/lop1505/RoomCard/issues/70).
+* Runtime & Editor: **Full Media Player Controls** — Media player buttons now support `control_mode: slider` for volume, `control_mode: buttons` for transport controls, and `control_mode: full` for both. Optional source chips, sound-mode chips, and media title display can be enabled per button. Closes [#71](https://github.com/lop1505/RoomCard/issues/71).
+* Runtime: **Brightness Presets for Lights** — Light buttons can now show tappable brightness chips via `show_brightness_presets: true` and `brightness_presets` (default: `[25, 50, 75, 100]`). Tapping a preset calls `light.turn_on` with `brightness_pct`, and the current brightness is highlighted. Closes [#72](https://github.com/lop1505/RoomCard/issues/72).
+* Editor UX: **Brightness Presets Editor** — Added a light-only editor section for enabling brightness presets and editing comma-separated brightness values.
+* Bugfix: **Color Favorites Editor Visibility** — Restored the light-only Color Favorites editor controls so `show_color_favorites` and `color_favorites` can again be configured visually. Closes [#73](https://github.com/lop1505/RoomCard/issues/73).
+* Bugfix: **Sub-Chips Delete UX** — Enlarged the Sub-Chip delete hit area and replaced the expensive full button-editor rebuild with an incremental chip-list refresh. Closes [#74](https://github.com/lop1505/RoomCard/issues/74).
+
+---
+
 ## [1.2.5]
 
-* Editor UX: **Area-Based Auto-Setup** — New "Area Setup" section at the top of the Configuration tab. Select a Home Assistant Area and click "Generate from Area" to automatically populate all controls, climate entity, temperature/humidity sensors, window sensors, and battery sensors in seconds. Ideal for rapid configuration of new room cards. Area binding is editor-time only and does not lock the config to live area changes. Closes [#54](https://github.com/lop1505/RoomCard/issues/54).
-* Editor UX: **Area Setup Details** — The auto-generation intelligently filters entities by domain (lights, switches, covers, fans, media players, locks), discovers sensors by device_class (window, door, battery), and uses climate entity attributes as fallback for temperature/humidity. Devices in the area are scanned for their associated entities if not directly area-assigned.
 * Runtime: **Sub-Chips on Buttons** — Buttons can now display small overlay chips (e.g. for temperature or status of custom sensors). Fully configurable with icon, attribute, and label.
 * Runtime: **Sub-Chip Label + State combined** — When a sub-chip has both a `label` and a state value, both are combined in the display (e.g. "Window: open"). `{state}` in the label is still replaced directly.
 * Runtime: **Sub-Chip Position** — New per-button option `chips_position: top | bottom`. Controls whether sub-chips appear above or below the button title. Applies to all chips of a button together.
@@ -19,10 +28,6 @@ All notable changes to OneLine Room Card are documented here.
 * Editor UX: **Layout Reorganization** — "Badge" and "Image" sections have been moved up for better accessibility. Added a new **Layout & Position** section for header alignment and offset settings.
 * Editor UX: **Transparent Button Background Shortcuts** — added Editor presets (e.g. Transparent, Subtle, Tinted) to quickly apply pre-defined background colors to buttons. Applicable locally, and globally. Closes [#64](https://github.com/lop1505/RoomCard/issues/64).
 * Runtime: **Per-Button CSS Custom Property Targeting** — Buttons now render a `data-entity` attribute in the DOM, making it very easy to target specific buttons with `card-mod` (e.g., `.btn[data-entity="light.living_room"]`). Closes [#53](https://github.com/lop1505/RoomCard/issues/53).
-* Runtime: **Sensor Sparklines on Buttons** — New per-button option `show_sparkline: true` for sensors, with `sparkline_hours` to control history range. Line charts appear directly on button tiles and refresh automatically using `sparkline_refresh` seconds. Closes [#55](https://github.com/lop1505/RoomCard/issues/55).
-* Runtime: **Configurable Alert Sensors** — Added `alert_sensors` plus `alert_border_color` to highlight the card border when configured alert sensors report an active state. Closes [#57](https://github.com/lop1505/RoomCard/issues/57).
-* Runtime: **Alert Chip Display Modes** — New `alert_chip_mode` option to toggle between `expanded` (show all active alert sensors as individual chips) and `collapsed` (show count badge, click to view all alerts in a dialog). Closes [#54](https://github.com/lop1505/RoomCard/issues/54).
-* Editor UX: **Alert Chip Mode Toggle** — New toggle in the Alert Sensors section to switch between Expanded and Collapsed display modes.
 * Editor UX: **Unified Color Picker Synchronization** — Standardized all color fields to use native pickers + hex fields with real-time synchronization. Fixed bugs where color changes were not always reflected immediately.
 * Editor UX: **Fix scroll jump in button editor** — the editor dialog no longer scrolls back to the top of the button section after every config change (toggle, dropdown, text input). Closes [#68](https://github.com/lop1505/RoomCard/issues/68).
 * Bugfix: **Incomplete Conditions** — Conditions without a configured entity (e.g. immediately after adding one) no longer incorrectly hide the button.
@@ -122,3 +127,4 @@ All notable changes to OneLine Room Card are documented here.
 * Editor UX: Collapsible sections for Image, Manual Sensors, and Battery list.
 * Editor UX: Drag & drop reordering plus bulk expand/collapse button settings.
 * Fix: Editing a button no longer collapses entries or jumps the editor scroll.
+
