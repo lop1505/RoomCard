@@ -1,4 +1,4 @@
-const VERSION = "1.2.5";
+const VERSION = "1.2.6";
 const LOG_FLAG = `customCards_RoomCard_Logged_${VERSION}`;
 
 if (!window[LOG_FLAG]) {
@@ -54,7 +54,7 @@ const TRANSLATIONS = {
     visibility: "Visibility", visibility_cond: "Conditional Visibility", vis_entity: "Condition Entity", vis_state: "Show if state is", vis_invert: "Invert Logic (Hide if state corresponds)",
     migration_title: "Action Required",
     migration_text: "Card renamed to <b>oneline-room-card</b> to avoid conflicts.<br>Please change <code>type: custom:room-card</code> to <code>type: custom:oneline-room-card</code> in your YAML.",
-    control_mode: "Control Mode", ctrl_default: "Default", ctrl_slider: "Inline Slider", ctrl_buttons: "Inline Buttons",
+    control_mode: "Control Mode", ctrl_default: "Default", ctrl_slider: "Inline Slider", ctrl_buttons: "Inline Buttons", ctrl_full: "Full Controls",
     slider_mode: "Slider Mode", slider_mode_brightness: "Brightness", slider_mode_color_temp: "Color Temperature",
     slider_style: "Slider Style", style_inline: "Inline", style_bg: "Background",
     collapsible: "Collapsible", default_state: "Default State", state_expanded: "Expanded", state_collapsed: "Collapsed",
@@ -81,6 +81,9 @@ const TRANSLATIONS = {
     brightness_presets_label: "Brightness values (comma-separated)",
     show_color_favorites: "Color Favorites",
     color_favorites_label: "Colors ('#hex' or 'r,g,b', comma-separated)",
+    show_media_sources: "Source Chips",
+    show_media_sound_modes: "Sound Mode Chips",
+    show_media_title: "Media Title",
     sub_chips: "Sub-Chips", chip_add: "Add Chip", chip_entity: "Entity", chip_attribute: "Attribute (optional)", chip_icon: "Icon (optional)", chip_label: "Label (optional)", chips_position: "Chip Position", chips_top: "Above title", chips_bottom: "Below title",
     vis_add: "Add Condition", vis_eq: "State is equal", vis_neq: "State is not equal", vis_above: "State is strictly greater than", vis_below: "State is strictly less than",
     info_line_position: "Info Line Position", info_position_header: "Inside header (default)", info_position_below: "Below header",
@@ -128,7 +131,7 @@ const TRANSLATIONS = {
     visibility: "Sichtbarkeit", visibility_cond: "Bedingte Sichtbarkeit", vis_entity: "Bedingungs-Entität", vis_state: "Anzeigen falls Status gleich", vis_invert: "Logik umkehren (Ausblenden falls entsprechend)",
     migration_title: "Handlung erforderlich",
     migration_text: "Karte wurde in <b>oneline-room-card</b> umbenannt.<br>Bitte ändere <code>type: custom:room-card</code> zu <code>type: custom:oneline-room-card</code> in deiner YAML-Konfiguration.",
-    control_mode: "Steuerungsmodus", ctrl_default: "Standard", ctrl_slider: "Inline-Slider", ctrl_buttons: "Inline-Buttons",
+    control_mode: "Steuerungsmodus", ctrl_default: "Standard", ctrl_slider: "Inline-Slider", ctrl_buttons: "Inline-Buttons", ctrl_full: "Alle Steuerungen",
     slider_mode: "Slider Modus", slider_mode_brightness: "Helligkeit", slider_mode_color_temp: "Farbtemperatur",
     slider_style: "Slider Stil", style_inline: "Inline", style_bg: "Hintergrund",
     collapsible: "Einklappbar", default_state: "Standardzustand", state_expanded: "Ausgeklappt", state_collapsed: "Eingeklappt",
@@ -159,6 +162,9 @@ const TRANSLATIONS = {
     brightness_presets_label: "Helligkeiten (kommagetrennt)",
     show_color_favorites: "Lieblings-Farben",
     color_favorites_label: "Farben ('#hex' oder 'r,g,b', kommagetrennt)",
+    show_media_sources: "Quellen-Chips",
+    show_media_sound_modes: "Soundmodus-Chips",
+    show_media_title: "Medientitel",
     sub_chips: "Sub-Chips", chip_add: "Chip hinzufügen", chip_entity: "Entität", chip_attribute: "Attribut (optional)", chip_icon: "Icon (optional)", chip_label: "Bezeichnung (optional)", chips_position: "Chip-Position", chips_top: "Über dem Titel", chips_bottom: "Unter dem Titel",
     vis_add: "Bedingung hinzufügen", vis_eq: "Zustand ist gleich", vis_neq: "Zustand ist nicht gleich", vis_above: "Numerisch größer als", vis_below: "Numerisch kleiner als",
     info_line_position: "Info-Zeile Position", info_position_header: "Im Header (Standard)", info_position_below: "Unter dem Header",
@@ -205,7 +211,7 @@ const TRANSLATIONS = {
     show_name: "Afficher le titre", header_badges: "Infos d'en-tête supplémentaires", badge_add: "Ajouter une entrée", badge_label: "Libellé (optionnel)", badge_background: "Arrière-plan (rgba)", standard_badge_background: "Fond du badge climat principal (rgba)",
     migration_title: "Action requise",
     migration_text: "Carte renommée en <b>oneline-room-card</b> pour éviter les conflits.<br>Veuillez changer <code>type: custom:room-card</code> en <code>type: custom:oneline-room-card</code>.",
-    control_mode: "Mode de contrôle", ctrl_default: "Défaut", ctrl_slider: "Curseur", ctrl_buttons: "Boutons",
+    control_mode: "Mode de contrôle", ctrl_default: "Défaut", ctrl_slider: "Curseur", ctrl_buttons: "Boutons", ctrl_full: "Contrôles complets",
     slider_mode: "Mode Curseurs", slider_mode_brightness: "Luminosité", slider_mode_color_temp: "Température de couleur",
     slider_style: "Style de curseur", style_inline: "Intégré", style_bg: "Arrière-plan",
     collapsible: "Rétractable", default_state: "État par défaut", state_expanded: "Déplié", state_collapsed: "Replié",
@@ -232,6 +238,9 @@ const TRANSLATIONS = {
     brightness_presets_label: "Luminosités (séparées par virgule)",
     show_color_favorites: "Couleurs favorites",
     color_favorites_label: "Couleurs ('#hex' ou 'r,g,b', virgule)",
+    show_media_sources: "Sources",
+    show_media_sound_modes: "Modes audio",
+    show_media_title: "Titre média",
     info_line_position: "Position ligne info", info_position_header: "Dans l'en-tête (défaut)", info_position_below: "Sous l'en-tête",
     last_activity_title: "Dernière activité", last_activity_show: "Afficher la dernière activité"
   }
@@ -659,6 +668,8 @@ class OneLineRoomCard extends HTMLElement {
         .cover-action-btn:hover { background: rgba(128,128,128,0.22); }
         .cover-action-btn ha-icon { --mdc-icon-size: 16px; color: var(--primary-text-color); }
         .btn-cover-presets { display: flex; gap: 4px; width: 100%; flex: 0 0 auto; padding-bottom: 4px; }
+        .btn-media-options { flex-wrap: wrap; }
+        .btn-media-options .preset-btn { flex: 1 1 auto; min-width: 44px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
         .preset-btn { flex: 1; display: flex; align-items: center; justify-content: center; background: rgba(128,128,128,0.1); border-radius: 6px; padding: 3px 4px; cursor: pointer; transition: background 0.15s, color 0.15s; font-size: 11px; font-weight: 600; color: var(--secondary-text-color); white-space: nowrap; touch-action: manipulation; }
         .preset-btn:hover { background: rgba(128,128,128,0.22); color: var(--primary-text-color); }
         .preset-btn.active { background: var(--icon-color, var(--primary-color, #ff9800)); color: #fff; }
@@ -1337,10 +1348,19 @@ class OneLineRoomCard extends HTMLElement {
     if (isUnavail) badge = `<ha-icon class="warn warn-offline" icon="mdi:lan-disconnect" title="${unavailableText}"></ha-icon>`;
 
     // --- NEW: USE DYNAMIC UNIT IN TEMPLATE ---
-    const climateHasSlider = typ === "climate" && ctrl.control_mode === "slider";
+    const climateHasSlider = typ === "climate" && (ctrl.control_mode === "slider" || ctrl.control_mode === "full");
+    const mediaTitleText = (() => {
+      if (domain !== "media_player" || ctrl.show_media_title !== true || !st) return "";
+      const title = trimStr(st.attributes?.media_title);
+      const artist = trimStr(st.attributes?.media_artist);
+      const album = trimStr(st.attributes?.media_album_name);
+      if (title && artist) return `${title} · ${artist}`;
+      if (title && album) return `${title} · ${album}`;
+      return title || artist || album || "";
+    })();
     const stateText = isTemplate
       ? (tpl?.state || "")
-      : (typ === "climate"
+      : (mediaTitleText || (typ === "climate"
         ? (() => {
           const cur = st?.attributes?.current_temperature;
           const tar = st?.attributes?.temperature;
@@ -1349,7 +1369,7 @@ class OneLineRoomCard extends HTMLElement {
           if (cur != null) return cur + unit;
           return s;
         })()
-        : s);
+        : s));
     const showState = isTemplate ? ctrl.show_state === true : ctrl.show_state !== false;
     const showLabel = ctrl.show_label !== false;
     const showLastChanged = ctrl.show_last_changed === true && !isTemplate && !!st?.last_changed;
@@ -1448,13 +1468,18 @@ class OneLineRoomCard extends HTMLElement {
     const controlMode = ctrl.control_mode;
     const sliderCaps = this._getSliderCapabilities(domain, st, ctrl);
     const inlineBtns = this._getInlineButtons(domain);
+    const isFullControl = controlMode === "full";
     const isBgSlider = controlMode === "slider" && ctrl.slider_style === "background" && !isUnavail && sliderCaps.supported;
-    const isInlineSlider = controlMode === "slider" && ctrl.slider_style !== "background" && !isUnavail && sliderCaps.supported;
-    const hasInlineBtns = controlMode === "buttons" && !isUnavail && inlineBtns.length > 0;
+    const isInlineSlider = ((controlMode === "slider" && ctrl.slider_style !== "background") || isFullControl) && !isUnavail && sliderCaps.supported;
+    const hasInlineBtns = (controlMode === "buttons" || isFullControl) && !isUnavail && inlineBtns.length > 0;
     const hasCoverPresets = ctrl.show_cover_presets === true && domain === "cover" && !isUnavail;
     const hasClimatePresets = ctrl.show_climate_presets === true && domain === "climate" && !isUnavail;
     const hasBrightnessPresets = ctrl.show_brightness_presets === true && domain === "light" && !isUnavail;
     const hasColorFavorites = ctrl.show_color_favorites === true && domain === "light" && !isUnavail;
+    const mediaSources = domain === "media_player" && Array.isArray(st?.attributes?.source_list) ? st.attributes.source_list : [];
+    const mediaSoundModes = domain === "media_player" && Array.isArray(st?.attributes?.sound_mode_list) ? st.attributes.sound_mode_list : [];
+    const hasMediaSources = domain === "media_player" && !isUnavail && (isFullControl || ctrl.show_media_sources === true) && mediaSources.length > 0;
+    const hasMediaSoundModes = domain === "media_player" && !isUnavail && (isFullControl || ctrl.show_media_sound_modes === true) && mediaSoundModes.length > 0;
 
     if (isBgSlider) {
       btn.style.position = "relative";
@@ -1481,7 +1506,7 @@ class OneLineRoomCard extends HTMLElement {
       btn.insertBefore(bgSlider, btn.firstChild);
     }
 
-    if (isInlineSlider || hasInlineBtns || hasCoverPresets || hasClimatePresets || hasBrightnessPresets || hasColorFavorites) {
+    if (isInlineSlider || hasInlineBtns || hasCoverPresets || hasClimatePresets || hasBrightnessPresets || hasColorFavorites || hasMediaSources || hasMediaSoundModes) {
       btn.classList.add("has-inline-ctrl");
       const topDiv = document.createElement("div");
       topDiv.className = "btn-top";
@@ -1591,6 +1616,36 @@ class OneLineRoomCard extends HTMLElement {
           actDiv.appendChild(b);
         });
         btn.appendChild(actDiv);
+      }
+
+      const addMediaOptionChips = (items, current, serviceName) => {
+        const presetsDiv = document.createElement("div");
+        presetsDiv.className = "btn-cover-presets btn-media-options";
+        items.forEach(item => {
+          const value = String(item);
+          const pb = document.createElement("div");
+          pb.className = "preset-btn";
+          pb.textContent = value;
+          pb.title = value;
+          if (current === value) pb.classList.add("active");
+          pb.addEventListener("pointerdown", e => e.stopPropagation());
+          pb.addEventListener("click", e => {
+            e.stopPropagation();
+            if (!this._isEntityUnavailable(ctrl.entity)) {
+              this._hass.callService("media_player", serviceName, { entity_id: ctrl.entity, [serviceName === "select_source" ? "source" : "sound_mode"]: value });
+            }
+          });
+          presetsDiv.appendChild(pb);
+        });
+        btn.appendChild(presetsDiv);
+      };
+
+      if (hasMediaSources) {
+        addMediaOptionChips(mediaSources, st?.attributes?.source, "select_source");
+      }
+
+      if (hasMediaSoundModes) {
+        addMediaOptionChips(mediaSoundModes, st?.attributes?.sound_mode, "select_sound_mode");
       }
 
       // Cover position presets
@@ -4412,6 +4467,13 @@ if (tmplSelect) {
             <div class="cfv-swatches" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-height:28px"></div>
           </div>
         </div>
+        <div class="entity-only media-only ${hideEntity}" style="margin-top:8px; border-top:1px solid var(--divider-color); padding-top:8px">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <ha-formfield label="${getTranslation(h, "show_media_sources")}"><ha-switch class="smsrc"></ha-switch></ha-formfield>
+            <ha-formfield label="${getTranslation(h, "show_media_sound_modes")}"><ha-switch class="smsnd"></ha-switch></ha-formfield>
+            <ha-formfield label="${getTranslation(h, "show_media_title")}"><ha-switch class="smtitle"></ha-switch></ha-formfield>
+          </div>
+        </div>
         <div class="entity-only ${hideEntity}" style="margin-top:8px; border-top:1px solid var(--divider-color); padding-top:8px">
           <div class="image-title" style="margin-bottom:8px; font-weight:bold">${getTranslation(h, "sub_chips")}</div>
           <div style="margin-bottom:8px">
@@ -4862,6 +4924,33 @@ if (tmplSelect) {
           rebuildSwatches();
         }
       }
+
+      const mediaOnly = box.querySelector(".media-only");
+      if (mediaOnly) {
+        mediaOnly.hidden = ctrlDomain !== "media_player";
+        const smsrc = mediaOnly.querySelector(".smsrc");
+        const smsnd = mediaOnly.querySelector(".smsnd");
+        const smtitle = mediaOnly.querySelector(".smtitle");
+        const toggleMediaOption = (keyName, checked) => {
+          const c = [...this._config.controls];
+          const next = { ...c[i] };
+          if (checked) next[keyName] = true;
+          else delete next[keyName];
+          c[i] = next; keepOpen(); this._fire({ ...this._config, controls: c });
+        };
+        if (smsrc) {
+          smsrc.checked = ctrl.show_media_sources === true;
+          smsrc.addEventListener("change", e => { e.stopPropagation(); toggleMediaOption("show_media_sources", e.target.checked === true); });
+        }
+        if (smsnd) {
+          smsnd.checked = ctrl.show_media_sound_modes === true;
+          smsnd.addEventListener("change", e => { e.stopPropagation(); toggleMediaOption("show_media_sound_modes", e.target.checked === true); });
+        }
+        if (smtitle) {
+          smtitle.checked = ctrl.show_media_title === true;
+          smtitle.addEventListener("change", e => { e.stopPropagation(); toggleMediaOption("show_media_title", e.target.checked === true); });
+        }
+      }
       
       if (!isTemplate) {
         const entityOnly = box.querySelector(".entity-only");
@@ -5165,7 +5254,8 @@ const cm = box.querySelector(".cm");
             mode: "dropdown", options: [
               { value: "none", label: getTranslation(h, "ctrl_default") || "Standard" },
               { value: "slider", label: getTranslation(h, "ctrl_slider") || "Inline Slider" },
-              { value: "buttons", label: getTranslation(h, "ctrl_buttons") || "Inline Buttons" }
+              { value: "buttons", label: getTranslation(h, "ctrl_buttons") || "Inline Buttons" },
+              { value: "full", label: getTranslation(h, "ctrl_full") || "Full Controls" }
             ]
           }
         };
@@ -5576,6 +5666,18 @@ const patchExistingEditor = (ExistingEditor, NewEditor) => {
   if (hassDesc) Object.defineProperty(ExistingEditor.prototype, "hass", hassDesc);
 };
 
+const patchExistingCard = (ExistingCard, NewCard) => {
+  Object.getOwnPropertyNames(NewCard.prototype).forEach((name) => {
+    if (name === "constructor") return;
+    const desc = Object.getOwnPropertyDescriptor(NewCard.prototype, name);
+    if (desc) Object.defineProperty(ExistingCard.prototype, name, desc);
+  });
+  ["getStubConfig", "getConfigElement"].forEach((name) => {
+    const desc = Object.getOwnPropertyDescriptor(NewCard, name);
+    if (desc) Object.defineProperty(ExistingCard, name, desc);
+  });
+};
+
 const existingEditor = customElements.get("oneline-room-card-editor");
 if (!existingEditor) {
   customElements.define("oneline-room-card-editor", OneLineRoomCardEditor);
@@ -5583,8 +5685,11 @@ if (!existingEditor) {
   patchExistingEditor(existingEditor, OneLineRoomCardEditor);
 }
 
-if (!customElements.get("oneline-room-card")) {
+const existingCard = customElements.get("oneline-room-card");
+if (!existingCard) {
   customElements.define("oneline-room-card", OneLineRoomCard);
+} else if (existingCard !== OneLineRoomCard) {
+  patchExistingCard(existingCard, OneLineRoomCard);
 }
 
 window.customCards = window.customCards || [];

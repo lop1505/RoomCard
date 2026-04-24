@@ -40,8 +40,9 @@ Developed with a focus on stability, simple design, and maximum flexibility.
 
 **Buttons**
 * 📏 Flexible sizing — width (1/3, 1/4, …) and height per button
-* 🎛️ Inline slider — brightness (light), position (cover), temperature (climate)
+* 🎛️ Inline slider — brightness (light), position (cover), temperature (climate), volume (media player)
 * 🔘 Inline cover buttons — Open / Stop / Close directly on the tile
+* ▶️ Media player controls — transport buttons, volume slider, source/sound-mode chips and optional media title
 * 🔽 Select / Input Select buttons — add dropdown-style entities and control options with inline Previous / Next buttons
 * 🎨 Color Favorites — tap-to-set RGB swatches on light buttons
 * 💡 Brightness presets — tap-to-set brightness chips for lights (e.g. 25% / 50% / 75% / 100%)
@@ -127,9 +128,12 @@ covers all settings — no YAML required.
 | `name` | — | Display label |
 | `width` | `15` | Relative width (1–60) |
 | `height` | `60` | Height in px |
-| `control_mode` | — | `slider` · `buttons` (covers and select/input_select previous/next controls) |
+| `control_mode` | — | `slider` · `buttons` · `full` (media player `full` combines volume slider and transport controls) |
 | `color_map` | — | Per-state icon color map |
 | `icon_map` | — | Per-state icon map |
+| `show_media_sources` | `false` | Show media player source chips from `source_list` |
+| `show_media_sound_modes` | `false` | Show media player sound-mode chips from `sound_mode_list` |
+| `show_media_title` | `false` | Show current media title/artist instead of the raw state |
 | `show_brightness_presets` | `false` | Show light brightness preset chips |
 | `brightness_presets` | `[25,50,75,100]` | Brightness preset values in percent |
 | `show_cover_presets` | `false` | Show cover position preset chips |
