@@ -23,7 +23,7 @@ Developed with a focus on stability, simple design, and maximum flexibility.
 **Editor**
 * 🖱️ Full visual editor — no YAML required, with live preview
 * 🖼️ Built-in image uploader — upload room backgrounds directly in the editor
-* 🧭 Quick Add — add buttons from existing entity types in one click
+* 🧭 Quick Add — add buttons from existing entity types in one click, including `select` / `input_select`
 * 🖱️ Drag & drop reordering, bulk expand/collapse, collapsible button entries
 
 **Header**
@@ -42,7 +42,9 @@ Developed with a focus on stability, simple design, and maximum flexibility.
 * 📏 Flexible sizing — width (1/3, 1/4, …) and height per button
 * 🎛️ Inline slider — brightness (light), position (cover), temperature (climate)
 * 🔘 Inline cover buttons — Open / Stop / Close directly on the tile
+* 🔽 Select / Input Select buttons — add dropdown-style entities and control options with inline Previous / Next buttons
 * 🎨 Color Favorites — tap-to-set RGB swatches on light buttons
+* 💡 Brightness presets — tap-to-set brightness chips for lights (e.g. 25% / 50% / 75% / 100%)
 * 🌡️ Climate presets — tap-to-set temperature presets (fixed, `auto`, `max`)
 * 📐 Cover position presets — tap-to-set position presets (default: 0% / 50% / 100%)
 * 🎨 State-dependent colors (`color_map`) — icon color and background by entity state
@@ -125,9 +127,11 @@ covers all settings — no YAML required.
 | `name` | — | Display label |
 | `width` | `15` | Relative width (1–60) |
 | `height` | `60` | Height in px |
-| `control_mode` | — | `slider` · `buttons` (covers only) |
+| `control_mode` | — | `slider` · `buttons` (covers and select/input_select previous/next controls) |
 | `color_map` | — | Per-state icon color map |
 | `icon_map` | — | Per-state icon map |
+| `show_brightness_presets` | `false` | Show light brightness preset chips |
+| `brightness_presets` | `[25,50,75,100]` | Brightness preset values in percent |
 | `show_cover_presets` | `false` | Show cover position preset chips |
 | `cover_presets` | `[0,50,100]` | Position preset values |
 | `show_climate_presets` | `false` | Show climate temperature preset chips |

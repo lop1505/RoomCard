@@ -2,6 +2,16 @@
 
 All notable changes to OneLine Room Card are documented here.
 
+## [1.2.6]
+
+* Runtime & Editor: **Select / Input Select Support** — Added `select` and `input_select` as Quick Add templates. Select-style entities can now be added from the visual editor and controlled with inline previous/next buttons via `control_mode: buttons`. Closes [#70](https://github.com/lop1505/RoomCard/issues/70).
+* Runtime: **Brightness Presets for Lights** — Light buttons can now show tappable brightness chips via `show_brightness_presets: true` and `brightness_presets` (default: `[25, 50, 75, 100]`). Tapping a preset calls `light.turn_on` with `brightness_pct`, and the current brightness is highlighted. Closes [#72](https://github.com/lop1505/RoomCard/issues/72).
+* Editor UX: **Brightness Presets Editor** — Added a light-only editor section for enabling brightness presets and editing comma-separated brightness values.
+* Bugfix: **Color Favorites Editor Visibility** — Restored the light-only Color Favorites editor controls so `show_color_favorites` and `color_favorites` can again be configured visually. Closes [#73](https://github.com/lop1505/RoomCard/issues/73).
+* Bugfix: **Sub-Chips Delete UX** — Enlarged the Sub-Chip delete hit area and replaced the expensive full button-editor rebuild with an incremental chip-list refresh. Closes [#74](https://github.com/lop1505/RoomCard/issues/74).
+
+---
+
 ## [1.2.5]
 
 * Runtime: **Sub-Chips on Buttons** — Buttons can now display small overlay chips (e.g. for temperature or status of custom sensors). Fully configurable with icon, attribute, and label.
