@@ -41,7 +41,7 @@ const TRANSLATIONS = {
     pos_top: "Top",
     row_type: "Row Type", type_entity: "Entity", type_template: "Template",
     tmpl_content: "Content (Template)", tmpl_icon: "Icon (Template)", tmpl_color: "Color (Template)", tmpl_state: "State (Template)", tmpl_preview: "Preview",
-    tmpl_light: "Light", tmpl_switch: "Switch / Socket", tmpl_climate: "Climate", tmpl_cover: "Cover / Shutter", tmpl_media: "Media Player",
+    tmpl_light: "Light", tmpl_switch: "Switch / Socket", tmpl_select: "Select", tmpl_climate: "Climate", tmpl_cover: "Cover / Shutter", tmpl_media: "Media Player",
     show_state: "Show State", show_label: "Show Label", show_icon: "Show Icon", show_last_changed: "Last Changed", lc_just_now: "just now", state_first: "State First", text_layout: "Text Order", primary_text: "First line", primary_state: "State / value first", primary_name: "Name first",
     height: "Height", width: "Width", align: "Align", visible: "Visible", left: "Left", center: "Center", right: "Right",
     tap_action: "Tap Action", hold_action: "Hold Action", double_tap_action: "Double Tap Action",
@@ -115,7 +115,7 @@ const TRANSLATIONS = {
     pos_top: "Oben",
     row_type: "Zeilentyp", type_entity: "Entität", type_template: "Template",
     tmpl_content: "Text (Template)", tmpl_icon: "Icon (Template)", tmpl_color: "Farbe (Template)", tmpl_status: "Status (Template)", tmpl_preview: "Vorschau",
-    tmpl_light: "Licht", tmpl_switch: "Schalter / Steckdose", tmpl_climate: "Klima", tmpl_cover: "Rollladen / Abdeckung", tmpl_media: "Media Player",
+    tmpl_light: "Licht", tmpl_switch: "Schalter / Steckdose", tmpl_select: "Auswahl", tmpl_climate: "Klima", tmpl_cover: "Rollladen / Abdeckung", tmpl_media: "Media Player",
     show_state: "Status anzeigen", show_label: "Bezeichnung anzeigen", show_icon: "Icon anzeigen", show_last_changed: "Letzte Änderung", lc_just_now: "gerade eben", state_first: "Wert zuerst", text_layout: "Text-Reihenfolge", primary_text: "Erste Zeile", primary_state: "Wert zuerst", primary_name: "Name zuerst",
     height: "Höhe", width: "Breite", align: "Ausrichtung", visible: "Sichtbar", left: "Links", center: "Mitte", right: "Rechts",
     tap_action: "Antippen", hold_action: "Gedrückt halten", double_tap_action: "Doppelklick",
@@ -193,7 +193,7 @@ const TRANSLATIONS = {
     pos_top: "Haut",
     row_type: "Type de ligne", type_entity: "Entité", type_template: "Template",
     tmpl_content: "Contenu (Template)", tmpl_icon: "Icône (Template)", tmpl_color: "Couleur (Template)", tmpl_state: "État (Template)", tmpl_preview: "Aperçu",
-    tmpl_light: "Lumière", tmpl_switch: "Interrupteur / Prise", tmpl_climate: "Climatisation", tmpl_cover: "Volet / Store", tmpl_media: "Lecteur multimédia",
+    tmpl_light: "Lumière", tmpl_switch: "Interrupteur / Prise", tmpl_select: "Sélection", tmpl_climate: "Climatisation", tmpl_cover: "Volet / Store", tmpl_media: "Lecteur multimédia",
     show_state: "Afficher l’état", show_label: "Afficher le libellé", show_icon: "Afficher l’icône", show_last_changed: "Dernier changement", lc_just_now: "à l’instant", state_first: "Valeur d’abord", text_layout: "Ordre du texte", primary_text: "Première ligne", primary_state: "Valeur d’abord", primary_name: "Nom d’abord",
     height: "Hauteur", width: "Largeur", align: "Alignement", visible: "Visible", left: "Gauche", center: "Centre", right: "Droite",
     tap_action: "Appui court", hold_action: "Appui long", double_tap_action: "Double appui",
@@ -1269,6 +1269,10 @@ class OneLineRoomCard extends HTMLElement {
       { icon: "mdi:play-pause", action: "service", service: "media_player.media_play_pause" },
       { icon: "mdi:skip-next", action: "service", service: "media_player.media_next_track" }
     ];
+    if (domain === "select" || domain === "input_select") return [
+      { icon: "mdi:chevron-left", action: "custom", custom: "select_prev" },
+      { icon: "mdi:chevron-right", action: "custom", custom: "select_next" }
+    ];
     return [];
   }
 
@@ -1566,6 +1570,16 @@ class OneLineRoomCard extends HTMLElement {
             } else if (action === "custom") {
               if (custom === "dim_down") this._hass.callService("light", "turn_on", { entity_id: ctrl.entity, brightness_step_pct: -10 });
               else if (custom === "dim_up") this._hass.callService("light", "turn_on", { entity_id: ctrl.entity, brightness_step_pct: 10 });
+              else if (custom === "select_prev" || custom === "select_next") {
+                const options = Array.isArray(st?.attributes?.options) ? st.attributes.options : [];
+                if (options.length > 0) {
+                  const currentIdx = options.indexOf(st?.state);
+                  const fallbackIdx = custom === "select_prev" ? options.length - 1 : 0;
+                  const delta = custom === "select_prev" ? -1 : 1;
+                  const nextIdx = currentIdx >= 0 ? (currentIdx + delta + options.length) % options.length : fallbackIdx;
+                  this._hass.callService(domain, "select_option", { entity_id: ctrl.entity, option: options[nextIdx] });
+                }
+              }
               else if (custom === "temp_down") this._hass.callService("climate", "set_temperature", { entity_id: ctrl.entity, temperature: (st?.attributes?.temperature || 20) - 0.5 });
               else if (custom === "temp_up") this._hass.callService("climate", "set_temperature", { entity_id: ctrl.entity, temperature: (st?.attributes?.temperature || 20) + 0.5 });
               else if (custom === "toggle_hvac") {
@@ -2189,6 +2203,8 @@ connectedCallback() {
     const map = {
       light: "mdi:lightbulb",
       switch: "mdi:toggle-switch",
+      select: "mdi:form-dropdown",
+      input_select: "mdi:form-dropdown",
       climate: "mdi:thermostat",
       cover: "mdi:window-shutter",
       fan: "mdi:fan",
@@ -2236,6 +2252,23 @@ connectedCallback() {
           align: "center",
           tap_action: { action: "toggle" },
           hold_action: { action: "more-info" },
+          double_tap_action: { action: "none" },
+          show_state: true,
+          show_label: true,
+          show_icon: true
+        }
+      },
+      {
+        id: "select",
+        label: getTranslation(h, "tmpl_select"),
+        domains: ["select", "input_select"],
+        defaults: {
+          icon: "mdi:form-dropdown",
+          width: 20,
+          height: 60,
+          align: "left",
+          tap_action: { action: "more-info" },
+          hold_action: { action: "none" },
           double_tap_action: { action: "none" },
           show_state: true,
           show_label: true,
@@ -2343,7 +2376,7 @@ connectedCallback() {
         (e) => e.device_id === deviceId && !e.disabled_by
       );
       if (devEntries.length === 0) return null;
-      const preferredDomains = ["light", "switch", "climate", "cover", "fan", "media_player", "lock", "input_boolean", "vacuum", "humidifier", "sensor", "binary_sensor"];
+      const preferredDomains = ["light", "switch", "select", "input_select", "climate", "cover", "fan", "media_player", "lock", "input_boolean", "vacuum", "humidifier", "sensor", "binary_sensor"];
       for (const domain of preferredDomains) {
         const found = devEntries.find((e) => e.entity_id?.startsWith(`${domain}.`));
         if (found?.entity_id) return found.entity_id;
