@@ -77,6 +77,8 @@ const TRANSLATIONS = {
     cover_presets_label: "Preset Values (comma-separated)",
     show_climate_presets: "Temperature Presets",
     climate_presets_label: "Temperatures (comma-separated)",
+    show_brightness_presets: "Brightness Presets",
+    brightness_presets_label: "Brightness values (comma-separated)",
     show_color_favorites: "Color Favorites",
     color_favorites_label: "Colors ('#hex' or 'r,g,b', comma-separated)",
     sub_chips: "Sub-Chips", chip_add: "Add Chip", chip_entity: "Entity", chip_attribute: "Attribute (optional)", chip_icon: "Icon (optional)", chip_label: "Label (optional)", chips_position: "Chip Position", chips_top: "Above title", chips_bottom: "Below title",
@@ -153,6 +155,8 @@ const TRANSLATIONS = {
     cover_presets_label: "Voreinstellungen (kommagetrennt)",
     show_climate_presets: "Temperatur-Voreinstellungen",
     climate_presets_label: "Temperaturen (kommagetrennt)",
+    show_brightness_presets: "Helligkeits-Voreinstellungen",
+    brightness_presets_label: "Helligkeiten (kommagetrennt)",
     show_color_favorites: "Lieblings-Farben",
     color_favorites_label: "Farben ('#hex' oder 'r,g,b', kommagetrennt)",
     sub_chips: "Sub-Chips", chip_add: "Chip hinzufügen", chip_entity: "Entität", chip_attribute: "Attribut (optional)", chip_icon: "Icon (optional)", chip_label: "Bezeichnung (optional)", chips_position: "Chip-Position", chips_top: "Über dem Titel", chips_bottom: "Unter dem Titel",
@@ -224,6 +228,8 @@ const TRANSLATIONS = {
     cover_presets_label: "Valeurs (séparées par virgule)",
     show_climate_presets: "Préréglages de température",
     climate_presets_label: "Températures (séparées par virgule)",
+    show_brightness_presets: "Préréglages de luminosité",
+    brightness_presets_label: "Luminosités (séparées par virgule)",
     show_color_favorites: "Couleurs favorites",
     color_favorites_label: "Couleurs ('#hex' ou 'r,g,b', virgule)",
     info_line_position: "Position ligne info", info_position_header: "Dans l'en-tête (défaut)", info_position_below: "Sous l'en-tête",
@@ -1443,6 +1449,7 @@ class OneLineRoomCard extends HTMLElement {
     const hasInlineBtns = controlMode === "buttons" && !isUnavail && inlineBtns.length > 0;
     const hasCoverPresets = ctrl.show_cover_presets === true && domain === "cover" && !isUnavail;
     const hasClimatePresets = ctrl.show_climate_presets === true && domain === "climate" && !isUnavail;
+    const hasBrightnessPresets = ctrl.show_brightness_presets === true && domain === "light" && !isUnavail;
     const hasColorFavorites = ctrl.show_color_favorites === true && domain === "light" && !isUnavail;
 
     if (isBgSlider) {
@@ -1470,7 +1477,7 @@ class OneLineRoomCard extends HTMLElement {
       btn.insertBefore(bgSlider, btn.firstChild);
     }
 
-    if (isInlineSlider || hasInlineBtns || hasCoverPresets || hasClimatePresets || hasColorFavorites) {
+    if (isInlineSlider || hasInlineBtns || hasCoverPresets || hasClimatePresets || hasBrightnessPresets || hasColorFavorites) {
       btn.classList.add("has-inline-ctrl");
       const topDiv = document.createElement("div");
       topDiv.className = "btn-top";
@@ -1646,6 +1653,38 @@ class OneLineRoomCard extends HTMLElement {
               } else {
                 this._hass.callService("climate", "set_temperature", { entity_id: ctrl.entity, temperature: val });
               }
+            }
+          });
+          presetsDiv.appendChild(pb);
+        });
+        btn.appendChild(presetsDiv);
+      }
+
+      // Light brightness presets
+      if (domain === "light" && ctrl.show_brightness_presets === true) {
+        const rawPresets = Array.isArray(ctrl.brightness_presets) ? ctrl.brightness_presets
+          : typeof ctrl.brightness_presets === "string"
+            ? ctrl.brightness_presets.split(",").map(v => parseFloat(v.trim())).filter(v => !isNaN(v))
+            : [25, 50, 75, 100];
+        const presets = [...new Set(rawPresets
+          .map(v => Math.max(1, Math.min(100, Math.round(Number(v)))))
+          .filter(v => Number.isFinite(v)))];
+        const currentBrightness = st?.attributes?.brightness != null
+          ? Math.round((st.attributes.brightness / 255) * 100)
+          : 0;
+        const presetsDiv = document.createElement("div");
+        presetsDiv.className = "btn-cover-presets";
+        presets.forEach(pct => {
+          const pb = document.createElement("div");
+          pb.className = "preset-btn";
+          pb.textContent = `${pct}%`;
+          const isActive = st?.state === "on" && Math.abs(currentBrightness - pct) < 2;
+          if (isActive) pb.classList.add("active");
+          pb.addEventListener("pointerdown", e => e.stopPropagation());
+          pb.addEventListener("click", e => {
+            e.stopPropagation();
+            if (!this._isEntityUnavailable(ctrl.entity)) {
+              this._hass.callService("light", "turn_on", { entity_id: ctrl.entity, brightness_pct: pct });
             }
           });
           presetsDiv.appendChild(pb);
@@ -4331,6 +4370,10 @@ if (tmplSelect) {
           </div>
         </div>
         <div class="entity-only light-only ${hideEntity}" style="margin-top:8px; border-top:1px solid var(--divider-color); padding-top:8px">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+            <ha-formfield label="${getTranslation(h, "show_brightness_presets")}"><ha-switch class="sbp"></ha-switch></ha-formfield>
+            <ha-textfield class="bpv" label="${getTranslation(h, "brightness_presets_label")}" placeholder="25, 50, 75, 100" style="flex:1;min-width:160px"></ha-textfield>
+          </div>
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
             <ha-formfield label="${getTranslation(h, "show_color_favorites")}"><ha-switch class="scf"></ha-switch></ha-formfield>
             <div class="cfv-swatches" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-height:28px"></div>
@@ -4645,8 +4688,48 @@ if (tmplSelect) {
       const lightOnly = box.querySelector(".light-only");
       if (lightOnly) {
         lightOnly.hidden = ctrlDomain !== "light";
+        const sbp = lightOnly.querySelector(".sbp");
+        const bpv = lightOnly.querySelector(".bpv");
         const scf = lightOnly.querySelector(".scf");
         const cfvContainer = lightOnly.querySelector(".cfv-swatches");
+        if (sbp) {
+          sbp.checked = ctrl.show_brightness_presets === true;
+          sbp.addEventListener("change", e => {
+            e.stopPropagation();
+            const c = [...this._config.controls];
+            const next = { ...c[i] };
+            if (e.target.checked) {
+              next.show_brightness_presets = true;
+              if (!next.brightness_presets) next.brightness_presets = [25, 50, 75, 100];
+            } else {
+              delete next.show_brightness_presets;
+            }
+            this._lastInteractedControlId = key;
+            c[i] = next; keepOpen(); this._fire({ ...this._config, controls: c }); this.renBtn();
+          });
+        }
+        if (bpv) {
+          bpv.value = Array.isArray(ctrl.brightness_presets)
+            ? ctrl.brightness_presets.join(", ")
+            : (ctrl.brightness_presets || "");
+          bpv.addEventListener("change", e => {
+            e.stopPropagation();
+            const raw = e.target.value.trim();
+            const parsed = raw
+              ? raw.split(",")
+                .map(v => parseFloat(v.trim()))
+                .filter(v => !isNaN(v))
+                .map(v => Math.max(1, Math.min(100, Math.round(v))))
+              : [];
+            const c = [...this._config.controls];
+            const next = { ...c[i] };
+            const unique = [...new Set(parsed)];
+            if (unique.length) next.brightness_presets = unique;
+            else delete next.brightness_presets;
+            this._lastInteractedControlId = key;
+            c[i] = next; keepOpen(); this._fire({ ...this._config, controls: c });
+          });
+        }
         if (scf) {
           scf.checked = ctrl.show_color_favorites === true;
           scf.addEventListener("change", e => {
