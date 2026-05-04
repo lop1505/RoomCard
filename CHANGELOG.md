@@ -4,6 +4,8 @@ All notable changes to OneLine Room Card are documented here.
 
 ## [1.2.6]
 
+* Runtime & Editor: **Show Brightness % on Light Buttons** — Light entities now display the current brightness percentage next to the on/off state (e.g. `on · 75 %`). The value updates live while dragging the inline slider. Configurable per button via `show_brightness_value` (default: `true`). Closes [#78](https://github.com/lop1505/RoomCard/issues/78).
+* Performance: **Light-Only Editor Toggles** — Removed expensive full re-render (`renBtn()`) from brightness value, brightness presets, and color favorites toggles. These switches now respond instantly.
 * Runtime & Editor: **Select / Input Select Support** — Added `select` and `input_select` as Quick Add templates. Select-style entities can now be added from the visual editor and controlled with inline previous/next buttons via `control_mode: buttons`. Closes [#70](https://github.com/lop1505/RoomCard/issues/70).
 * Runtime & Editor: **Full Media Player Controls** — Media player buttons now support `control_mode: slider` for volume, `control_mode: buttons` for transport controls, and `control_mode: full` for both. Optional source chips, sound-mode chips, and media title display can be enabled per button. Closes [#71](https://github.com/lop1505/RoomCard/issues/71).
 * Runtime: **Brightness Presets for Lights** — Light buttons can now show tappable brightness chips via `show_brightness_presets: true` and `brightness_presets` (default: `[25, 50, 75, 100]`). Tapping a preset calls `light.turn_on` with `brightness_pct`, and the current brightness is highlighted. Closes [#72](https://github.com/lop1505/RoomCard/issues/72).

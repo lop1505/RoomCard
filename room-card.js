@@ -79,6 +79,7 @@ const TRANSLATIONS = {
     climate_presets_label: "Temperatures (comma-separated)",
     show_brightness_presets: "Brightness Presets",
     brightness_presets_label: "Brightness values (comma-separated)",
+    show_brightness_value: "Show Brightness %",
     show_color_favorites: "Color Favorites",
     color_favorites_label: "Colors ('#hex' or 'r,g,b', comma-separated)",
     show_media_sources: "Source Chips",
@@ -160,6 +161,7 @@ const TRANSLATIONS = {
     climate_presets_label: "Temperaturen (kommagetrennt)",
     show_brightness_presets: "Helligkeits-Voreinstellungen",
     brightness_presets_label: "Helligkeiten (kommagetrennt)",
+    show_brightness_value: "Helligkeit % anzeigen",
     show_color_favorites: "Lieblings-Farben",
     color_favorites_label: "Farben ('#hex' oder 'r,g,b', kommagetrennt)",
     show_media_sources: "Quellen-Chips",
@@ -236,6 +238,7 @@ const TRANSLATIONS = {
     climate_presets_label: "Températures (séparées par virgule)",
     show_brightness_presets: "Préréglages de luminosité",
     brightness_presets_label: "Luminosités (séparées par virgule)",
+    show_brightness_value: "Afficher luminosité %",
     show_color_favorites: "Couleurs favorites",
     color_favorites_label: "Couleurs ('#hex' ou 'r,g,b', virgule)",
     show_media_sources: "Sources",
@@ -1369,7 +1372,9 @@ class OneLineRoomCard extends HTMLElement {
           if (cur != null) return cur + unit;
           return s;
         })()
-        : s));
+        : typ === "light" && s === "on" && ctrl.show_brightness_value !== false && st?.attributes?.brightness != null
+          ? `${s} · ${Math.round((st.attributes.brightness / 255) * 100)} %`
+          : s));
     const showState = isTemplate ? ctrl.show_state === true : ctrl.show_state !== false;
     const showLabel = ctrl.show_label !== false;
     const showLastChanged = ctrl.show_last_changed === true && !isTemplate && !!st?.last_changed;
@@ -1552,6 +1557,9 @@ class OneLineRoomCard extends HTMLElement {
           } else if (sliderCaps.action === "color_temp_kelvin") {
             const stateEl = topDiv.querySelector(".btn-state");
             if (stateEl) stateEl.textContent = `${Math.round(v)} K`;
+          } else if (sliderCaps.action === "brightness" && ctrl.show_brightness_value !== false) {
+            const stateEl = topDiv.querySelector(".btn-state");
+            if (stateEl) stateEl.textContent = `${s} · ${Math.round(v)} %`;
           }
         });
         slider.addEventListener("change", e => {
@@ -4459,6 +4467,7 @@ if (tmplSelect) {
         </div>
         <div class="entity-only light-only ${hideEntity}" style="margin-top:8px; border-top:1px solid var(--divider-color); padding-top:8px">
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+            <ha-formfield label="${getTranslation(h, "show_brightness_value")}"><ha-switch class="sbv"></ha-switch></ha-formfield>
             <ha-formfield label="${getTranslation(h, "show_brightness_presets")}"><ha-switch class="sbp"></ha-switch></ha-formfield>
             <ha-textfield class="bpv" label="${getTranslation(h, "brightness_presets_label")}" placeholder="25, 50, 75, 100" style="flex:1;min-width:160px"></ha-textfield>
           </div>
@@ -4783,10 +4792,22 @@ if (tmplSelect) {
       const lightOnly = box.querySelector(".light-only");
       if (lightOnly) {
         lightOnly.hidden = ctrlDomain !== "light";
+        const sbv = lightOnly.querySelector(".sbv");
         const sbp = lightOnly.querySelector(".sbp");
         const bpv = lightOnly.querySelector(".bpv");
         const scf = lightOnly.querySelector(".scf");
         const cfvContainer = lightOnly.querySelector(".cfv-swatches");
+        if (sbv) {
+          sbv.checked = ctrl.show_brightness_value !== false;
+          sbv.addEventListener("change", e => {
+            e.stopPropagation();
+            const c = [...this._config.controls];
+            const next = { ...c[i] };
+            next.show_brightness_value = e.target.checked;
+            this._lastInteractedControlId = key;
+            c[i] = next; keepOpen(); this._fire({ ...this._config, controls: c });
+          });
+        }
         if (sbp) {
           sbp.checked = ctrl.show_brightness_presets === true;
           sbp.addEventListener("change", e => {
@@ -4800,7 +4821,7 @@ if (tmplSelect) {
               delete next.show_brightness_presets;
             }
             this._lastInteractedControlId = key;
-            c[i] = next; keepOpen(); this._fire({ ...this._config, controls: c }); this.renBtn();
+            c[i] = next; keepOpen(); this._fire({ ...this._config, controls: c });
           });
         }
         if (bpv) {
@@ -4836,7 +4857,7 @@ if (tmplSelect) {
               if (!next.color_favorites) next.color_favorites = "#ff9800; #2196f3; #4caf50";
             } else { delete next.show_color_favorites; }
             this._lastInteractedControlId = key;
-            c[i] = next; keepOpen(); this._fire({ ...this._config, controls: c }); this.renBtn();
+            c[i] = next; keepOpen(); this._fire({ ...this._config, controls: c });
           });
         }
         if (cfvContainer) {
