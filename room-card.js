@@ -1,4 +1,4 @@
-const VERSION = "1.2.6";
+const VERSION = "1.2.7";
 const LOG_FLAG = `customCards_RoomCard_Logged_${VERSION}`;
 
 if (!window[LOG_FLAG]) {
@@ -54,7 +54,7 @@ const TRANSLATIONS = {
     visibility: "Visibility", visibility_cond: "Conditional Visibility", vis_entity: "Condition Entity", vis_state: "Show if state is", vis_invert: "Invert Logic (Hide if state corresponds)",
     migration_title: "Action Required",
     migration_text: "Card renamed to <b>oneline-room-card</b> to avoid conflicts.<br>Please change <code>type: custom:room-card</code> to <code>type: custom:oneline-room-card</code> in your YAML.",
-    control_mode: "Control Mode", ctrl_default: "Default", ctrl_slider: "Inline Slider", ctrl_buttons: "Inline Buttons", ctrl_full: "Full Controls",
+    control_mode: "Control Mode", ctrl_default: "Default", ctrl_slider: "Inline Slider", ctrl_buttons: "Inline Buttons", ctrl_full: "Full Controls", ctrl_all_options: "All Options",
     slider_mode: "Slider Mode", slider_mode_brightness: "Brightness", slider_mode_color_temp: "Color Temperature",
     slider_style: "Slider Style", style_inline: "Inline", style_bg: "Background",
     collapsible: "Collapsible", default_state: "Default State", state_expanded: "Expanded", state_collapsed: "Collapsed",
@@ -132,7 +132,7 @@ const TRANSLATIONS = {
     visibility: "Sichtbarkeit", visibility_cond: "Bedingte Sichtbarkeit", vis_entity: "Bedingungs-Entität", vis_state: "Anzeigen falls Status gleich", vis_invert: "Logik umkehren (Ausblenden falls entsprechend)",
     migration_title: "Handlung erforderlich",
     migration_text: "Karte wurde in <b>oneline-room-card</b> umbenannt.<br>Bitte ändere <code>type: custom:room-card</code> zu <code>type: custom:oneline-room-card</code> in deiner YAML-Konfiguration.",
-    control_mode: "Steuerungsmodus", ctrl_default: "Standard", ctrl_slider: "Inline-Slider", ctrl_buttons: "Inline-Buttons", ctrl_full: "Alle Steuerungen",
+    control_mode: "Steuerungsmodus", ctrl_default: "Standard", ctrl_slider: "Inline-Slider", ctrl_buttons: "Inline-Buttons", ctrl_full: "Alle Steuerungen", ctrl_all_options: "Alle Optionen",
     slider_mode: "Slider Modus", slider_mode_brightness: "Helligkeit", slider_mode_color_temp: "Farbtemperatur",
     slider_style: "Slider Stil", style_inline: "Inline", style_bg: "Hintergrund",
     collapsible: "Einklappbar", default_state: "Standardzustand", state_expanded: "Ausgeklappt", state_collapsed: "Eingeklappt",
@@ -213,7 +213,7 @@ const TRANSLATIONS = {
     show_name: "Afficher le titre", header_badges: "Infos d'en-tête supplémentaires", badge_add: "Ajouter une entrée", badge_label: "Libellé (optionnel)", badge_background: "Arrière-plan (rgba)", standard_badge_background: "Fond du badge climat principal (rgba)",
     migration_title: "Action requise",
     migration_text: "Carte renommée en <b>oneline-room-card</b> pour éviter les conflits.<br>Veuillez changer <code>type: custom:room-card</code> en <code>type: custom:oneline-room-card</code>.",
-    control_mode: "Mode de contrôle", ctrl_default: "Défaut", ctrl_slider: "Curseur", ctrl_buttons: "Boutons", ctrl_full: "Contrôles complets",
+    control_mode: "Mode de contrôle", ctrl_default: "Défaut", ctrl_slider: "Curseur", ctrl_buttons: "Boutons", ctrl_full: "Contrôles complets", ctrl_all_options: "Toutes les options",
     slider_mode: "Mode Curseurs", slider_mode_brightness: "Luminosité", slider_mode_color_temp: "Température de couleur",
     slider_style: "Style de curseur", style_inline: "Intégré", style_bg: "Arrière-plan",
     collapsible: "Rétractable", default_state: "État par défaut", state_expanded: "Déplié", state_collapsed: "Replié",
@@ -686,6 +686,11 @@ class OneLineRoomCard extends HTMLElement {
         .preset-btn { flex: 1; display: flex; align-items: center; justify-content: center; background: rgba(128,128,128,0.1); border-radius: 6px; padding: 3px 4px; cursor: pointer; transition: background 0.15s, color 0.15s; font-size: 11px; font-weight: 600; color: var(--secondary-text-color); white-space: nowrap; touch-action: manipulation; }
         .preset-btn:hover { background: rgba(128,128,128,0.22); color: var(--primary-text-color); }
         .preset-btn.active { background: var(--icon-color, var(--primary-color, #ff9800)); color: #fff; }
+        .btn-select-dropdown { width: 100%; padding-bottom: 4px; }
+        .btn-select-dropdown select { width: 100%; padding: 4px 8px; border-radius: 6px; border: none; background: rgba(128,128,128,0.12); color: var(--primary-text-color); font-size: 12px; font-weight: 500; cursor: pointer; appearance: auto; outline: none; touch-action: manipulation; }
+        .btn-select-dropdown select:focus { box-shadow: 0 0 0 1px var(--icon-color, var(--primary-color, #ff9800)); }
+        .btn-select-options { flex-wrap: wrap; }
+        .btn-select-options .preset-btn { flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
         .btn-color-favorites { display: flex; gap: 6px; width: 100%; flex: 0 0 auto; padding-bottom: 4px; flex-wrap: wrap; }
         .color-swatch { width: 20px; height: 20px; border-radius: 50%; cursor: pointer; flex-shrink: 0; border: 2px solid transparent; transition: transform 0.15s, border-color 0.15s; box-shadow: 0 1px 3px rgba(0,0,0,0.25); touch-action: manipulation; }
         .color-swatch:hover { transform: scale(1.2); }
@@ -1484,13 +1489,15 @@ class OneLineRoomCard extends HTMLElement {
     const sliderCaps = this._getSliderCapabilities(domain, st, ctrl);
     const inlineBtns = this._getInlineButtons(domain);
     const isFullControl = controlMode === "full";
-    const isBgSlider = controlMode === "slider" && ctrl.slider_style === "background" && !isUnavail && sliderCaps.supported;
-    const isInlineSlider = ((controlMode === "slider" && ctrl.slider_style !== "background") || isFullControl) && !isUnavail && sliderCaps.supported;
-    const hasInlineBtns = (controlMode === "buttons" || isFullControl) && !isUnavail && inlineBtns.length > 0;
+    const isSelectDomain = domain === "select" || domain === "input_select";
+    const isBgSlider = controlMode === "slider" && ctrl.slider_style === "background" && !isUnavail && sliderCaps.supported && !isSelectDomain;
+    const isInlineSlider = ((controlMode === "slider" && ctrl.slider_style !== "background") || isFullControl) && !isUnavail && sliderCaps.supported && !isSelectDomain;
+    const hasInlineBtns = (controlMode === "buttons" || (isFullControl && !isSelectDomain)) && !isUnavail && inlineBtns.length > 0;
     const hasCoverPresets = ctrl.show_cover_presets === true && domain === "cover" && !isUnavail;
     const hasClimatePresets = ctrl.show_climate_presets === true && domain === "climate" && !isUnavail;
     const hasBrightnessPresets = ctrl.show_brightness_presets === true && domain === "light" && !isUnavail;
     const hasColorFavorites = ctrl.show_color_favorites === true && domain === "light" && !isUnavail;
+    const hasSelectOptions = isSelectDomain && !isUnavail && Array.isArray(st?.attributes?.options) && st.attributes.options.length > 0;
     const isMediaFull = domain === "media_player" && !isUnavail && sliderCaps.supported && (controlMode === "full" || !controlMode || controlMode === "default");
 
     if (isBgSlider) {
@@ -1518,7 +1525,7 @@ class OneLineRoomCard extends HTMLElement {
       btn.insertBefore(bgSlider, btn.firstChild);
     }
 
-    if (isInlineSlider || hasInlineBtns || hasCoverPresets || hasClimatePresets || hasBrightnessPresets || hasColorFavorites || isMediaFull) {
+    if (isInlineSlider || hasInlineBtns || hasCoverPresets || hasClimatePresets || hasBrightnessPresets || hasColorFavorites || hasSelectOptions || isMediaFull) {
       btn.classList.add("has-inline-ctrl");
       const topDiv = document.createElement("div");
       topDiv.className = "btn-top";
@@ -1918,6 +1925,58 @@ class OneLineRoomCard extends HTMLElement {
           btn.appendChild(swatchRow);
         }
       }
+
+      // Select: dropdown (default/buttons) or option chips (full mode)
+      if (isSelectDomain && !isUnavail) {
+        const options = Array.isArray(st?.attributes?.options) ? st.attributes.options : [];
+        if (options.length > 0) {
+          const currentOption = st?.state;
+          if (controlMode === "full") {
+            // Full mode: show all options as tappable chips
+            const optionsDiv = document.createElement("div");
+            optionsDiv.className = "btn-cover-presets btn-select-options";
+            options.forEach(option => {
+              const pb = document.createElement("div");
+              pb.className = "preset-btn";
+              pb.textContent = option;
+              pb.title = option;
+              if (currentOption === option) pb.classList.add("active");
+              pb.addEventListener("pointerdown", e => e.stopPropagation());
+              pb.addEventListener("click", e => {
+                e.stopPropagation();
+                if (!this._isEntityUnavailable(ctrl.entity)) {
+                  this._hass.callService(domain, "select_option", { entity_id: ctrl.entity, option: option });
+                }
+              });
+              optionsDiv.appendChild(pb);
+            });
+            btn.appendChild(optionsDiv);
+          } else {
+            // Default / buttons: native dropdown
+            const wrapDiv = document.createElement("div");
+            wrapDiv.className = "btn-select-dropdown";
+            const sel = document.createElement("select");
+            options.forEach(option => {
+              const opt = document.createElement("option");
+              opt.value = option;
+              opt.textContent = option;
+              if (option === currentOption) opt.selected = true;
+              sel.appendChild(opt);
+            });
+            sel.addEventListener("pointerdown", e => e.stopPropagation());
+            sel.addEventListener("click", e => e.stopPropagation());
+            sel.addEventListener("change", e => {
+              e.stopPropagation();
+              if (!this._isEntityUnavailable(ctrl.entity)) {
+                this._hass.callService(domain, "select_option", { entity_id: ctrl.entity, option: sel.value });
+              }
+            });
+            wrapDiv.appendChild(sel);
+            btn.appendChild(wrapDiv);
+          }
+        }
+      }
+
       // Move sub-chips out of btn-top to top or bottom of button based on chips_position
       const chipsEl = topDiv.querySelector(".btn-chips");
       if (chipsEl) {
@@ -5336,13 +5395,16 @@ const tl = box.querySelector(".tl");
 const cm = box.querySelector(".cm"); 
       if (cm) {
         cm.hass = h; 
+        const isSelectDom = r_dom === "select" || r_dom === "input_select";
         const cmOptions = [
           { value: "none", label: getTranslation(h, "ctrl_default") || "Standard" },
-          { value: "slider", label: getTranslation(h, "ctrl_slider") || "Inline Slider" },
-          { value: "buttons", label: getTranslation(h, "ctrl_buttons") || "Inline Buttons" },
         ];
+        if (!isSelectDom) {
+          cmOptions.push({ value: "slider", label: getTranslation(h, "ctrl_slider") || "Inline Slider" });
+        }
+        cmOptions.push({ value: "buttons", label: getTranslation(h, "ctrl_buttons") || "Inline Buttons" });
         if (r_dom !== "media_player") {
-          cmOptions.push({ value: "full", label: getTranslation(h, "ctrl_full") || "Full Controls" });
+          cmOptions.push({ value: "full", label: isSelectDom ? (getTranslation(h, "ctrl_all_options") || "Alle Optionen") : (getTranslation(h, "ctrl_full") || "Full Controls") });
         }
         cm.selector = {
           select: {
