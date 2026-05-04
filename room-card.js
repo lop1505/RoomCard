@@ -667,12 +667,22 @@ class OneLineRoomCard extends HTMLElement {
         .btn-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--icon-color, #ff9800); cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
         .btn-slider::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: var(--icon-color, #ff9800); cursor: pointer; border: none; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
         .btn-cover-actions { display: flex; gap: 4px; width: 100%; flex: 0 0 auto; padding-bottom: 4px; }
-        .cover-action-btn { flex: 1; display: flex; align-items: center; justify-content: center; background: rgba(128,128,128,0.1); border-radius: 6px; padding: 4px 2px; cursor: pointer; transition: background 0.15s; touch-action: manipulation; }
+        .cover-action-btn { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; background: rgba(128,128,128,0.1); border-radius: 6px; padding: 4px 6px; cursor: pointer; transition: background 0.15s; touch-action: manipulation; }
         .cover-action-btn:hover { background: rgba(128,128,128,0.22); }
         .cover-action-btn ha-icon { --mdc-icon-size: 16px; color: var(--primary-text-color); }
+        .media-control-bar { display: flex; align-items: center; gap: 6px; width: 100%; flex: 0 0 auto; padding: 2px 0 4px; }
+        .media-control-bar .media-ctrl-btn { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; cursor: pointer; transition: background 0.15s; touch-action: manipulation; }
+        .media-control-bar .media-ctrl-btn:hover { background: rgba(128,128,128,0.18); }
+        .media-control-bar .media-ctrl-btn ha-icon { --mdc-icon-size: 18px; color: var(--primary-text-color); }
+        .media-control-bar .media-ctrl-btn.muted ha-icon { color: var(--secondary-text-color); }
+        .media-control-bar .btn-slider-wrap { flex: 1; min-width: 0; padding: 0; }
+        .media-control-bar .btn-slider { height: 4px; }
+        .media-control-bar .vol-label { font-size: 10px; font-weight: 600; color: var(--secondary-text-color); min-width: 28px; text-align: center; flex: 0 0 auto; }
+        .media-thumb { width: 40px; height: 40px; border-radius: 4px; object-fit: cover; flex-shrink: 0; }
+        .media-full-layout { display: flex; gap: 10px; width: 100%; align-items: stretch; }
+        .media-full-layout .media-thumb { width: 56px; height: auto; min-height: 56px; border-radius: 6px; align-self: stretch; }
+        .media-full-layout .media-right { display: flex; flex-direction: column; flex: 1; min-width: 0; justify-content: center; gap: 2px; }
         .btn-cover-presets { display: flex; gap: 4px; width: 100%; flex: 0 0 auto; padding-bottom: 4px; }
-        .btn-media-options { flex-wrap: wrap; }
-        .btn-media-options .preset-btn { flex: 1 1 auto; min-width: 44px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
         .preset-btn { flex: 1; display: flex; align-items: center; justify-content: center; background: rgba(128,128,128,0.1); border-radius: 6px; padding: 3px 4px; cursor: pointer; transition: background 0.15s, color 0.15s; font-size: 11px; font-weight: 600; color: var(--secondary-text-color); white-space: nowrap; touch-action: manipulation; }
         .preset-btn:hover { background: rgba(128,128,128,0.22); color: var(--primary-text-color); }
         .preset-btn.active { background: var(--icon-color, var(--primary-color, #ff9800)); color: #fff; }
@@ -1353,7 +1363,7 @@ class OneLineRoomCard extends HTMLElement {
     // --- NEW: USE DYNAMIC UNIT IN TEMPLATE ---
     const climateHasSlider = typ === "climate" && (ctrl.control_mode === "slider" || ctrl.control_mode === "full");
     const mediaTitleText = (() => {
-      if (domain !== "media_player" || ctrl.show_media_title !== true || !st) return "";
+      if (domain !== "media_player" || !st) return "";
       const title = trimStr(st.attributes?.media_title);
       const artist = trimStr(st.attributes?.media_artist);
       const album = trimStr(st.attributes?.media_album_name);
@@ -1481,10 +1491,7 @@ class OneLineRoomCard extends HTMLElement {
     const hasClimatePresets = ctrl.show_climate_presets === true && domain === "climate" && !isUnavail;
     const hasBrightnessPresets = ctrl.show_brightness_presets === true && domain === "light" && !isUnavail;
     const hasColorFavorites = ctrl.show_color_favorites === true && domain === "light" && !isUnavail;
-    const mediaSources = domain === "media_player" && Array.isArray(st?.attributes?.source_list) ? st.attributes.source_list : [];
-    const mediaSoundModes = domain === "media_player" && Array.isArray(st?.attributes?.sound_mode_list) ? st.attributes.sound_mode_list : [];
-    const hasMediaSources = domain === "media_player" && !isUnavail && (isFullControl || ctrl.show_media_sources === true) && mediaSources.length > 0;
-    const hasMediaSoundModes = domain === "media_player" && !isUnavail && (isFullControl || ctrl.show_media_sound_modes === true) && mediaSoundModes.length > 0;
+    const isMediaFull = domain === "media_player" && !isUnavail && sliderCaps.supported && (controlMode === "full" || !controlMode || controlMode === "default");
 
     if (isBgSlider) {
       btn.style.position = "relative";
@@ -1511,7 +1518,7 @@ class OneLineRoomCard extends HTMLElement {
       btn.insertBefore(bgSlider, btn.firstChild);
     }
 
-    if (isInlineSlider || hasInlineBtns || hasCoverPresets || hasClimatePresets || hasBrightnessPresets || hasColorFavorites || hasMediaSources || hasMediaSoundModes) {
+    if (isInlineSlider || hasInlineBtns || hasCoverPresets || hasClimatePresets || hasBrightnessPresets || hasColorFavorites || isMediaFull) {
       btn.classList.add("has-inline-ctrl");
       const topDiv = document.createElement("div");
       topDiv.className = "btn-top";
@@ -1521,7 +1528,125 @@ class OneLineRoomCard extends HTMLElement {
       }
       btn.appendChild(topDiv);
 
-      if (isInlineSlider) {
+      if (isMediaFull) {
+        // Layout: [Thumbnail] [Name + Title + Controls]
+        const thumbUrl = st?.attributes?.entity_picture;
+        // Remove the icon-box from topDiv (we use thumbnail or keep icon as fallback)
+        const iconBox = topDiv.querySelector(".icon-box");
+
+        const layout = document.createElement("div");
+        layout.className = "media-full-layout";
+
+        if (thumbUrl) {
+          const img = document.createElement("img");
+          img.className = "media-thumb";
+          img.src = thumbUrl;
+          img.alt = "";
+          layout.appendChild(img);
+          if (iconBox) iconBox.remove();
+        } else if (iconBox) {
+          iconBox.remove();
+        }
+
+        // Right side: text + control bar
+        const rightDiv = document.createElement("div");
+        rightDiv.className = "media-right";
+        // Move text content from topDiv into rightDiv
+        const txtDiv = topDiv.querySelector(".btn-txt");
+        if (txtDiv) rightDiv.appendChild(txtDiv);
+
+        // Combined media control bar: [Mute] [---Slider---] [Play/Pause] [Next]
+        const bar = document.createElement("div");
+        bar.className = "media-control-bar";
+        let currentMuted = st?.attributes?.is_volume_muted === true;
+        // Mute button
+        const muteBtn = document.createElement("div");
+        muteBtn.className = `media-ctrl-btn${currentMuted ? " muted" : ""}`;
+        muteBtn.innerHTML = `<ha-icon icon="${currentMuted ? "mdi:volume-off" : "mdi:volume-high"}"></ha-icon>`;
+        muteBtn.addEventListener("pointerdown", e => e.stopPropagation());
+        muteBtn.addEventListener("click", e => {
+          e.stopPropagation();
+          if (!this._isEntityUnavailable(ctrl.entity)) {
+            const newMuted = !currentMuted;
+            currentMuted = newMuted;
+            this._hass.callService("media_player", "volume_mute", { entity_id: ctrl.entity, is_volume_muted: newMuted });
+            if (!newMuted) {
+              // Also restore volume explicitly for players that don't handle unmute well
+              const vol = st?.attributes?.volume_level ?? sliderCaps.value / 100;
+              this._hass.callService("media_player", "volume_set", { entity_id: ctrl.entity, volume_level: vol });
+            }
+            // Immediate visual feedback
+            muteBtn.querySelector("ha-icon").setAttribute("icon", newMuted ? "mdi:volume-off" : "mdi:volume-high");
+            muteBtn.classList.toggle("muted", newMuted);
+            if (newMuted) {
+              slider.style.setProperty("--slider-pct", "0%");
+              volLabel.textContent = "0%";
+            } else {
+              const vol = sliderCaps.value;
+              const pct = ((vol - sliderCaps.min) / (sliderCaps.max - sliderCaps.min)) * 100;
+              slider.value = vol;
+              slider.style.setProperty("--slider-pct", `${pct}%`);
+              volLabel.textContent = `${Math.round(vol)}%`;
+            }
+          }
+        });
+        bar.appendChild(muteBtn);
+        // Volume slider
+        const wrap = document.createElement("div");
+        wrap.className = "btn-slider-wrap";
+        const slider = document.createElement("input");
+        slider.type = "range";
+        slider.className = "btn-slider";
+        slider.min = sliderCaps.min; slider.max = sliderCaps.max; slider.step = sliderCaps.step; slider.value = sliderCaps.value;
+        slider.style.setProperty("--slider-pct", `${sliderCaps.pct}%`);
+        const volLabel = document.createElement("span");
+        volLabel.className = "vol-label";
+        volLabel.textContent = `${Math.round(sliderCaps.value)}%`;
+        slider.addEventListener("pointerdown", e => e.stopPropagation());
+        slider.addEventListener("click", e => e.stopPropagation());
+        slider.addEventListener("input", e => {
+          const v = +e.target.value;
+          const pct = ((v - sliderCaps.min) / (sliderCaps.max - sliderCaps.min)) * 100;
+          e.target.style.setProperty("--slider-pct", `${pct}%`);
+          volLabel.textContent = `${Math.round(v)}%`;
+        });
+        slider.addEventListener("change", e => {
+          const v = +e.target.value;
+          this._hass.callService("media_player", "volume_set", { entity_id: ctrl.entity, volume_level: v / 100 });
+        });
+        wrap.appendChild(slider);
+        bar.appendChild(wrap);
+        bar.appendChild(volLabel);
+        // Play/Pause button
+        const playBtn = document.createElement("div");
+        playBtn.className = "media-ctrl-btn";
+        playBtn.innerHTML = `<ha-icon icon="mdi:play-pause"></ha-icon>`;
+        playBtn.addEventListener("pointerdown", e => e.stopPropagation());
+        playBtn.addEventListener("click", e => {
+          e.stopPropagation();
+          if (!this._isEntityUnavailable(ctrl.entity)) {
+            this._hass.callService("media_player", "media_play_pause", { entity_id: ctrl.entity });
+          }
+        });
+        bar.appendChild(playBtn);
+        // Next track button
+        const nextBtn = document.createElement("div");
+        nextBtn.className = "media-ctrl-btn";
+        nextBtn.innerHTML = `<ha-icon icon="mdi:skip-next"></ha-icon>`;
+        nextBtn.addEventListener("pointerdown", e => e.stopPropagation());
+        nextBtn.addEventListener("click", e => {
+          e.stopPropagation();
+          if (!this._isEntityUnavailable(ctrl.entity)) {
+            this._hass.callService("media_player", "media_next_track", { entity_id: ctrl.entity });
+          }
+        });
+        bar.appendChild(nextBtn);
+        rightDiv.appendChild(bar);
+        layout.appendChild(rightDiv);
+        // Replace topDiv content with the full layout
+        topDiv.innerHTML = "";
+        topDiv.appendChild(layout);
+      } else if (isInlineSlider) {
         const wrap = document.createElement("div");
         wrap.className = "btn-slider-wrap";
         const slider = document.createElement("input");
@@ -1586,7 +1711,7 @@ class OneLineRoomCard extends HTMLElement {
         btn.appendChild(wrap);
       }
 
-      if (hasInlineBtns) {
+      if (hasInlineBtns && !isMediaFull) {
         const actDiv = document.createElement("div");
         actDiv.className = "btn-cover-actions";
         inlineBtns.forEach(({ icon, action, service, custom }) => {
@@ -1624,36 +1749,6 @@ class OneLineRoomCard extends HTMLElement {
           actDiv.appendChild(b);
         });
         btn.appendChild(actDiv);
-      }
-
-      const addMediaOptionChips = (items, current, serviceName) => {
-        const presetsDiv = document.createElement("div");
-        presetsDiv.className = "btn-cover-presets btn-media-options";
-        items.forEach(item => {
-          const value = String(item);
-          const pb = document.createElement("div");
-          pb.className = "preset-btn";
-          pb.textContent = value;
-          pb.title = value;
-          if (current === value) pb.classList.add("active");
-          pb.addEventListener("pointerdown", e => e.stopPropagation());
-          pb.addEventListener("click", e => {
-            e.stopPropagation();
-            if (!this._isEntityUnavailable(ctrl.entity)) {
-              this._hass.callService("media_player", serviceName, { entity_id: ctrl.entity, [serviceName === "select_source" ? "source" : "sound_mode"]: value });
-            }
-          });
-          presetsDiv.appendChild(pb);
-        });
-        btn.appendChild(presetsDiv);
-      };
-
-      if (hasMediaSources) {
-        addMediaOptionChips(mediaSources, st?.attributes?.source, "select_source");
-      }
-
-      if (hasMediaSoundModes) {
-        addMediaOptionChips(mediaSoundModes, st?.attributes?.sound_mode, "select_sound_mode");
       }
 
       // Cover position presets
@@ -4476,13 +4571,6 @@ if (tmplSelect) {
             <div class="cfv-swatches" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-height:28px"></div>
           </div>
         </div>
-        <div class="entity-only media-only ${hideEntity}" style="margin-top:8px; border-top:1px solid var(--divider-color); padding-top:8px">
-          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-            <ha-formfield label="${getTranslation(h, "show_media_sources")}"><ha-switch class="smsrc"></ha-switch></ha-formfield>
-            <ha-formfield label="${getTranslation(h, "show_media_sound_modes")}"><ha-switch class="smsnd"></ha-switch></ha-formfield>
-            <ha-formfield label="${getTranslation(h, "show_media_title")}"><ha-switch class="smtitle"></ha-switch></ha-formfield>
-          </div>
-        </div>
         <div class="entity-only ${hideEntity}" style="margin-top:8px; border-top:1px solid var(--divider-color); padding-top:8px">
           <div class="image-title" style="margin-bottom:8px; font-weight:bold">${getTranslation(h, "sub_chips")}</div>
           <div style="margin-bottom:8px">
@@ -4948,29 +5036,7 @@ if (tmplSelect) {
 
       const mediaOnly = box.querySelector(".media-only");
       if (mediaOnly) {
-        mediaOnly.hidden = ctrlDomain !== "media_player";
-        const smsrc = mediaOnly.querySelector(".smsrc");
-        const smsnd = mediaOnly.querySelector(".smsnd");
-        const smtitle = mediaOnly.querySelector(".smtitle");
-        const toggleMediaOption = (keyName, checked) => {
-          const c = [...this._config.controls];
-          const next = { ...c[i] };
-          if (checked) next[keyName] = true;
-          else delete next[keyName];
-          c[i] = next; keepOpen(); this._fire({ ...this._config, controls: c });
-        };
-        if (smsrc) {
-          smsrc.checked = ctrl.show_media_sources === true;
-          smsrc.addEventListener("change", e => { e.stopPropagation(); toggleMediaOption("show_media_sources", e.target.checked === true); });
-        }
-        if (smsnd) {
-          smsnd.checked = ctrl.show_media_sound_modes === true;
-          smsnd.addEventListener("change", e => { e.stopPropagation(); toggleMediaOption("show_media_sound_modes", e.target.checked === true); });
-        }
-        if (smtitle) {
-          smtitle.checked = ctrl.show_media_title === true;
-          smtitle.addEventListener("change", e => { e.stopPropagation(); toggleMediaOption("show_media_title", e.target.checked === true); });
-        }
+        mediaOnly.hidden = true;
       }
       
       if (!isTemplate) {
@@ -5270,14 +5336,17 @@ const tl = box.querySelector(".tl");
 const cm = box.querySelector(".cm"); 
       if (cm) {
         cm.hass = h; 
+        const cmOptions = [
+          { value: "none", label: getTranslation(h, "ctrl_default") || "Standard" },
+          { value: "slider", label: getTranslation(h, "ctrl_slider") || "Inline Slider" },
+          { value: "buttons", label: getTranslation(h, "ctrl_buttons") || "Inline Buttons" },
+        ];
+        if (r_dom !== "media_player") {
+          cmOptions.push({ value: "full", label: getTranslation(h, "ctrl_full") || "Full Controls" });
+        }
         cm.selector = {
           select: {
-            mode: "dropdown", options: [
-              { value: "none", label: getTranslation(h, "ctrl_default") || "Standard" },
-              { value: "slider", label: getTranslation(h, "ctrl_slider") || "Inline Slider" },
-              { value: "buttons", label: getTranslation(h, "ctrl_buttons") || "Inline Buttons" },
-              { value: "full", label: getTranslation(h, "ctrl_full") || "Full Controls" }
-            ]
+            mode: "dropdown", options: cmOptions
           }
         };
         cm.value = ctrl.control_mode || "none";
