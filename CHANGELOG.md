@@ -5,6 +5,7 @@ All notable changes to OneLine Room Card are documented here.
 ## [Unreleased]
 
 * Runtime & Editor: **Header Image Grayscale by Light State** — Restored the `image_entity` option (regressed in 1.2.6). When the configured light/switch/input_boolean/group is off, the header image fades to grayscale with a smooth 0.8 s transition. Configurable in the editor under the *Image* section. Re-closes [#66](https://github.com/lop1505/RoomCard/issues/66).
+* Runtime & Editor: **Presence Indicator Chip** — Restored the `presence_sensor` option (regressed in 1.2.6). When the configured person / binary_sensor / device_tracker is active (`on`, `home`, `active`, `detected`), a green chip with the entity's friendly name appears in the header info line. Configurable in the editor under the *Sensors* section.
 
 ---
 
