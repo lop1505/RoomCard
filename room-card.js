@@ -82,6 +82,7 @@ const TRANSLATIONS = {
     cover_presets_label: "Preset Values (comma-separated)",
     show_climate_presets: "Temperature Presets",
     climate_presets_label: "Temperatures (comma-separated)",
+    show_hvac_modes: "HVAC Mode Chips", show_fan_modes: "Fan Speed Chips",
     show_brightness_presets: "Brightness Presets",
     brightness_presets_label: "Brightness values (comma-separated)",
     show_brightness_value: "Show Brightness %",
@@ -169,6 +170,7 @@ const TRANSLATIONS = {
     cover_presets_label: "Voreinstellungen (kommagetrennt)",
     show_climate_presets: "Temperatur-Voreinstellungen",
     climate_presets_label: "Temperaturen (kommagetrennt)",
+    show_hvac_modes: "HVAC-Modus-Chips", show_fan_modes: "Lüftergeschwindigkeit-Chips",
     show_brightness_presets: "Helligkeits-Voreinstellungen",
     brightness_presets_label: "Helligkeiten (kommagetrennt)",
     show_brightness_value: "Helligkeit % anzeigen",
@@ -251,6 +253,7 @@ const TRANSLATIONS = {
     cover_presets_label: "Valeurs (séparées par virgule)",
     show_climate_presets: "Préréglages de température",
     climate_presets_label: "Températures (séparées par virgule)",
+    show_hvac_modes: "Boutons mode HVAC", show_fan_modes: "Boutons vitesse ventilateur",
     show_brightness_presets: "Préréglages de luminosité",
     brightness_presets_label: "Luminosités (séparées par virgule)",
     show_brightness_value: "Afficher luminosité %",
@@ -1001,6 +1004,7 @@ class OneLineRoomCard extends HTMLElement {
       attrs.current_humidity ?? "",
       attrs.friendly_name ?? "",
       attrs.hvac_action ?? "",
+      attrs.fan_mode ?? "",
       attrs.icon ?? "",
       attrs.current_position ?? "",
       attrs.color_temp ?? "",
@@ -2201,6 +2205,61 @@ class OneLineRoomCard extends HTMLElement {
           presetsDiv.appendChild(pb);
         });
         btn.appendChild(presetsDiv);
+      }
+
+      // Climate HVAC mode chips
+      if (domain === "climate" && ctrl.show_hvac_modes === true) {
+        const modes = Array.isArray(st?.attributes?.hvac_modes) ? st.attributes.hvac_modes : [];
+        if (modes.length > 0) {
+          const current = String(st?.state || "").toLowerCase();
+          const div = document.createElement("div");
+          div.className = "btn-cover-presets";
+          const iconForMode = {
+            off: "mdi:power", auto: "mdi:thermostat-auto", heat: "mdi:fire", cool: "mdi:snowflake",
+            heat_cool: "mdi:sun-snowflake", dry: "mdi:water-percent", fan_only: "mdi:fan"
+          };
+          modes.forEach(mode => {
+            const pb = document.createElement("div");
+            pb.className = "preset-btn";
+            const ic = iconForMode[String(mode).toLowerCase()];
+            pb.innerHTML = ic ? `<ha-icon icon="${ic}" style="--mdc-icon-size:14px"></ha-icon> ${mode}` : mode;
+            if (String(mode).toLowerCase() === current) pb.classList.add("active");
+            pb.addEventListener("pointerdown", e => e.stopPropagation());
+            pb.addEventListener("click", e => {
+              e.stopPropagation();
+              if (!this._isEntityUnavailable(ctrl.entity)) {
+                this._hass.callService("climate", "set_hvac_mode", { entity_id: ctrl.entity, hvac_mode: mode });
+              }
+            });
+            div.appendChild(pb);
+          });
+          btn.appendChild(div);
+        }
+      }
+
+      // Climate fan mode chips
+      if (domain === "climate" && ctrl.show_fan_modes === true) {
+        const modes = Array.isArray(st?.attributes?.fan_modes) ? st.attributes.fan_modes : [];
+        if (modes.length > 0) {
+          const current = String(st?.attributes?.fan_mode || "").toLowerCase();
+          const div = document.createElement("div");
+          div.className = "btn-cover-presets";
+          modes.forEach(mode => {
+            const pb = document.createElement("div");
+            pb.className = "preset-btn";
+            pb.innerHTML = `<ha-icon icon="mdi:fan" style="--mdc-icon-size:14px"></ha-icon> ${mode}`;
+            if (String(mode).toLowerCase() === current) pb.classList.add("active");
+            pb.addEventListener("pointerdown", e => e.stopPropagation());
+            pb.addEventListener("click", e => {
+              e.stopPropagation();
+              if (!this._isEntityUnavailable(ctrl.entity)) {
+                this._hass.callService("climate", "set_fan_mode", { entity_id: ctrl.entity, fan_mode: mode });
+              }
+            });
+            div.appendChild(pb);
+          });
+          btn.appendChild(div);
+        }
       }
 
       // Light brightness presets
@@ -5319,6 +5378,10 @@ if (tmplSelect) {
             <ha-formfield label="${getTranslation(h, "show_climate_presets")}"><ha-switch class="sctp"></ha-switch></ha-formfield>
             <ha-textfield class="ctpv" label="${getTranslation(h, "climate_presets_label")}" placeholder="0, 18, 20, auto, max" style="flex:1;min-width:160px"></ha-textfield>
           </div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px">
+            <ha-formfield label="${getTranslation(h, "show_hvac_modes")}"><ha-switch class="shvac"></ha-switch></ha-formfield>
+            <ha-formfield label="${getTranslation(h, "show_fan_modes")}"><ha-switch class="sfan"></ha-switch></ha-formfield>
+          </div>
         </div>
         <div class="entity-only light-only ${hideEntity}" style="margin-top:8px; border-top:1px solid var(--divider-color); padding-top:8px">
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
@@ -5635,8 +5698,30 @@ if (tmplSelect) {
             c[i] = next; keepOpen(); this._fire({ ...this._config, controls: c });
           });
         }
+        const shvac = climateOnly.querySelector(".shvac");
+        if (shvac) {
+          shvac.checked = ctrl.show_hvac_modes === true;
+          shvac.addEventListener("change", e => {
+            e.stopPropagation();
+            const c = [...this._config.controls];
+            const next = { ...c[i] };
+            if (e.target.checked) next.show_hvac_modes = true; else delete next.show_hvac_modes;
+            c[i] = next; keepOpen(); this._fire({ ...this._config, controls: c });
+          });
+        }
+        const sfan = climateOnly.querySelector(".sfan");
+        if (sfan) {
+          sfan.checked = ctrl.show_fan_modes === true;
+          sfan.addEventListener("change", e => {
+            e.stopPropagation();
+            const c = [...this._config.controls];
+            const next = { ...c[i] };
+            if (e.target.checked) next.show_fan_modes = true; else delete next.show_fan_modes;
+            c[i] = next; keepOpen(); this._fire({ ...this._config, controls: c });
+          });
+        }
       }
-      
+
       const lightOnly = box.querySelector(".light-only");
       if (lightOnly) {
         lightOnly.hidden = ctrlDomain !== "light";
