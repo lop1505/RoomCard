@@ -5,6 +5,7 @@ All notable changes to OneLine Room Card are documented here.
 ## [Unreleased]
 
 * Runtime & Editor: **Header Image Grayscale by Light State** — Restored the `image_entity` option (regressed in 1.2.6). When the configured light/switch/input_boolean/group is off, the header image fades to grayscale with a smooth 0.8 s transition. Configurable in the editor under the *Image* section. Re-closes [#66](https://github.com/lop1505/RoomCard/issues/66).
+* Runtime & Editor: **Sensor Sparklines on Buttons** — Restored the per-button `show_sparkline` option (regressed in 1.2.6) for `sensor` entities. Toggle the switch in the button row and optionally set `sparkline_hours` (1-168, default 24) to control the history range. Card-level `sparkline_refresh` (60-3600 s, default 300) controls the auto-refresh cadence. Re-closes [#55](https://github.com/lop1505/RoomCard/issues/55).
 * Runtime & Editor: **Presence Indicator Chip** — Restored the `presence_sensor` option (regressed in 1.2.6). When the configured person / binary_sensor / device_tracker is active (`on`, `home`, `active`, `detected`), a green chip with the entity's friendly name appears in the header info line. Configurable in the editor under the *Sensors* section.
 
 ---
