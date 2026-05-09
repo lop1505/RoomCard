@@ -24,6 +24,7 @@ Developed with a focus on stability, simple design, and maximum flexibility.
 * 🖱️ Full visual editor — no YAML required, with live preview
 * 🖼️ Built-in image uploader — upload room backgrounds directly in the editor
 * 🧭 Quick Add — add buttons from existing entity types in one click, including `select` / `input_select`
+* 🏠 Area-Based Auto-Setup — pick a Home Assistant area and one click auto-populates climate, controls (light/switch/cover/fan/media_player/lock), temperature/humidity/window/battery sensors
 * 🖱️ Drag & drop reordering, bulk expand/collapse, collapsible button entries
 
 **Header**
@@ -31,6 +32,10 @@ Developed with a focus on stability, simple design, and maximum flexibility.
 * 🌍 Dynamic unit support — Celsius / Fahrenheit from HA system settings
 * 🏷️ Custom header badges — any entity with optional label, name toggle and `rgba(...)` background
 * 📐 Configurable header height — set in px, or `0` to hide completely
+* 🚫 Hide background image (`show_image: false`) — collapses the header to its content height while keeping name, icon, badges and chips visible
+* 🌗 Image grayscale by light state (`image_entity`) — header image fades to grayscale when the chosen light/switch is off
+* 🚶 Presence indicator chip (`presence_sensor`) — green chip when a person / motion / device_tracker is active
+* 🚨 Configurable alert sensors — red header chips and red card outline when sensors trip; collapsed mode shows a count badge with click-to-list dialog
 * 🎨 Header typography — font size, weight, style and color per element
 * 📍 Header position sliders — drag title and info line left/right with snap points
 * 🪟 Window sensor chips — custom colors for open/closed states
@@ -47,6 +52,9 @@ Developed with a focus on stability, simple design, and maximum flexibility.
 * 🎨 Color Favorites — tap-to-set RGB swatches on light buttons
 * 💡 Brightness presets — tap-to-set brightness chips for lights (e.g. 25% / 50% / 75% / 100%)
 * 🌡️ Climate presets — tap-to-set temperature presets (fixed, `auto`, `max`)
+* 🔥 HVAC mode chips (`show_hvac_modes`) — tappable chips for `attributes.hvac_modes` with matching MDI icons (off/auto/heat/cool/heat_cool/dry/fan_only)
+* 💨 Fan speed chips (`show_fan_modes`) — tappable chips for `attributes.fan_modes`
+* 📈 Sensor sparklines (`show_sparkline`) — tiny line charts on sensor buttons; configurable history (`sparkline_hours`) and refresh cadence (`sparkline_refresh`)
 * 📐 Cover position presets — tap-to-set position presets (default: 0% / 50% / 100%)
 * 🎨 State-dependent colors (`color_map`) — icon color and background by entity state
 * 💡 Dynamic state icons — auto icon per state for Light, Switch, Fan, Lock, Cover, Media Player
@@ -95,7 +103,9 @@ covers all settings — no YAML required.
 | `name` | — | Room name |
 | `entity` | — | Main entity (drives header icon color) |
 | `image` | — | Header background image URL |
-| `header_height` | `120` | Header image height in px (`0` = hidden) |
+| `show_image` | `true` | Show the header background image. `false` hides the `<img>` and dark gradient and lets the header collapse to content height while name / icon / badges / chips remain visible |
+| `image_entity` | — | Light / switch / input_boolean / group entity. When this entity is off, the header image fades to grayscale |
+| `header_height` | `120` | Header image height in px (`0` = hidden, ignored when `show_image: false`) |
 | `collapsible` | `false` | Enable click-to-collapse on header |
 | `default_state` | `expanded` | `expanded` · `collapsed` |
 | `tap_action` | — | Card tap action (e.g. `navigate`) |
@@ -105,14 +115,19 @@ covers all settings — no YAML required.
 | `global_icon_size` | `20px` | Default icon size for all buttons |
 | `global_button_background` | — | Default button background (e.g. `rgba(0,0,0,0)`) |
 | `show_card_last_activity` | `false` | Show a header badge with elapsed time since the most recently changed button entity (e.g. `5 min`, `2h 15min`). Auto-refreshes every 60 s. |
+| `sparkline_refresh` | `300` | Auto-refresh cadence for all sparkline buttons in seconds (60–3600) |
 
 #### Sensors & chips
 | Option | Default | Description |
 |---|---|---|
+| `presence_sensor` | — | Person / `binary_sensor` / `device_tracker` entity. Adds a green presence chip when active (`on`, `home`, `active`, `detected`) |
 | `temp_sensor` | — | Temperature sensor (overrides climate) |
 | `target_temp_sensor` | — | Target temperature sensor |
 | `humid_sensor` | — | Humidity sensor (overrides climate) |
 | `humidity_warning_threshold` | `60` | Humidity warning threshold (%) |
+| `alert_sensors` | — | List of alert configurations: `{ entity, state, above, below }`. Triggers red header chips and a red card outline when active |
+| `alert_chip_mode` | `expanded` | `expanded` shows one chip per active alert; `collapsed` shows a count badge that opens a list dialog on click |
+| `alert_border_color` | `#d32f2d` | CSS color for the red card outline when alerts are active (any valid CSS color) |
 | `window_sensors` | — | List of window/door sensors (`binary_sensor` or `sensor` domain) |
 | `window_always_show` | `false` | Show chip even when closed |
 | `window_open_color` | `#FFA000` | Chip color when open |
@@ -140,6 +155,10 @@ covers all settings — no YAML required.
 | `cover_presets` | `[0,50,100]` | Position preset values |
 | `show_climate_presets` | `false` | Show climate temperature preset chips |
 | `climate_presets` | — | Temperature preset values |
+| `show_hvac_modes` | `false` | Show HVAC mode chips for `climate` entities (uses `attributes.hvac_modes`, calls `climate.set_hvac_mode`) |
+| `show_fan_modes` | `false` | Show fan speed chips for `climate` entities (uses `attributes.fan_modes`, calls `climate.set_fan_mode`) |
+| `show_sparkline` | `false` | Show a small history line chart on `sensor` buttons |
+| `sparkline_hours` | `24` | Sparkline history range in hours (1–168) |
 | `show_color_favorites` | `false` | Show light color favorite swatches |
 | `color_favorites` | — | List of `#hex` or `r,g,b` colors |
 | `show_state` | `true` | Show entity state text on button |

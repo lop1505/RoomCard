@@ -2,7 +2,7 @@
 
 All notable changes to OneLine Room Card are documented here.
 
-## [Unreleased]
+## [1.2.8]
 
 * Runtime & Editor: **Header Image Grayscale by Light State** — Restored the `image_entity` option (regressed in 1.2.6). When the configured light/switch/input_boolean/group is off, the header image fades to grayscale with a smooth 0.8 s transition. Configurable in the editor under the *Image* section. Re-closes [#66](https://github.com/lop1505/RoomCard/issues/66).
 * Runtime & Editor: **Climate HVAC & Fan Speed Chips** — New per-button options `show_hvac_modes` and `show_fan_modes` for `climate` entities. When enabled, render tappable chips below the button using the entity's `attributes.hvac_modes` / `attributes.fan_modes` lists. Tapping calls `climate.set_hvac_mode` / `climate.set_fan_mode` directly. The currently active mode is highlighted. HVAC chips include matching MDI icons (off/auto/heat/cool/heat_cool/dry/fan_only). Editor: two switches in the *Climate* row of the button editor. Closes [#81](https://github.com/lop1505/RoomCard/issues/81).
