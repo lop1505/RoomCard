@@ -808,7 +808,7 @@ class OneLineRoomCard extends HTMLElement {
         .img-box { position: relative; width: 100%; height: 120px; overflow: hidden; border-radius: 16px 16px 0 0; background: #444; cursor: pointer; }
         .img-box.no-image { background: transparent; }
         .img-box.no-image .img { display: none; }
-        .img-box.no-image .overlay { background: none; }
+        .img-box.no-image .overlay { background: none; position: relative; }
         .img { width: 100%; height: 100%; object-fit: cover; display: block; transition: filter 0.8s ease; }
         .img.grayscale { filter: grayscale(100%) brightness(0.6); }
         .overlay { position: absolute; top: 0; left: 0; width: 100%; padding: 12px; box-sizing: border-box; background: linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%); display: flex; align-items: center; gap: 12px; }
@@ -1173,8 +1173,11 @@ class OneLineRoomCard extends HTMLElement {
     const imgBox = this.shadowRoot.querySelector(".img-box");
     if (imgBox) {
       const hh = c.header_height !== undefined ? Number(c.header_height) : NaN;
-      imgBox.style.height = (Number.isFinite(hh) && hh >= 0) ? hh + "px" : "120px";
-      imgBox.classList.toggle("no-image", c.show_image === false);
+      const hideImg = c.show_image === false;
+      if (Number.isFinite(hh) && hh >= 0) imgBox.style.height = hh + "px";
+      else if (hideImg) imgBox.style.height = "auto";
+      else imgBox.style.height = "120px";
+      imgBox.classList.toggle("no-image", hideImg);
     }
     const nameEl = this.shadowRoot.getElementById("name");
     nameEl.innerText = c.name || "Room";
