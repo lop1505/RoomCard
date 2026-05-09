@@ -21,6 +21,7 @@ const TRANSLATIONS = {
     humid_warn_threshold: "Humidity Warning Threshold (%)", high_humidity: "High humidity", device_unavailable: "Device unavailable",
     force_color: "Force Manual Color (Always visible)", img_url: "Image URL", image: "Image", path: "Path (Tap Action)", entity: "Entity", device: "Device (Optional)",
     image_entity: "Light Entity (Grayscale when off)", image_entity_help: "When the selected light/switch is off, the header image fades to grayscale.",
+    show_image: "Show background image",
     presence_sensor: "Presence Sensor (Motion/Person)", presence_detected: "Present",
     area_setup: "Area Setup", area_setup_desc: "Automatically populate controls and sensors from area entities", area_picker: "Home Assistant Area", area_generate: "Generate from Area", area_no_entities: "No entities found in this area",
     alert_sensors: "Alert Sensors", alert_sensor_add: "Add Alert Sensor", alert_sensor_entity: "Sensor", alert_sensor_above: "Above", alert_sensor_below: "Below", alert_sensor_state: "State", alert_border_color: "Card Border Color", alert_chip_collapsed: "Show as badges (collapsed)", active_alerts: "Active Alerts",
@@ -103,6 +104,7 @@ const TRANSLATIONS = {
     humid_warn_threshold: "Feuchte-Warnschwelle (%)", high_humidity: "Hohe Luftfeuchtigkeit", device_unavailable: "Gerät nicht verfügbar",
     force_color: "Manuelle Farbe erzwingen (Immer sichtbar)", img_url: "Bild URL", image: "Bild", path: "Pfad (Tap Action)", entity: "Entität", device: "Gerät (Optional)",
     image_entity: "Licht-Entität (Graustufen wenn aus)", image_entity_help: "Wenn die gewählte Licht-/Schalter-Entität aus ist, wird das Header-Bild in Graustufen dargestellt.",
+    show_image: "Hintergrundbild anzeigen",
     presence_sensor: "Anwesenheits-Sensor (Bewegung/Person)", presence_detected: "Anwesend",
     area_setup: "Bereich-Setup", area_setup_desc: "Steuerungen und Sensoren automatisch aus dem Bereich übernehmen", area_picker: "Home Assistant Bereich", area_generate: "Aus Bereich generieren", area_no_entities: "Keine Entitäten in diesem Bereich gefunden",
     alert_sensors: "Alarm-Sensoren", alert_sensor_add: "Alarm-Sensor hinzufügen", alert_sensor_entity: "Sensor", alert_sensor_above: "Über", alert_sensor_below: "Unter", alert_sensor_state: "Zustand", alert_border_color: "Kartenrahmenfarbe", alert_chip_collapsed: "Als Sammel-Badge anzeigen", active_alerts: "Aktive Alarme",
@@ -189,6 +191,7 @@ const TRANSLATIONS = {
     humid_warn_threshold: "Seuil d'alerte d'humidité (%)", high_humidity: "Humidité élevée", device_unavailable: "Appareil indisponible",
     force_color: "Forcer la couleur", img_url: "URL de l'image", image: "Image", path: "Chemin (Tap Action)", entity: "Entité", device: "Appareil (Optionnel)",
     image_entity: "Entité lumineuse (Niveaux de gris si éteint)", image_entity_help: "Lorsque l'entité sélectionnée est éteinte, l'image d'en-tête passe en niveaux de gris.",
+    show_image: "Afficher l'image de fond",
     presence_sensor: "Capteur de présence (Mouvement/Personne)", presence_detected: "Présent",
     area_setup: "Configuration de zone", area_setup_desc: "Remplir automatiquement les contrôles et capteurs à partir des entités de la zone", area_picker: "Zone Home Assistant", area_generate: "Générer depuis la zone", area_no_entities: "Aucune entité trouvée dans cette zone",
     alert_sensors: "Capteurs d'alerte", alert_sensor_add: "Ajouter un capteur d'alerte", alert_sensor_entity: "Capteur", alert_sensor_above: "Supérieur à", alert_sensor_below: "Inférieur à", alert_sensor_state: "État", alert_border_color: "Couleur du contour", alert_chip_collapsed: "Afficher en badge groupé", active_alerts: "Alertes actives",
@@ -800,6 +803,9 @@ class OneLineRoomCard extends HTMLElement {
         ha-card.alert-sensor { outline: 2px solid var(--rc-alert-border-color, var(--error-color, #d32f2d)); outline-offset: -2px; box-shadow: 0 0 0 2px rgba(211,47,47,0.15); }
         .container { display: flex; flex-direction: column; background: var(--ha-card-background, rgba(255,255,255,0.1)); border-radius: 16px; }
         .img-box { position: relative; width: 100%; height: 120px; overflow: hidden; border-radius: 16px 16px 0 0; background: #444; cursor: pointer; }
+        .img-box.no-image { background: transparent; }
+        .img-box.no-image .img { display: none; }
+        .img-box.no-image .overlay { background: none; }
         .img { width: 100%; height: 100%; object-fit: cover; display: block; transition: filter 0.8s ease; }
         .img.grayscale { filter: grayscale(100%) brightness(0.6); }
         .overlay { position: absolute; top: 0; left: 0; width: 100%; padding: 12px; box-sizing: border-box; background: linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%); display: flex; align-items: center; gap: 12px; }
@@ -1164,6 +1170,7 @@ class OneLineRoomCard extends HTMLElement {
     if (imgBox) {
       const hh = c.header_height !== undefined ? Number(c.header_height) : NaN;
       imgBox.style.height = (Number.isFinite(hh) && hh >= 0) ? hh + "px" : "120px";
+      imgBox.classList.toggle("no-image", c.show_image === false);
     }
     const nameEl = this.shadowRoot.getElementById("name");
     nameEl.innerText = c.name || "Room";
@@ -3417,6 +3424,9 @@ connectedCallback() {
           </div>
           <div id="image-content" class="image-content" hidden>
             <img id="prev-img" class="preview">
+            <ha-formfield label="${getTranslation(h, "show_image")}" style="display:flex;align-items:center;margin-bottom:8px">
+              <ha-switch id="show-image-toggle"></ha-switch>
+            </ha-formfield>
             <ha-textfield id="img-url-field" cfg="image" class="i" icon="mdi:image"></ha-textfield>
             <ha-entity-picker label="${getTranslation(h, "image_entity")}" cfg="image_entity" class="i" allow-custom-entity include-domains='["light", "switch", "input_boolean", "group"]' style="margin-top: 8px;"></ha-entity-picker>
             <div style="font-size:11px;opacity:0.7;margin-top:4px">${getTranslation(h, "image_entity_help")}</div>
@@ -4529,6 +4539,17 @@ const updateActionFields = (action, serviceField, serviceDataField, targetField,
       showNameToggle.addEventListener("change", (ev) => {
         ev.stopPropagation();
         this._fire({ ...this._config, show_name: ev.target.checked !== false });
+      });
+    }
+    const showImageToggle = this.shadowRoot.getElementById("show-image-toggle");
+    if (showImageToggle) {
+      showImageToggle.checked = this._config?.show_image !== false;
+      showImageToggle.addEventListener("change", (ev) => {
+        ev.stopPropagation();
+        const next = { ...this._config };
+        if (ev.target.checked === false) next.show_image = false;
+        else delete next.show_image;
+        this._fire(next);
       });
     }
     
