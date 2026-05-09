@@ -22,6 +22,7 @@ const TRANSLATIONS = {
     force_color: "Force Manual Color (Always visible)", img_url: "Image URL", image: "Image", path: "Path (Tap Action)", entity: "Entity", device: "Device (Optional)",
     image_entity: "Light Entity (Grayscale when off)", image_entity_help: "When the selected light/switch is off, the header image fades to grayscale.",
     presence_sensor: "Presence Sensor (Motion/Person)", presence_detected: "Present",
+    area_setup: "Area Setup", area_setup_desc: "Automatically populate controls and sensors from area entities", area_picker: "Home Assistant Area", area_generate: "Generate from Area", area_no_entities: "No entities found in this area",
     template: "Type Filter", add_template: "with Filter", add_prefix: "Add",
     quick_add_title: "Quick Add",
     quick_add_desc: "Quickly add buttons from existing entities.",
@@ -102,6 +103,7 @@ const TRANSLATIONS = {
     force_color: "Manuelle Farbe erzwingen (Immer sichtbar)", img_url: "Bild URL", image: "Bild", path: "Pfad (Tap Action)", entity: "Entität", device: "Gerät (Optional)",
     image_entity: "Licht-Entität (Graustufen wenn aus)", image_entity_help: "Wenn die gewählte Licht-/Schalter-Entität aus ist, wird das Header-Bild in Graustufen dargestellt.",
     presence_sensor: "Anwesenheits-Sensor (Bewegung/Person)", presence_detected: "Anwesend",
+    area_setup: "Bereich-Setup", area_setup_desc: "Steuerungen und Sensoren automatisch aus dem Bereich übernehmen", area_picker: "Home Assistant Bereich", area_generate: "Aus Bereich generieren", area_no_entities: "Keine Entitäten in diesem Bereich gefunden",
     template: "Typ-Filter", add_template: "mit Filter", add_prefix: "Add",
     quick_add_title: "Schnellerfassung",
     quick_add_desc: "Schnell Buttons aus bestehenden Entitäten hinzufügen.",
@@ -186,6 +188,7 @@ const TRANSLATIONS = {
     force_color: "Forcer la couleur", img_url: "URL de l'image", image: "Image", path: "Chemin (Tap Action)", entity: "Entité", device: "Appareil (Optionnel)",
     image_entity: "Entité lumineuse (Niveaux de gris si éteint)", image_entity_help: "Lorsque l'entité sélectionnée est éteinte, l'image d'en-tête passe en niveaux de gris.",
     presence_sensor: "Capteur de présence (Mouvement/Personne)", presence_detected: "Présent",
+    area_setup: "Configuration de zone", area_setup_desc: "Remplir automatiquement les contrôles et capteurs à partir des entités de la zone", area_picker: "Zone Home Assistant", area_generate: "Générer depuis la zone", area_no_entities: "Aucune entité trouvée dans cette zone",
     template: "Filtre de type", add_template: "avec filtre", add_prefix: "Ajouter",
     quick_add_title: "Ajout rapide",
     quick_add_desc: "Ajouter rapidement des boutons à partir d’entités existantes.",
@@ -2415,6 +2418,8 @@ class OneLineRoomCardEditor extends HTMLElement {
     this._actionsSectionOpen = false;
     this._headerSectionOpen = true;
     this._layoutSectionOpen = false;
+    this._areaSelectorOpen = false;
+    this._selectedArea = "";
     this._activeTab = "config";
     this._controlIds = [];
     this._nextControlId = 1;
@@ -2790,6 +2795,129 @@ connectedCallback() {
     };
   }
 
+  async _getAreaEntities(areaId) {
+    if (!this._hass || !areaId) return [];
+    try {
+      const devices = await this._hass.callWS({ type: "config/device_registry/list" });
+      const areaDevices = (Array.isArray(devices) ? devices : []).filter(
+        (d) => d.area_id === areaId && !d.disabled_by
+      );
+      const deviceIds = new Set(areaDevices.map(d => d.id));
+      const entries = await this._hass.callWS({ type: "config/entity_registry/list" });
+      return (Array.isArray(entries) ? entries : []).filter(
+        (e) => !e.disabled_by && (e.area_id === areaId || deviceIds.has(e.device_id))
+      );
+    } catch (err) {
+      console.error("Error fetching area entities:", err);
+      return [];
+    }
+  }
+
+  _findFirstEntityByDomain(entities, domain) {
+    if (!Array.isArray(entities)) return null;
+    return entities.find(e => e.entity_id?.startsWith(`${domain}.`)) || null;
+  }
+
+  _groupEntitiesByDomain(entities) {
+    const grouped = {};
+    (Array.isArray(entities) ? entities : []).forEach(e => {
+      const domain = e.entity_id?.split(".")?.[0];
+      if (!domain) return;
+      if (!grouped[domain]) grouped[domain] = [];
+      grouped[domain].push(e);
+    });
+    return grouped;
+  }
+
+  _buildControlsFromEntities(entitiesByDomain) {
+    if (!entitiesByDomain || typeof entitiesByDomain !== "object") return [];
+    const preferredDomainOrder = ["light", "switch", "cover", "fan", "media_player", "lock"];
+    const controls = [];
+    for (const domain of preferredDomainOrder) {
+      for (const entity of entitiesByDomain[domain] || []) {
+        const template = this._getTemplateById(domain);
+        if (template) {
+          const control = this._buildControlFromTemplate(template, entity.entity_id);
+          if (control) controls.push(control);
+        }
+      }
+    }
+    return controls;
+  }
+
+  _resolveTemperatureSensor(climateEntity, entities) {
+    if (!Array.isArray(entities)) return null;
+    const tempSensors = entities.filter(e =>
+      (e.entity_id?.startsWith("sensor.") || e.entity_id?.startsWith("input_number.")) &&
+      (e.device_class === "temperature" || e.entity_id?.toLowerCase().includes("temp"))
+    );
+    return tempSensors[0] || null;
+  }
+
+  _resolveHumiditySensor(climateEntity, entities) {
+    if (!Array.isArray(entities)) return null;
+    const humidSensors = entities.filter(e =>
+      (e.entity_id?.startsWith("sensor.") || e.entity_id?.startsWith("input_number.")) &&
+      (e.device_class === "humidity" || e.entity_id?.toLowerCase().includes("humid"))
+    );
+    return humidSensors[0] || null;
+  }
+
+  _findSensorsByDeviceClass(entities, deviceClasses, domains = ["binary_sensor", "sensor"]) {
+    if (!Array.isArray(entities) || !Array.isArray(deviceClasses)) return [];
+    return entities
+      .filter(e => {
+        const eDomain = e.entity_id?.split(".")?.[0];
+        return domains.includes(eDomain) && deviceClasses.includes(e.device_class);
+      })
+      .map(e => e.entity_id);
+  }
+
+  async _generateFromArea(areaId) {
+    if (!areaId || !this._hass) return;
+    try {
+      const entities = await this._getAreaEntities(areaId);
+      if (!entities || entities.length === 0) {
+        console.warn(getTranslation(this._hass, "area_no_entities"));
+        return;
+      }
+      const climateEntity = this._findFirstEntityByDomain(entities, "climate");
+      const entitiesByDomain = this._groupEntitiesByDomain(entities);
+      const controls = this._buildControlsFromEntities(entitiesByDomain);
+      const tempSensor = this._resolveTemperatureSensor(climateEntity, entities);
+      const humidSensor = this._resolveHumiditySensor(climateEntity, entities);
+      const windowSensors = this._findSensorsByDeviceClass(entities, ["window", "door"]);
+      const batterySensors = this._findSensorsByDeviceClass(entities, ["battery"]);
+      const newConfig = {
+        ...this._config,
+        entity: climateEntity?.entity_id || (this._config.entity || ""),
+        temp_sensor: tempSensor?.entity_id || (this._config.temp_sensor || ""),
+        humid_sensor: humidSensor?.entity_id || (this._config.humid_sensor || ""),
+        window_sensors: windowSensors.length > 0 ? windowSensors : (this._config.window_sensors || []),
+        battery_sensors: batterySensors.length > 0 ? batterySensors : (this._config.battery_sensors || []),
+        controls: [...(this._config.controls || []), ...controls]
+      };
+      this._fire(newConfig);
+    } catch (err) {
+      console.error("Error generating from area:", err);
+    }
+  }
+
+  _ensureAreaOptions() {
+    const areaPicker = this.shadowRoot?.getElementById("area-picker");
+    if (!areaPicker) return;
+    areaPicker.hass = this._hass;
+    if (!areaPicker.selector) areaPicker.selector = { area: {} };
+  }
+
+  _updateAreaSetupUI() {
+    const content = this.shadowRoot?.getElementById("area-setup-content");
+    const chev = this.shadowRoot?.getElementById("area-setup-chev");
+    if (content) content.hidden = !this._areaSelectorOpen;
+    if (chev) chev.style.transform = this._areaSelectorOpen ? "rotate(90deg)" : "";
+    if (this._areaSelectorOpen) this._ensureAreaOptions();
+  }
+
   _iconForEntity(entityId) {
     if (!this._hass || !entityId) return "mdi:help-circle-outline";
     const st = this._hass.states[entityId];
@@ -2890,7 +3018,7 @@ connectedCallback() {
     if (!this._config) return;
     const alreadyRendered = !!this.shadowRoot.innerHTML;
     const domVersion = this.shadowRoot.querySelector("[data-rc-version]")?.dataset?.rcVersion;
-    if (alreadyRendered && domVersion === VERSION) { this.updVal(); if (JSON.stringify(this._config?.controls || []) !== this._lastRenderedControlsSig) this.renBtn(); this._applyNavSelectorOptions(); this._ensureNavOptions(); this._updateSensorsSectionUI(); this._updateImageSectionUI(); this._updateBadgesUI(); this._updateTypographyUI(); this._updateCardBehaviorUI(); this._updateActionsSectionUI(); this._updateHeaderSectionUI(); this._updateTabUI(); return; }
+    if (alreadyRendered && domVersion === VERSION) { this.updVal(); if (JSON.stringify(this._config?.controls || []) !== this._lastRenderedControlsSig) this.renBtn(); this._applyNavSelectorOptions(); this._ensureNavOptions(); this._ensureAreaOptions(); this._updateAreaSetupUI(); this._updateSensorsSectionUI(); this._updateImageSectionUI(); this._updateBadgesUI(); this._updateTypographyUI(); this._updateCardBehaviorUI(); this._updateActionsSectionUI(); this._updateHeaderSectionUI(); this._updateTabUI(); return; }
     
     this.shadowRoot.innerHTML = "";
     const h = this._hass;
@@ -3000,6 +3128,26 @@ connectedCallback() {
         <button id="tab-buttons-btn" class="tab-btn">${getTranslation(h, "buttons")}</button>
       </div>
       <div id="tab-config-panel">
+      <div class="sec">
+        <div id="area-setup-head" class="sec-head" style="cursor:pointer;user-select:none;padding:4px 0">
+          <h3>${getTranslation(h, "area_setup")}</h3>
+          <ha-icon id="area-setup-chev" icon="mdi:chevron-right" style="--mdc-icon-size:18px;opacity:0.7;transition:transform 0.15s ease"></ha-icon>
+        </div>
+        <div id="area-setup-content" hidden>
+          <div style="margin-bottom: 12px; font-size: 12px; opacity: 0.7;">
+            ${getTranslation(h, "area_setup_desc")}
+          </div>
+          <div style="display: flex; gap: 12px; align-items: flex-end; margin-bottom: 12px;">
+            <div style="flex: 1; min-width: 200px;">
+              <ha-selector id="area-picker" label="${getTranslation(h, "area_picker")}"></ha-selector>
+            </div>
+            <mwc-button id="area-generate" raised>
+              <ha-icon icon="mdi:plus" slot="icon"></ha-icon>
+              ${getTranslation(h, "area_generate")}
+            </mwc-button>
+          </div>
+        </div>
+      </div>
       <div class="sec">
         <div id="card-beh-head" class="sec-head" style="cursor:pointer;user-select:none;padding:4px 0">
           <h3>${getTranslation(h, "card_behavior")}</h3>
@@ -3374,6 +3522,32 @@ connectedCallback() {
       uploadBtn.addEventListener("click", () => fileInput.click());
       fileInput.addEventListener("change", (e) => this._handleUpload(e));
     }
+    const areaSetupHead = this.shadowRoot.getElementById("area-setup-head");
+    if (areaSetupHead) {
+      areaSetupHead.addEventListener("click", () => {
+        this._areaSelectorOpen = !this._areaSelectorOpen;
+        this._updateAreaSetupUI();
+      });
+    }
+    const areaPicker = this.shadowRoot.getElementById("area-picker");
+    if (areaPicker) {
+      areaPicker.hass = this._hass;
+      areaPicker.selector = { area: {} };
+      areaPicker.value = this._selectedArea || "";
+      areaPicker.addEventListener("value-changed", (e) => {
+        e.stopPropagation();
+        this._selectedArea = e.detail?.value || "";
+      });
+    }
+    const areaGenerateBtn = this.shadowRoot.getElementById("area-generate");
+    if (areaGenerateBtn) {
+      areaGenerateBtn.addEventListener("click", async () => {
+        const ap = this.shadowRoot.getElementById("area-picker");
+        const area = ap?.value || this._selectedArea;
+        if (area) await this._generateFromArea(area);
+      });
+    }
+    this._updateAreaSetupUI();
     const cardBehHead = this.shadowRoot.getElementById("card-beh-head");
     if (cardBehHead) {
       cardBehHead.addEventListener("click", () => {
