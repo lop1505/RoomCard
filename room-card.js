@@ -20,6 +20,7 @@ const TRANSLATIONS = {
     window_label: "Windows (List)", battery_label: "Batteries (List)", name: "Name", icon: "Icon", color: "Icon Color",
     humid_warn_threshold: "Humidity Warning Threshold (%)", high_humidity: "High humidity", device_unavailable: "Device unavailable",
     force_color: "Force Manual Color (Always visible)", img_url: "Image URL", image: "Image", path: "Path (Tap Action)", entity: "Entity", device: "Device (Optional)",
+    image_entity: "Light Entity (Grayscale when off)", image_entity_help: "When the selected light/switch is off, the header image fades to grayscale.",
     template: "Type Filter", add_template: "with Filter", add_prefix: "Add",
     quick_add_title: "Quick Add",
     quick_add_desc: "Quickly add buttons from existing entities.",
@@ -98,6 +99,7 @@ const TRANSLATIONS = {
     window_label: "Fenster (Liste)", battery_label: "Batterien (Liste)", name: "Name", icon: "Icon", color: "Iconfarbe",
     humid_warn_threshold: "Feuchte-Warnschwelle (%)", high_humidity: "Hohe Luftfeuchtigkeit", device_unavailable: "Gerät nicht verfügbar",
     force_color: "Manuelle Farbe erzwingen (Immer sichtbar)", img_url: "Bild URL", image: "Bild", path: "Pfad (Tap Action)", entity: "Entität", device: "Gerät (Optional)",
+    image_entity: "Licht-Entität (Graustufen wenn aus)", image_entity_help: "Wenn die gewählte Licht-/Schalter-Entität aus ist, wird das Header-Bild in Graustufen dargestellt.",
     template: "Typ-Filter", add_template: "mit Filter", add_prefix: "Add",
     quick_add_title: "Schnellerfassung",
     quick_add_desc: "Schnell Buttons aus bestehenden Entitäten hinzufügen.",
@@ -180,6 +182,7 @@ const TRANSLATIONS = {
     window_label: "Fenêtres (Liste)", battery_label: "Batteries (Liste)", name: "Nom", icon: "Icône", color: "Couleur",
     humid_warn_threshold: "Seuil d'alerte d'humidité (%)", high_humidity: "Humidité élevée", device_unavailable: "Appareil indisponible",
     force_color: "Forcer la couleur", img_url: "URL de l'image", image: "Image", path: "Chemin (Tap Action)", entity: "Entité", device: "Appareil (Optionnel)",
+    image_entity: "Entité lumineuse (Niveaux de gris si éteint)", image_entity_help: "Lorsque l'entité sélectionnée est éteinte, l'image d'en-tête passe en niveaux de gris.",
     template: "Filtre de type", add_template: "avec filtre", add_prefix: "Ajouter",
     quick_add_title: "Ajout rapide",
     quick_add_desc: "Ajouter rapidement des boutons à partir d’entités existantes.",
@@ -606,7 +609,8 @@ class OneLineRoomCard extends HTMLElement {
         ha-card.warning-humidity { outline: 2px solid var(--info-color, #2196F3); outline-offset: -2px; box-shadow: 0 0 0 2px rgba(33,150,243,0.35), 0 0 12px rgba(33,150,243,0.35), 0 0 22px rgba(33,150,243,0.25); }
         .container { display: flex; flex-direction: column; background: var(--ha-card-background, rgba(255,255,255,0.1)); border-radius: 16px; }
         .img-box { position: relative; width: 100%; height: 120px; overflow: hidden; border-radius: 16px 16px 0 0; background: #444; cursor: pointer; }
-        .img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .img { width: 100%; height: 100%; object-fit: cover; display: block; transition: filter 0.8s ease; }
+        .img.grayscale { filter: grayscale(100%) brightness(0.6); }
         .overlay { position: absolute; top: 0; left: 0; width: 100%; padding: 12px; box-sizing: border-box; background: linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%); display: flex; align-items: center; gap: 12px; }
         .text { display: flex; flex: 1; min-width: 0; flex-direction: column; align-items: flex-start; color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
         ha-icon { color: var(--icon-color, white); }
@@ -758,6 +762,7 @@ class OneLineRoomCard extends HTMLElement {
       if (typeof id === "string" && id.trim()) ids.add(id.trim());
     };
     add(cfg.entity);
+    add(cfg.image_entity);
     add(cfg.temp_sensor);
     add(cfg.target_temp_sensor);
     add(cfg.humid_sensor);
@@ -850,7 +855,14 @@ class OneLineRoomCard extends HTMLElement {
     // --- NEW: DYNAMIC UNIT ---
     const unit = h.config.unit_system.temperature || "°C";
 
-    this.shadowRoot.getElementById("bg").src = c.image || "/static/images/card_media/cover.png";
+    const bgEl = this.shadowRoot.getElementById("bg");
+    bgEl.src = c.image || "/static/images/card_media/cover.png";
+    if (c.image_entity && h.states[c.image_entity]) {
+      const isOff = !isEntityActive(h.states[c.image_entity], c.image_entity);
+      bgEl.classList.toggle("grayscale", isOff);
+    } else {
+      bgEl.classList.remove("grayscale");
+    }
     const imgBox = this.shadowRoot.querySelector(".img-box");
     if (imgBox) {
       const hh = c.header_height !== undefined ? Number(c.header_height) : NaN;
@@ -2916,6 +2928,8 @@ connectedCallback() {
           <div id="image-content" class="image-content" hidden>
             <img id="prev-img" class="preview">
             <ha-textfield id="img-url-field" cfg="image" class="i" icon="mdi:image"></ha-textfield>
+            <ha-entity-picker label="${getTranslation(h, "image_entity")}" cfg="image_entity" class="i" allow-custom-entity include-domains='["light", "switch", "input_boolean", "group"]' style="margin-top: 8px;"></ha-entity-picker>
+            <div style="font-size:11px;opacity:0.7;margin-top:4px">${getTranslation(h, "image_entity_help")}</div>
             <div class="upload-row">
               <input type="file" id="file-upload" class="upload-hidden" accept="image/*">
               <mwc-button id="upload-btn" raised label="${getTranslation(h, "upload_btn")}">

@@ -2,6 +2,12 @@
 
 All notable changes to OneLine Room Card are documented here.
 
+## [Unreleased]
+
+* Runtime & Editor: **Header Image Grayscale by Light State** — Restored the `image_entity` option (regressed in 1.2.6). When the configured light/switch/input_boolean/group is off, the header image fades to grayscale with a smooth 0.8 s transition. Configurable in the editor under the *Image* section. Re-closes [#66](https://github.com/lop1505/RoomCard/issues/66).
+
+---
+
 ## [1.2.7]
 
 * Runtime & Editor: **Show Brightness % on Light Buttons** — Light entities now display the current brightness percentage next to the on/off state (e.g. `on · 75 %`). The value updates live while dragging the inline slider. Configurable per button via `show_brightness_value` (default: `true`). Closes [#78](https://github.com/lop1505/RoomCard/issues/78).
