@@ -1,4 +1,4 @@
-const VERSION = "1.2.8";
+const VERSION = "1.2.9";
 const LOG_FLAG = `customCards_RoomCard_Logged_${VERSION}`;
 
 if (!window[LOG_FLAG]) {
@@ -70,6 +70,8 @@ const TRANSLATIONS = {
     header: "Header", configuration: "Configuration",
     color_map: "State Colors", color_map_add: "Add State Color", color_map_state: "State",
     window_always_show: "Always Show (incl. closed)", window_open_color: "Open Color", window_closed_color: "Closed Color",
+    window_solid_background: "Solid Background", window_labels: "Window Labels",
+    window_custom_label: "Custom Label",
     window_open_states: "Open States (comma-separated)", window_state_colors: "State Colors", window_state_colors_add: "Add State Color",
     sensors: "Sensors",
     icon_size: "Icon Size", global_icon_size: "Global Icon Size (px)",
@@ -158,6 +160,8 @@ const TRANSLATIONS = {
     header: "Header", configuration: "Konfiguration",
     color_map: "Zustandsfarben", color_map_add: "Farbe hinzufügen", color_map_state: "Zustand",
     window_always_show: "Immer anzeigen (auch geschlossen)", window_open_color: "Farbe geöffnet", window_closed_color: "Farbe geschlossen",
+    window_solid_background: "Durchgefärbter Hintergrund", window_labels: "Fensterbezeichnungen",
+    window_custom_label: "Eigene Bezeichnung",
     window_open_states: "Geöffnete Zustände (kommagetrennt)", window_state_colors: "Zustandsfarben", window_state_colors_add: "Farbe hinzufügen",
     sensors: "Sensoren",
     icon_size: "Icon-Größe", global_icon_size: "Globale Icon-Größe (px)",
@@ -241,6 +245,8 @@ const TRANSLATIONS = {
     header: "En-tête", configuration: "Configuration",
     color_map: "Couleurs par état", color_map_add: "Ajouter couleur", color_map_state: "État",
     window_always_show: "Toujours afficher (incl. fermé)", window_open_color: "Couleur ouvert", window_closed_color: "Couleur fermé",
+    window_solid_background: "Arrière-plan plein", window_labels: "Libellés des fenêtres",
+    window_custom_label: "Libellé personnalisé",
     window_open_states: "États ouverts (séparés par virgule)", window_state_colors: "Couleurs par état", window_state_colors_add: "Ajouter couleur",
     sensors: "Capteurs",
     icon_size: "Taille icône", global_icon_size: "Taille icône globale (px)",
@@ -350,6 +356,18 @@ const hexToRgba = (hex, alpha = 0.35) => {
   const g = parseInt(raw.slice(2, 4), 16);
   const b = parseInt(raw.slice(4, 6), 16);
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
+
+const readableTextForHex = (hex) => {
+  const m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(trimStr(hex) || "");
+  if (!m) return "";
+  const raw = m[1].length === 3
+    ? m[1].split("").map((ch) => ch + ch).join("")
+    : m[1];
+  const r = parseInt(raw.slice(0, 2), 16);
+  const g = parseInt(raw.slice(2, 4), 16);
+  const b = parseInt(raw.slice(4, 6), 16);
+  return ((r * 299 + g * 587 + b * 114) / 1000) >= 140 ? "#000000" : "#ffffff";
 };
 
 const parseColorToPickerHex = (color) => {
@@ -1212,10 +1230,20 @@ class OneLineRoomCard extends HTMLElement {
     if (t != null && t !== "-" && !isNaN(parseFloat(t))) {
       // --- NEW: USE DYNAMIC UNIT ---
       let tStr = t + unit;
-      if (tar != null && tar !== "-") tStr += " (" + tar + unit + ")";
+      const tempDisplayLabel = trimStr(c.temp_sensor_label);
+      const targetTempDisplayLabel = trimStr(c.target_temp_sensor_label);
+      if (tempDisplayLabel) tStr = `${tempDisplayLabel}: ${tStr}`;
+      if (tar != null && tar !== "-") {
+        const tarStr = targetTempDisplayLabel ? `${targetTempDisplayLabel}: ${tar}${unit}` : `${tar}${unit}`;
+        tStr += " (" + tarStr + ")";
+      }
       infoParts.push({ text: tStr, background: standardHeaderBadgeBackground });
     }
-    if (hm != null && hm !== "-" && !isNaN(parseFloat(hm))) infoParts.push({ text: hm + "%", background: standardHeaderBadgeBackground });
+    if (hm != null && hm !== "-" && !isNaN(parseFloat(hm))) {
+      const humidDisplayLabel = trimStr(c.humid_sensor_label);
+      const hmStr = humidDisplayLabel ? `${humidDisplayLabel}: ${hm}%` : hm + "%";
+      infoParts.push({ text: hmStr, background: standardHeaderBadgeBackground });
+    }
 
     (Array.isArray(c.header_badges) ? c.header_badges : []).forEach(badge => {
       if (!badge?.entity) return;
@@ -1310,7 +1338,7 @@ class OneLineRoomCard extends HTMLElement {
       const pState = h.states[c.presence_sensor];
       const isActive = ["on", "home", "active", "detected"].includes(String(pState.state).toLowerCase().trim());
       if (isActive) {
-        const pLabel = pState.attributes?.friendly_name || getTranslation(h, "presence_detected");
+        const pLabel = trimStr(c.presence_sensor_label) || pState.attributes?.friendly_name || getTranslation(h, "presence_detected");
         const isPerson = String(pState.entity_id).startsWith("person.");
         const pIcon = pState.attributes?.icon || (isPerson ? "mdi:account" : "mdi:motion-sensor");
         ch.innerHTML += `<div class="chip" style="background: rgba(76, 175, 80, 0.15); color: #4CAF50;"><ha-icon icon="${pIcon}" style="--mdc-icon-size:14px"></ha-icon> ${pLabel}</div>`;
@@ -1358,6 +1386,8 @@ class OneLineRoomCard extends HTMLElement {
       : ["on", "open"];
     // Optional per-state color overrides (object: { stateName: "#color" })
     const windowStateColors = (c.window_state_colors && typeof c.window_state_colors === "object") ? c.window_state_colors : {};
+    const windowLabels = (c.window_labels && typeof c.window_labels === "object") ? c.window_labels : {};
+    const windowSolidBackground = c.window_solid_background === true;
     (Array.isArray(effectiveWindowSensors) ? effectiveWindowSensors : []).forEach(s => {
       const st = h.states[s];
       if (!st) return;
@@ -1368,10 +1398,25 @@ class OneLineRoomCard extends HTMLElement {
       const perStateColor = windowStateColors[st.state] || windowStateColors[stateVal];
       const chipColor = perStateColor || (isOpen ? windowOpenColor : windowClosedColor);
       const isHex = /^#[0-9A-F]{6}$/i.test(chipColor);
-      const chipBg = isHex ? chipColor + "33" : `color-mix(in srgb, ${chipColor} 20%, transparent)`;
+      const chipBg = windowSolidBackground
+        ? chipColor
+        : (isHex ? chipColor + "33" : `color-mix(in srgb, ${chipColor} 20%, transparent)`);
+      const chipTextColor = windowSolidBackground
+        ? (readableTextForHex(chipColor) || "var(--primary-text-color)")
+        : chipColor;
       const icon = isOpen ? "mdi:window-open-variant" : "mdi:window-shutter";
-      const label = st.attributes.friendly_name || getTranslation(h, "window");
-      ch.innerHTML += `<div class="chip" style="background:${chipBg};color:${chipColor}"><ha-icon icon="${icon}" style="--mdc-icon-size:14px"></ha-icon> ${label}</div>`;
+      const label = trimStr(windowLabels[s]) || st.attributes.friendly_name || getTranslation(h, "window");
+      const chip = document.createElement("div");
+      chip.className = "chip";
+      chip.style.background = chipBg;
+      chip.style.color = chipTextColor;
+      const chipIcon = document.createElement("ha-icon");
+      chipIcon.icon = icon;
+      chipIcon.style.setProperty("--mdc-icon-size", "14px");
+      chipIcon.style.color = chipTextColor;
+      chip.appendChild(chipIcon);
+      chip.appendChild(document.createTextNode(` ${label}`));
+      ch.appendChild(chip);
     });
 
     const cardEl = this.shadowRoot.querySelector("ha-card");
@@ -3247,6 +3292,15 @@ connectedCallback() {
         .badge-head-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
         .badge-entity-label { font-size: 12px; font-weight: 600; opacity: 0.7; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .badge-del-btn { background: none; border: 0; cursor: pointer; padding: 2px; display: inline-flex; color: #d32f2f; --mdc-icon-size: 18px; }
+        .window-label-input { width: 100%; box-sizing: border-box; border: 1px solid var(--divider-color); border-radius: 4px; background: var(--card-background-color, var(--primary-background-color)); color: var(--primary-text-color); padding: 10px 12px; font: inherit; font-size: 14px; outline: none; }
+        .window-label-input:focus { border-color: var(--primary-color); box-shadow: 0 0 0 1px var(--primary-color); }
+        .window-label-field-label { display: block; font-size: 12px; font-weight: 600; opacity: 0.8; margin: 2px 0 6px; }
+        .sensor-label-wrap { margin: -2px 0 10px; }
+        .editor-stack { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
+        .field-with-inline-control { position: relative; display: flex; align-items: flex-end; width: 100%; }
+        .field-with-inline-control > ha-textfield, .field-with-inline-control > ha-icon-picker { width: 100%; margin-bottom: 0; }
+        .field-inline-switch { position: absolute; right: 8px; bottom: 8px; z-index: 1; transform: scale(0.8); transform-origin: right bottom; }
+        .field-inline-color { position: absolute; right: 8px; bottom: 8px; z-index: 1; }
         .qa { border: 1px solid var(--divider-color); border-radius: 8px; background: var(--secondary-background-color); padding: 6px 10px; }
         .sec-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
         .sec-head h3 { margin: 0; }
@@ -3364,18 +3418,16 @@ connectedCallback() {
           <ha-icon id="card-beh-chev" icon="mdi:chevron-right" style="--mdc-icon-size:18px;opacity:0.7;transition:transform 0.15s ease"></ha-icon>
         </div>
         <div id="card-beh-content">
-        <div class="row" style="margin-bottom:12px; align-items:center">
+        <div class="editor-stack">
           <ha-formfield label="${getTranslation(h, "live_preview")}">
             <ha-switch id="live-preview-toggle" checked></ha-switch>
           </ha-formfield>
-        </div>
-        <div style="display: flex; align-items: flex-end; gap: 12px;">
-          <div style="position: relative; flex: 1.2; display: flex; align-items: flex-end;">
+          <div class="field-with-inline-control">
             <ha-textfield label="${getTranslation(h, "name")}" cfg="name" class="i" style="width: 100%;"></ha-textfield>
             <ha-switch id="show-name-toggle" checked title="${getTranslation(h, "show_name")}"
-                       style="position: absolute; right: 8px; bottom: 28px; --mdc-switch-size: 20px; z-index: 1; transform: scale(0.8);"></ha-switch>
+                       class="field-inline-switch" style="--mdc-switch-size: 20px;"></ha-switch>
           </div>
-          <div style="position:relative;width:180px;flex-shrink:0;">
+          <div style="width:100%;">
             <ha-selector id="behavior-sel" label="${getTranslation(h, "behavior")}" style="width:100%;"></ha-selector>
           </div>
         </div>
@@ -3416,11 +3468,11 @@ connectedCallback() {
           <ha-icon id="header-sec-chev" icon="mdi:chevron-right" style="--mdc-icon-size:18px;opacity:0.7;transition:transform 0.15s ease"></ha-icon>
         </div>
         <div id="header-sec-content">
-        <div class="row" style="margin-top:4px; align-items: flex-end; gap: 12px;">
+        <div class="editor-stack" style="margin-top:4px;">
           <ha-textfield label="${getTranslation(h, "header_height")}" cfg="header_height" class="i" type="number" min="0" max="400" style="flex:1" placeholder="120"></ha-textfield>
-          <div style="position: relative; flex: 1.2; display: flex; align-items: flex-end;">
+          <div class="field-with-inline-control">
             <ha-icon-picker label="${getTranslation(h, "icon")}" cfg="icon" class="i" style="width: 100%;"></ha-icon-picker>
-            <div class="color-container" style="position: absolute; right: 8px; bottom: 8px; z-index: 1;">
+            <div class="color-container field-inline-color">
                <div class="color-popover">
                   <ha-textfield cfg="color" class="i" placeholder="#hex" style="width: 100%; margin-bottom: 0; --mdc-text-field-fill-color: rgba(255,255,255,0.1); --mdc-text-field-ink-color: white;"></ha-textfield>
                </div>
@@ -3600,13 +3652,20 @@ connectedCallback() {
           <div id="sensors-content" class="manual-content" hidden>
             <div class="image-title" style="font-size:11px;font-weight:600;opacity:0.6;margin-bottom:6px">${getTranslation(h, "sensors_manual")}</div>
             <ha-entity-picker label="${getTranslation(h, "presence_sensor")}" cfg="presence_sensor" class="i" allow-custom-entity include-domains='["person", "binary_sensor", "device_tracker"]'></ha-entity-picker>
+            <div class="sensor-label-wrap"><label class="window-label-field-label">${getTranslation(h, "window_custom_label")}</label><input class="window-label-input sensor-label-input" data-cfg="presence_sensor_label" type="text" placeholder="${getTranslation(h, "presence_sensor")}"></div>
             <ha-entity-picker label="${getTranslation(h, "temp_label")}" cfg="temp_sensor" class="i" allow-custom-entity></ha-entity-picker>
+            <div class="sensor-label-wrap"><label class="window-label-field-label">${getTranslation(h, "window_custom_label")}</label><input class="window-label-input sensor-label-input" data-cfg="temp_sensor_label" type="text" placeholder="${getTranslation(h, "temp_label")}"></div>
             <ha-entity-picker label="${getTranslation(h, "target_temp_label")}" cfg="target_temp_sensor" class="i" allow-custom-entity></ha-entity-picker>
+            <div class="sensor-label-wrap"><label class="window-label-field-label">${getTranslation(h, "window_custom_label")}</label><input class="window-label-input sensor-label-input" data-cfg="target_temp_sensor_label" type="text" placeholder="${getTranslation(h, "target_temp_label")}"></div>
             <ha-entity-picker label="${getTranslation(h, "humid_label")}" cfg="humid_sensor" class="i" allow-custom-entity></ha-entity-picker>
+            <div class="sensor-label-wrap"><label class="window-label-field-label">${getTranslation(h, "window_custom_label")}</label><input class="window-label-input sensor-label-input" data-cfg="humid_sensor_label" type="text" placeholder="${getTranslation(h, "humid_label")}"></div>
             <ha-textfield label="${getTranslation(h, "humid_warn_threshold")}" cfg="humidity_warning_threshold" class="i" type="number"></ha-textfield>
             <ha-selector cfg="window_sensors" class="i" label="${getTranslation(h, "window_label")}"></ha-selector>
             <ha-formfield id="window-always-show-field" label="${getTranslation(h, "window_always_show")}" style="display:flex;align-items:center;margin:4px 0">
               <ha-switch id="window-always-show"></ha-switch>
+            </ha-formfield>
+            <ha-formfield id="window-solid-bg-field" label="${getTranslation(h, "window_solid_background")}" style="display:flex;align-items:center;margin:4px 0">
+              <ha-switch id="window-solid-bg"></ha-switch>
             </ha-formfield>
             <div id="window-open-color-row" style="position: relative; display: flex; align-items: flex-end; margin-top: 8px;">
               <ha-textfield label="${getTranslation(h, "window_open_color")}" id="window-open-color" cfg="window_open_color" style="width: 100%"></ha-textfield>
@@ -3635,6 +3694,10 @@ connectedCallback() {
               </div>
             </div>
             <ha-textfield id="window-open-states" label="${getTranslation(h, "window_open_states")}" placeholder="on, open, tilted" style="width:100%;margin-top:8px"></ha-textfield>
+            <div id="window-labels-section" style="margin-top:8px">
+              <div class="tmpl-label" style="font-size:11px;font-weight:600;opacity:0.6;margin-bottom:6px">${getTranslation(h, "window_labels")}</div>
+              <div id="window-labels-list"></div>
+            </div>
             <div id="window-state-colors-section" style="margin-top:8px">
               <div class="tmpl-label" style="font-size:11px;font-weight:600;opacity:0.6;margin-bottom:6px">${getTranslation(h, "window_state_colors")}</div>
               <div id="window-state-colors-list"></div>
@@ -3884,6 +3947,10 @@ connectedCallback() {
           const raw = String(v ?? "").trim();
           if (raw === "") { delete c[k]; }
           else { const num = Number(raw); c[k] = Number.isFinite(num) && num > 0 ? Math.round(num) : undefined; if (c[k] === undefined) delete c[k]; }
+        } else if (["presence_sensor_label", "temp_sensor_label", "target_temp_sensor_label", "humid_sensor_label"].includes(k)) {
+          const raw = trimStr(v ?? "");
+          if (raw) c[k] = raw;
+          else delete c[k];
         } else {
           c[k] = v;
         }
@@ -3891,6 +3958,21 @@ connectedCallback() {
         if (k === "color") this.updCp();
         if (k === "image") this.updPreview();
       });
+    });
+    this.shadowRoot.querySelectorAll(".sensor-label-input").forEach((input) => {
+      const k = input.dataset?.cfg;
+      if (!k) return;
+      input.value = this._config?.[k] || "";
+      input.addEventListener("change", (ev) => {
+        ev.stopPropagation();
+        const raw = trimStr(ev.target.value || "");
+        const next = { ...this._config };
+        if (raw) next[k] = raw;
+        else delete next[k];
+        this._fire(next);
+        this._syncManualSensorLabelInputs();
+      });
+      input.addEventListener("keydown", (ev) => ev.stopPropagation());
     });
     const sensorsHead = this.shadowRoot.getElementById("sensors-head");
     if (sensorsHead) {
@@ -3914,6 +3996,17 @@ connectedCallback() {
         else delete next.window_always_show;
         this._fire(next);
         syncWindowClosedRow();
+      });
+    }
+    const windowSolidBgToggle = this.shadowRoot.getElementById("window-solid-bg");
+    if (windowSolidBgToggle) {
+      windowSolidBgToggle.checked = this._config?.window_solid_background === true;
+      windowSolidBgToggle.addEventListener("change", (ev) => {
+        ev.stopPropagation();
+        const next = { ...this._config };
+        if (ev.target.checked) next.window_solid_background = true;
+        else delete next.window_solid_background;
+        this._fire(next);
       });
     }
     const windowOpenColorField = this.shadowRoot.getElementById("window-open-color");
@@ -4953,6 +5046,82 @@ if (tmplSelect) {
     title.textContent = count > 0 ? `${label} (${count})` : label;
     sec.classList.toggle("open", this._sensorsSectionOpen);
     content.hidden = !this._sensorsSectionOpen;
+    const solidBgToggle = this.shadowRoot?.getElementById("window-solid-bg");
+    if (solidBgToggle) solidBgToggle.checked = this._config?.window_solid_background === true;
+    this._syncManualSensorLabelInputs();
+    this._updateWindowLabelsUI();
+  }
+
+  _syncManualSensorLabelInputs() {
+    this.shadowRoot?.querySelectorAll(".sensor-label-input").forEach((input) => {
+      const key = input.dataset?.cfg;
+      if (!key) return;
+      const value = this._config?.[key] || "";
+      if (input.value !== value) input.value = value;
+    });
+  }
+
+  _updateWindowLabelsUI() {
+    const list = this.shadowRoot?.getElementById("window-labels-list");
+    if (!list) return;
+
+    const h = this._hass;
+    const labels = (this._config?.window_labels && typeof this._config.window_labels === "object")
+      ? this._config.window_labels
+      : {};
+    const sensors = Array.isArray(this._config?.window_sensors)
+      ? this._config.window_sensors.map((entity) => trimStr(entity)).filter(Boolean)
+      : [];
+    const entries = [...new Set(sensors)].map((entity) => [entity, labels[entity] || ""]);
+    const fireLabels = (nextLabels) => {
+      const clean = {};
+      entries.forEach(([entity]) => {
+        const key = trimStr(entity);
+        const value = trimStr(nextLabels[key]);
+        if (key && value) clean[key] = value;
+      });
+      const next = { ...this._config };
+      if (Object.keys(clean).length > 0) next.window_labels = clean;
+      else delete next.window_labels;
+      this._fire(next);
+      this._updateWindowLabelsUI();
+    };
+
+    list.replaceChildren();
+    if (entries.length === 0) return;
+
+    entries.forEach(([entity, label], idx) => {
+      const box = document.createElement("div");
+      box.className = "badge-box";
+
+      const headRow = document.createElement("div");
+      headRow.className = "badge-head-row";
+      const entityLabel = document.createElement("span");
+      entityLabel.className = "badge-entity-label";
+      entityLabel.textContent = entity || `${getTranslation(h, "window")} ${idx + 1}`;
+      headRow.appendChild(entityLabel);
+      box.appendChild(headRow);
+
+      const labelCaption = document.createElement("label");
+      labelCaption.className = "window-label-field-label";
+      labelCaption.textContent = getTranslation(h, "window_custom_label");
+      box.appendChild(labelCaption);
+
+      const labelField = document.createElement("input");
+      labelField.type = "text";
+      labelField.className = "window-label-input";
+      labelField.placeholder = h?.states?.[entity]?.attributes?.friendly_name || getTranslation(h, "window");
+      labelField.value = label || "";
+      labelField.addEventListener("change", (ev) => {
+        ev.stopPropagation();
+        const nextLabels = { ...labels, [entity]: ev.target.value || "" };
+        fireLabels(nextLabels);
+      });
+      labelField.addEventListener("keydown", (ev) => ev.stopPropagation());
+      box.appendChild(labelField);
+
+      list.appendChild(box);
+    });
   }
 
   _updateBadgesUI() {
@@ -6611,7 +6780,7 @@ const cm = box.querySelector(".cm");
 // =============================================================================
 
 const patchExistingEditor = (ExistingEditor, NewEditor) => {
-  const methods = ["render", "updVal", "updCp", "renBtn", "setConfig", "_fire", "_handleUpload", "updPreview", "connectedCallback", "disconnectedCallback", "_ensureEditorState", "_emitConfigNow", "_flushPendingConfig", "_handlePrimarySave", "_updateBadgesUI", "_updateTypographyUI", "_updateCardBehaviorUI", "_updateHeaderSectionUI", "_updateTabUI", "_updateSensorsSectionUI", "_updateSubChipsUI", "_areAllButtonsExpanded", "_toggleAllButtonsExpanded"];
+  const methods = ["render", "updVal", "updCp", "renBtn", "setConfig", "_fire", "_handleUpload", "updPreview", "connectedCallback", "disconnectedCallback", "_ensureEditorState", "_emitConfigNow", "_flushPendingConfig", "_handlePrimarySave", "_updateBadgesUI", "_updateTypographyUI", "_updateCardBehaviorUI", "_updateHeaderSectionUI", "_updateTabUI", "_updateSensorsSectionUI", "_syncManualSensorLabelInputs", "_updateWindowLabelsUI", "_updateSubChipsUI", "_areAllButtonsExpanded", "_toggleAllButtonsExpanded"];
   methods.forEach((name) => {
     if (typeof NewEditor.prototype[name] === "function") {
       ExistingEditor.prototype[name] = NewEditor.prototype[name];

@@ -2,6 +2,13 @@
 
 All notable changes to OneLine Room Card are documented here.
 
+## [1.2.9]
+
+* Runtime & Editor: **Window Labels and Solid Backgrounds** — Window/door chips now support per-entity custom labels via `window_labels` and an optional `window_solid_background` mode for full-color chips with readable text contrast. Added visual editor controls under *Sensors* and documented the YAML options. Closes [#84](https://github.com/lop1505/RoomCard/issues/84).
+* Runtime & Editor: **Manual Sensor Labels** — Presence, temperature, target temperature and humidity sensors now support optional custom labels (`presence_sensor_label`, `temp_sensor_label`, `target_temp_sensor_label`, `humid_sensor_label`) directly below their entity pickers in the Sensors editor.
+
+---
+
 ## [1.2.8]
 
 * Runtime & Editor: **Header Image Grayscale by Light State** — Restored the `image_entity` option (regressed in 1.2.6). When the configured light/switch/input_boolean/group is off, the header image fades to grayscale with a smooth 0.8 s transition. Configurable in the editor under the *Image* section. Re-closes [#66](https://github.com/lop1505/RoomCard/issues/66).
@@ -148,4 +155,3 @@ All notable changes to OneLine Room Card are documented here.
 * Editor UX: Collapsible sections for Image, Manual Sensors, and Battery list.
 * Editor UX: Drag & drop reordering plus bulk expand/collapse button settings.
 * Fix: Editing a button no longer collapses entries or jumps the editor scroll.
-

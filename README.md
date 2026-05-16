@@ -121,20 +121,34 @@ covers all settings — no YAML required.
 | Option | Default | Description |
 |---|---|---|
 | `presence_sensor` | — | Person / `binary_sensor` / `device_tracker` entity. Adds a green presence chip when active (`on`, `home`, `active`, `detected`) |
+| `presence_sensor_label` | — | Custom label for the presence chip |
 | `temp_sensor` | — | Temperature sensor (overrides climate) |
 | `target_temp_sensor` | — | Target temperature sensor |
 | `humid_sensor` | — | Humidity sensor (overrides climate) |
+| `temp_sensor_label` | — | Custom label prefix for the temperature value |
+| `target_temp_sensor_label` | — | Custom label prefix for the target temperature value |
+| `humid_sensor_label` | — | Custom label prefix for the humidity value |
 | `humidity_warning_threshold` | `60` | Humidity warning threshold (%) |
 | `alert_sensors` | — | List of alert configurations: `{ entity, state, above, below }`. Triggers red header chips and a red card outline when active |
 | `alert_chip_mode` | `expanded` | `expanded` shows one chip per active alert; `collapsed` shows a count badge that opens a list dialog on click |
 | `alert_border_color` | `#d32f2d` | CSS color for the red card outline when alerts are active (any valid CSS color) |
 | `window_sensors` | — | List of window/door sensors (`binary_sensor` or `sensor` domain) |
+| `window_labels` | — | Per-window custom labels keyed by entity ID, e.g. `{ binary_sensor.bedroom_window: "Sofia's bedroom window" }` |
 | `window_always_show` | `false` | Show chip even when closed |
 | `window_open_color` | `#FFA000` | Chip color when open |
 | `window_closed_color` | `#9E9E9E` | Chip color when closed |
+| `window_solid_background` | `false` | Use the resolved window color as a solid chip background instead of a translucent tint |
 | `window_open_states` | `["on","open"]` | List of state values treated as "open" (e.g. `["offen","gekippt"]` for custom sensors). `on` is always included automatically for backward compatibility. |
 | `window_state_colors` | — | Per-state color overrides, e.g. `{ offen: "#FFA000", gekippt: "#FFD740" }` |
 | `battery_sensors` | — | List of battery sensors |
+
+```yaml
+window_sensors:
+  - binary_sensor.bedroom_window
+window_labels:
+  binary_sensor.bedroom_window: "Sofia's bedroom window"
+window_solid_background: true
+```
 
 #### Buttons (`controls`)
 | Option | Default | Description |
