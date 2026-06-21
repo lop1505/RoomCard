@@ -1801,6 +1801,8 @@ class OneLineRoomCard extends HTMLElement {
           if (cur != null) return cur + unit;
           return s;
         })()
+        : typ === "shutter" && st?.attributes?.current_position != null
+          ? `${100 - Math.round(st.attributes.current_position)}% closed`
         : typ === "light" && s === "on" && ctrl.show_brightness_value !== false && st?.attributes?.brightness != null
           ? `${s} · ${Math.round((st.attributes.brightness / 255) * 100)} %`
           : s));
@@ -2108,6 +2110,9 @@ class OneLineRoomCard extends HTMLElement {
           } else if (sliderCaps.action === "brightness" && ctrl.show_brightness_value !== false) {
             const stateEl = topDiv.querySelector(".btn-state");
             if (stateEl) stateEl.textContent = `${s} · ${Math.round(v)} %`;
+          } else if (sliderCaps.action === "position") {
+            const stateEl = topDiv.querySelector(".btn-state");
+            if (stateEl) stateEl.textContent = `${100 - Math.round(v)}% closed`;
           }
         });
         slider.addEventListener("change", e => {
