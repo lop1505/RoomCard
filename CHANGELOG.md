@@ -2,6 +2,12 @@
 
 All notable changes to OneLine Room Card are documented here.
 
+## [1.3.0]
+
+* Runtime & Editor: **Header Stat Gauges** — New card-level `header_stats` list renders a stacked, right-aligned column of mini battery-style gauges in the header (label + fill gauge + percentage) for an at-a-glance room overview — e.g. light brightness, cover position, fan speed, or any battery/humidity/0–100 sensor. Each entry supports a custom `label`, `warning_threshold` (default `30`) and `warning_color` (default `#FFA000`) that highlights the gauge when the value drops to/below the threshold. New collapsible *Stat Gauges* section in the visual editor, mirroring the existing Badges editor (entity picker, label, threshold, color swatch, add/remove).
+
+---
+
 ## [1.2.9]
 
 * Runtime & Editor: **Window Labels and Solid Backgrounds** — Window/door chips now support per-entity custom labels via `window_labels` and an optional `window_solid_background` mode for full-color chips with readable text contrast. Added visual editor controls under *Sensors* and documented the YAML options. Closes [#84](https://github.com/lop1505/RoomCard/issues/84).

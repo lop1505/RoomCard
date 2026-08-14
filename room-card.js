@@ -1,4 +1,4 @@
-const VERSION = "1.2.9";
+const VERSION = "1.3.0";
 const LOG_FLAG = `customCards_RoomCard_Logged_${VERSION}`;
 
 if (!window[LOG_FLAG]) {
@@ -56,6 +56,7 @@ const TRANSLATIONS = {
     live_preview: "Live preview",
     upload_btn: "Upload Image", uploading: "Uploading...", upload_success: "Done!",
     show_name: "Show Title", header_badges: "Badge", badge_add: "Add Info Entry", badge_label: "Label (optional)", badge_background: "Background (rgba)", standard_badge_background: "Standard Badge Background (rgba)", badge_auto_climate_btn: "Automatically add climate control button",
+    header_stats: "Stat Gauges", stat_add: "Add Stat Gauge", stat_label: "Label (optional)", stat_warning_threshold: "Warning Threshold (%)", stat_warning_color: "Warning Color",
     visibility: "Visibility", visibility_cond: "Conditional Visibility", vis_entity: "Condition Entity", vis_state: "Show if state is", vis_invert: "Invert Logic (Hide if state corresponds)",
     migration_title: "Action Required",
     migration_text: "Card renamed to <b>oneline-room-card</b> to avoid conflicts.<br>Please change <code>type: custom:room-card</code> to <code>type: custom:oneline-room-card</code> in your YAML.",
@@ -142,6 +143,7 @@ const TRANSLATIONS = {
     live_preview: "Live-Vorschau",
     upload_btn: "Bild hochladen", uploading: "Wird hochgeladen...", upload_success: "Fertig!",
     show_name: "Titel anzeigen", header_badges: "Badge", badge_add: "Info-Eintrag hinzufügen", badge_label: "Bezeichnung (optional)", badge_background: "Hintergrund (rgba)", standard_badge_background: "Standard Badge Hintergrund (rgba)", badge_auto_climate_btn: "Klima-Steuerungs-Button automatisch hinzufügen",
+    header_stats: "Statuswerte (Gauge)", stat_add: "Statuswert hinzufügen", stat_label: "Bezeichnung (optional)", stat_warning_threshold: "Warnschwelle (%)", stat_warning_color: "Warnfarbe",
     visibility: "Sichtbarkeit", visibility_cond: "Bedingte Sichtbarkeit", vis_entity: "Bedingungs-Entität", vis_state: "Anzeigen falls Status gleich", vis_invert: "Logik umkehren (Ausblenden falls entsprechend)",
     migration_title: "Handlung erforderlich",
     migration_text: "Karte wurde in <b>oneline-room-card</b> umbenannt.<br>Bitte ändere <code>type: custom:room-card</code> zu <code>type: custom:oneline-room-card</code> in deiner YAML-Konfiguration.",
@@ -232,6 +234,7 @@ const TRANSLATIONS = {
     live_preview: "Aperçu en direct",
     upload_btn: "Télécharger une image", uploading: "Téléchargement...", upload_success: "Terminé!",
     show_name: "Afficher le titre", header_badges: "Infos d'en-tête supplémentaires", badge_add: "Ajouter une entrée", badge_label: "Libellé (optionnel)", badge_background: "Arrière-plan (rgba)", standard_badge_background: "Fond du badge climat principal (rgba)",
+    header_stats: "Jauges de statut", stat_add: "Ajouter une jauge", stat_label: "Libellé (optionnel)", stat_warning_threshold: "Seuil d'alerte (%)", stat_warning_color: "Couleur d'alerte",
     migration_title: "Action requise",
     migration_text: "Carte renommée en <b>oneline-room-card</b> pour éviter les conflits.<br>Veuillez changer <code>type: custom:room-card</code> en <code>type: custom:oneline-room-card</code>.",
     control_mode: "Mode de contrôle", ctrl_default: "Défaut", ctrl_slider: "Curseur", ctrl_buttons: "Boutons", ctrl_full: "Contrôles complets", ctrl_all_options: "Toutes les options",
@@ -836,6 +839,13 @@ class OneLineRoomCard extends HTMLElement {
         .secondary { max-width: 100%; min-width: 0; font-weight: var(--rc-header-info-weight, normal); font-size: var(--rc-header-info-size, 12px); font-style: var(--rc-header-info-style, normal); color: var(--rc-header-info-color, white); opacity: 0.9; display: flex; flex-wrap: nowrap; gap: 6px; align-items: center; overflow: hidden; }
         .info-item { display: inline-flex; align-items: center; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .info-item.badge { padding: 2px 6px; border-radius: 999px; }
+        .stat-list { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+        .stat-row { display: flex; align-items: center; gap: 6px; font-size: 11px; line-height: 1; color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
+        .stat-label { opacity: 0.75; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px; }
+        .stat-gauge { position: relative; width: 20px; height: 10px; flex-shrink: 0; box-sizing: border-box; border: 1.5px solid currentColor; border-radius: 2px; opacity: 0.95; color: var(--stat-color, currentColor); }
+        .stat-gauge::after { content: ""; position: absolute; top: 50%; right: -3px; transform: translateY(-50%); width: 2px; height: 4px; background: currentColor; border-radius: 0 1px 1px 0; }
+        .stat-gauge-fill { position: absolute; top: 1px; bottom: 1px; left: 1px; width: var(--stat-fill, 0%); max-width: calc(100% - 2px); background: currentColor; border-radius: 1px; transition: width 0.3s ease; }
+        .stat-value { min-width: 30px; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
         .chips { position: absolute; bottom: 8px; left: 8px; display: flex; gap: 6px; flex-wrap: wrap; z-index: 2; }
         .chip { display: flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 8px; font-size: 11px; font-weight: bold; background: #FFF8E1; color: #FFA000; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
         .chip.alert { background: #FFEBEE; color: #D32F2F; }
@@ -946,6 +956,7 @@ class OneLineRoomCard extends HTMLElement {
                 <span id="name" class="primary"></span>
                 <span id="info" class="secondary"></span>
               </div>
+              <div id="stats" class="stat-list"></div>
             </div>
             <div id="chips" class="chips"></div>
             <div id="collapse-btn" class="collapse-btn"><ha-icon icon="mdi:chevron-down"></ha-icon></div>
@@ -1008,6 +1019,7 @@ class OneLineRoomCard extends HTMLElement {
       }
     });
     (Array.isArray(cfg.header_badges) ? cfg.header_badges : []).forEach((b) => add(b?.entity));
+    (Array.isArray(cfg.header_stats) ? cfg.header_stats : []).forEach((s) => add(s?.entity));
     return Array.from(ids);
   }
 
@@ -1029,6 +1041,27 @@ class OneLineRoomCard extends HTMLElement {
       attrs.brightness ?? "",
       rgb
     ].join("|");
+  }
+
+  _computeStatPercent(entityId, h) {
+    const st = h.states[entityId];
+    if (!st) return null;
+    const domain = String(entityId).split(".")[0];
+    const state = String(st.state).toLowerCase().trim();
+    if (state === "unavailable" || state === "unknown") return null;
+    const clamp = (n) => Math.max(0, Math.min(100, Math.round(n)));
+    if (domain === "light") {
+      if (state === "off") return 0;
+      if (st.attributes?.brightness !== undefined) return clamp((Number(st.attributes.brightness) / 255) * 100);
+    }
+    if (domain === "cover" && st.attributes?.current_position !== undefined) {
+      return clamp(Number(st.attributes.current_position));
+    }
+    if (domain === "fan" && st.attributes?.percentage !== undefined) {
+      return clamp(Number(st.attributes.percentage));
+    }
+    const num = parseFloat(st.state);
+    return Number.isFinite(num) ? clamp(num) : null;
   }
 
   _normalizeAlertSensorConfig(cfg) {
@@ -1418,6 +1451,49 @@ class OneLineRoomCard extends HTMLElement {
       chip.appendChild(document.createTextNode(` ${label}`));
       ch.appendChild(chip);
     });
+
+    const statsEl = this.shadowRoot.getElementById("stats");
+    if (statsEl) {
+      statsEl.replaceChildren();
+      const statRows = Array.isArray(c.header_stats) ? c.header_stats : [];
+      statRows.forEach(row => {
+        if (!row?.entity) return;
+        const st = h.states[row.entity];
+        if (!st) return;
+        const pct = this._computeStatPercent(row.entity, h);
+        if (pct == null) return;
+        const label = trimStr(row.label) || st.attributes?.friendly_name || row.entity;
+        const thresholdRaw = row.warning_threshold;
+        const threshold = Number.isFinite(Number(thresholdRaw)) ? Number(thresholdRaw) : 30;
+        const warnColor = trimStr(row.warning_color) || "#FFA000";
+        const isWarn = pct <= threshold;
+
+        const rowEl = document.createElement("div");
+        rowEl.className = "stat-row";
+
+        const labelEl = document.createElement("span");
+        labelEl.className = "stat-label";
+        labelEl.textContent = label;
+        rowEl.appendChild(labelEl);
+
+        const gaugeEl = document.createElement("span");
+        gaugeEl.className = "stat-gauge";
+        gaugeEl.style.setProperty("--stat-fill", `${pct}%`);
+        if (isWarn) gaugeEl.style.setProperty("--stat-color", warnColor);
+        const fillEl = document.createElement("span");
+        fillEl.className = "stat-gauge-fill";
+        gaugeEl.appendChild(fillEl);
+        rowEl.appendChild(gaugeEl);
+
+        const valueEl = document.createElement("span");
+        valueEl.className = "stat-value";
+        valueEl.textContent = `${pct}%`;
+        if (isWarn) valueEl.style.color = warnColor;
+        rowEl.appendChild(valueEl);
+
+        statsEl.appendChild(rowEl);
+      });
+    }
 
     const cardEl = this.shadowRoot.querySelector("ha-card");
     if (cardEl) {
@@ -2674,6 +2750,7 @@ class OneLineRoomCardEditor extends HTMLElement {
     this._imageSectionOpen = false;
     this._typoSectionOpen = false;
     this._badgesSectionOpen = false;
+    this._statsSectionOpen = false;
     this._cardBehaviorOpen = true;
     this._actionsSectionOpen = false;
     this._headerSectionOpen = true;
@@ -3278,7 +3355,7 @@ connectedCallback() {
     if (!this._config) return;
     const alreadyRendered = !!this.shadowRoot.innerHTML;
     const domVersion = this.shadowRoot.querySelector("[data-rc-version]")?.dataset?.rcVersion;
-    if (alreadyRendered && domVersion === VERSION) { this.updVal(); if (JSON.stringify(this._config?.controls || []) !== this._lastRenderedControlsSig) this.renBtn(); this._applyNavSelectorOptions(); this._ensureNavOptions(); this._ensureAreaOptions(); this._updateAreaSetupUI(); this._updateSensorsSectionUI(); this._updateImageSectionUI(); this._updateBadgesUI(); this._updateTypographyUI(); this._updateCardBehaviorUI(); this._updateActionsSectionUI(); this._updateHeaderSectionUI(); this._updateTabUI(); return; }
+    if (alreadyRendered && domVersion === VERSION) { this.updVal(); if (JSON.stringify(this._config?.controls || []) !== this._lastRenderedControlsSig) this.renBtn(); this._applyNavSelectorOptions(); this._ensureNavOptions(); this._ensureAreaOptions(); this._updateAreaSetupUI(); this._updateSensorsSectionUI(); this._updateImageSectionUI(); this._updateBadgesUI(); this._updateStatsUI(); this._updateTypographyUI(); this._updateCardBehaviorUI(); this._updateActionsSectionUI(); this._updateHeaderSectionUI(); this._updateTabUI(); return; }
     
     this.shadowRoot.innerHTML = "";
     const h = this._hass;
@@ -3532,6 +3609,18 @@ connectedCallback() {
             <div style="border-top:1px solid var(--divider-color);margin:16px 0 12px"></div>
             <div id="badges-list"></div>
             <mwc-button id="add-badge" raised>
+              <ha-icon icon="mdi:plus" slot="icon"></ha-icon>
+            </mwc-button>
+          </div>
+        </div>
+        <div id="stats-sec" class="badges-sec">
+          <div id="stats-head" class="badges-head">
+            <span id="stats-title" class="badges-title"></span>
+            <ha-icon id="stats-chev" class="badges-chev" icon="mdi:chevron-right" style="--mdc-icon-size:18px;opacity:0.7;transition:transform 0.15s ease"></ha-icon>
+          </div>
+          <div id="stats-content" class="badges-content" hidden>
+            <div id="stats-list"></div>
+            <mwc-button id="add-stat" raised>
               <ha-icon icon="mdi:plus" slot="icon"></ha-icon>
             </mwc-button>
           </div>
@@ -4301,7 +4390,15 @@ connectedCallback() {
         this._updateBadgesUI();
       });
     }
-    
+
+    const statsHead = this.shadowRoot.getElementById("stats-head");
+    if (statsHead) {
+      statsHead.addEventListener("click", () => {
+        this._statsSectionOpen = !this._statsSectionOpen;
+        this._updateStatsUI();
+      });
+    }
+
     const infoLinePosSel = this.shadowRoot.getElementById("info-line-pos-sel");
     if (infoLinePosSel) {
       infoLinePosSel.hass = h;
@@ -4980,6 +5077,7 @@ if (tmplSelect) {
     this._updateImageSectionUI();
     this._updateTypographyUI();
     this._updateBadgesUI();
+    this._updateStatsUI();
     this._updateCardBehaviorUI();
     this._updateHeaderSectionUI();
   }
@@ -5371,6 +5469,168 @@ if (tmplSelect) {
         this._badgesSectionOpen = true;
         this._fire({ ...this._config, header_badges: arr });
         this._updateBadgesUI();
+      };
+    }
+  }
+
+  _updateStatsUI() {
+    const sec = this.shadowRoot?.getElementById("stats-sec");
+    const content = this.shadowRoot?.getElementById("stats-content");
+    const title = this.shadowRoot?.getElementById("stats-title");
+    if (!sec || !content || !title) return;
+
+    const h = this._hass;
+    const stats = Array.isArray(this._config?.header_stats) ? this._config.header_stats : [];
+    const sectionLabel = getTranslation(h, "header_stats");
+    title.textContent = stats.length > 0 ? `${sectionLabel} (${stats.length})` : sectionLabel;
+    sec.classList.toggle("open", this._statsSectionOpen);
+    content.hidden = !this._statsSectionOpen;
+
+    const addBtn = content.querySelector("#add-stat");
+    if (addBtn) addBtn.label = getTranslation(h, "stat_add");
+
+    if (!this._statsSectionOpen) return;
+
+    const list = content.querySelector("#stats-list");
+    if (!list) return;
+
+    const updStat = (idx, key, val) => {
+      const arr = [...(this._config?.header_stats || [])];
+      arr[idx] = { ...arr[idx], [key]: val };
+      this._fire({ ...this._config, header_stats: arr });
+      this._updateStatsUI();
+    };
+    const delStat = (idx) => {
+      const arr = [...(this._config?.header_stats || [])];
+      arr.splice(idx, 1);
+      const next = { ...this._config };
+      if (arr.length > 0) next.header_stats = arr; else delete next.header_stats;
+      this._fire(next);
+      this._updateStatsUI();
+    };
+
+    list.replaceChildren();
+
+    stats.forEach((stat, idx) => {
+      const box = document.createElement("div");
+      box.className = "badge-box";
+
+      const headRow = document.createElement("div");
+      headRow.className = "badge-head-row";
+      const entityLabel = document.createElement("span");
+      entityLabel.className = "badge-entity-label";
+      entityLabel.textContent = stat.entity || `Stat ${idx + 1}`;
+      const delBtn = document.createElement("button");
+      delBtn.className = "badge-del-btn";
+      delBtn.type = "button";
+      delBtn.innerHTML = `<ha-icon icon="mdi:delete-outline"></ha-icon>`;
+      delBtn.addEventListener("click", () => delStat(idx));
+      headRow.appendChild(entityLabel);
+      headRow.appendChild(delBtn);
+      box.appendChild(headRow);
+
+      const ep = document.createElement("ha-entity-picker");
+      ep.label = getTranslation(h, "entity");
+      ep.value = stat.entity || "";
+      if (h) ep.hass = h;
+      ep.style.cssText = "width:100%;display:block;margin-bottom:8px;";
+      ep.addEventListener("value-changed", (ev) => {
+        ev.stopPropagation();
+        updStat(idx, "entity", ev.detail?.value ?? "");
+      });
+      box.appendChild(ep);
+
+      const lf = document.createElement("ha-textfield");
+      lf.label = getTranslation(h, "stat_label");
+      lf.placeholder = h?.states[stat.entity]?.attributes?.friendly_name || "";
+      lf.value = stat.label || "";
+      lf.style.cssText = "width:100%;display:block;margin-bottom:8px;";
+      lf.addEventListener("change", (ev) => {
+        ev.stopPropagation();
+        updStat(idx, "label", ev.target.value || "");
+      });
+      box.appendChild(lf);
+
+      const thField = document.createElement("ha-textfield");
+      thField.label = getTranslation(h, "stat_warning_threshold");
+      thField.type = "number";
+      thField.value = stat.warning_threshold ?? "30";
+      thField.style.cssText = "width:100%;display:block;margin-bottom:8px;";
+      thField.addEventListener("change", (ev) => {
+        ev.stopPropagation();
+        const raw = ev.target.value;
+        const num = raw === "" ? 30 : Number(raw);
+        updStat(idx, "warning_threshold", Number.isFinite(num) ? num : 30);
+      });
+      box.appendChild(thField);
+
+      const colorRow = document.createElement("div");
+      colorRow.style.cssText = "position: relative; display: flex; align-items: flex-end;";
+
+      const colorField = document.createElement("ha-textfield");
+      colorField.label = getTranslation(h, "stat_warning_color");
+      colorField.placeholder = "#FFA000";
+      colorField.style.width = "100%";
+      colorField.value = stat.warning_color || "";
+      colorField.addEventListener("change", (ev) => {
+        ev.stopPropagation();
+        updStat(idx, "warning_color", trimStr(ev.target.value || ""));
+      });
+      colorRow.appendChild(colorField);
+
+      const colorContainer = document.createElement("div");
+      colorContainer.className = "color-container";
+      colorContainer.style.cssText = "position: absolute; right: 8px; bottom: 8px; z-index: 1;";
+
+      const popover = document.createElement("div");
+      popover.className = "color-popover";
+      const popoverField = document.createElement("ha-textfield");
+      popoverField.placeholder = "#FFA000";
+      popoverField.style.cssText = "width: 100%; margin-bottom: 0; --mdc-text-field-fill-color: rgba(255,255,255,0.1); --mdc-text-field-ink-color: white;";
+      popoverField.value = stat.warning_color || "";
+      popoverField.addEventListener("change", (ev) => {
+        ev.stopPropagation();
+        const v = trimStr(ev.target.value || "");
+        updStat(idx, "warning_color", v);
+        cpInner.style.backgroundColor = v || "#FFA000";
+        colorField.value = v;
+      });
+      popover.appendChild(popoverField);
+      colorContainer.appendChild(popover);
+
+      const cpPreview = document.createElement("div");
+      cpPreview.className = "cp-preview";
+      const cpInner = document.createElement("div");
+      cpInner.style.backgroundColor = stat.warning_color || "#FFA000";
+      cpPreview.appendChild(cpInner);
+
+      const colorPicker = document.createElement("input");
+      colorPicker.type = "color";
+      colorPicker.style.cssText = "position: absolute; inset: 0; opacity: 0; cursor: pointer; border: none; padding: 0; width: 100%; height: 100%;";
+      colorPicker.value = parseColorToPickerHex(stat.warning_color || "#FFA000");
+      colorPicker.addEventListener("change", (ev) => {
+        ev.stopPropagation();
+        const hex = ev.target.value;
+        updStat(idx, "warning_color", hex);
+        cpInner.style.backgroundColor = hex;
+        popoverField.value = hex;
+        colorField.value = hex;
+      });
+      cpPreview.appendChild(colorPicker);
+      colorContainer.appendChild(cpPreview);
+      colorRow.appendChild(colorContainer);
+
+      box.appendChild(colorRow);
+      list.appendChild(box);
+    });
+
+    if (addBtn) {
+      addBtn.onclick = () => {
+        const arr = [...(this._config?.header_stats || [])];
+        arr.push({ entity: "", warning_threshold: 30 });
+        this._statsSectionOpen = true;
+        this._fire({ ...this._config, header_stats: arr });
+        this._updateStatsUI();
       };
     }
   }
@@ -6785,7 +7045,7 @@ const cm = box.querySelector(".cm");
 // =============================================================================
 
 const patchExistingEditor = (ExistingEditor, NewEditor) => {
-  const methods = ["render", "updVal", "updCp", "renBtn", "setConfig", "_fire", "_handleUpload", "updPreview", "connectedCallback", "disconnectedCallback", "_ensureEditorState", "_emitConfigNow", "_flushPendingConfig", "_handlePrimarySave", "_updateBadgesUI", "_updateTypographyUI", "_updateCardBehaviorUI", "_updateHeaderSectionUI", "_updateTabUI", "_updateSensorsSectionUI", "_syncManualSensorLabelInputs", "_updateWindowLabelsUI", "_updateSubChipsUI", "_areAllButtonsExpanded", "_toggleAllButtonsExpanded"];
+  const methods = ["render", "updVal", "updCp", "renBtn", "setConfig", "_fire", "_handleUpload", "updPreview", "connectedCallback", "disconnectedCallback", "_ensureEditorState", "_emitConfigNow", "_flushPendingConfig", "_handlePrimarySave", "_updateBadgesUI", "_updateStatsUI", "_updateTypographyUI", "_updateCardBehaviorUI", "_updateHeaderSectionUI", "_updateTabUI", "_updateSensorsSectionUI", "_syncManualSensorLabelInputs", "_updateWindowLabelsUI", "_updateSubChipsUI", "_areAllButtonsExpanded", "_toggleAllButtonsExpanded"];
   methods.forEach((name) => {
     if (typeof NewEditor.prototype[name] === "function") {
       ExistingEditor.prototype[name] = NewEditor.prototype[name];
