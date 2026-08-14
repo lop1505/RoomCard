@@ -31,6 +31,7 @@ Developed with a focus on stability, simple design, and maximum flexibility.
 * 🌡️ Smart climate integration — temperature, humidity and target temp auto-populated
 * 🌍 Dynamic unit support — Celsius / Fahrenheit from HA system settings
 * 🏷️ Custom header badges — any entity with optional label, name toggle and `rgba(...)` background
+* 🔋 Header stat gauges (`header_stats`) — right-aligned, stacked mini battery-style gauges (label + fill bar + %) for an at-a-glance room overview, with a configurable warning threshold/color
 * 📐 Configurable header height — set in px, or `0` to hide completely
 * 🚫 Hide background image (`show_image: false`) — collapses the header to its content height while keeping name, icon, badges and chips visible
 * 🌗 Image grayscale by light state (`image_entity`) — header image fades to grayscale when the chosen light/switch is off
@@ -141,6 +142,7 @@ covers all settings — no YAML required.
 | `window_open_states` | `["on","open"]` | List of state values treated as "open" (e.g. `["offen","gekippt"]` for custom sensors). `on` is always included automatically for backward compatibility. |
 | `window_state_colors` | — | Per-state color overrides, e.g. `{ offen: "#FFA000", gekippt: "#FFD740" }` |
 | `battery_sensors` | — | List of battery sensors |
+| `header_stats` | — | List of header stat gauges shown top-right of the header: `{ entity, label, warning_threshold, warning_color }`. Renders a label + mini battery-style gauge + percentage per entity — great for an at-a-glance room overview (light brightness, cover position, fan speed, battery/humidity sensors, or any 0–100 sensor). `warning_threshold` (default `30`) colors the gauge/value with `warning_color` (default `#FFA000`) when the value is at or below it. |
 
 ```yaml
 window_sensors:
@@ -148,6 +150,15 @@ window_sensors:
 window_labels:
   binary_sensor.bedroom_window: "Sofia's bedroom window"
 window_solid_background: true
+
+header_stats:
+  - entity: light.office_switch
+    label: "Lichtschalter"
+  - entity: sensor.office_temp_battery
+    label: "Temperatursensor"
+  - entity: sensor.office_window_battery
+    label: "Fenstersensor"
+    warning_threshold: 30
 ```
 
 #### Buttons (`controls`)
