@@ -269,6 +269,24 @@ controls:
 `trusted_html` applies only to template content. Entity names, states, alert
 labels, sub-chips, and Home Assistant attributes always render as text.
 
+RoomCard automatically detects literal dependencies used with `entity(...)`,
+`attr(...)`, `states[...]`, and `hass.states[...]`. For dynamic lookups, declare
+the affected entities so unrelated Home Assistant updates do not reevaluate the
+template:
+
+```yaml
+controls:
+  - type: template
+    template_entities:
+      - sensor.room_mode
+    content: "${states[ctrl.template_entities[0]]?.state}"
+```
+
+Sparkline history requests and a bounded cache are shared across RoomCard
+instances. Hidden browser tabs and off-screen cards pause polling; returning to
+a stale card triggers a refresh while preserving `sparkline_refresh` and
+`sparkline_hours` behavior.
+
 ## 🎨 Background Settings
 
 The button background can be customized on two levels. The specific per-button setting overrides the global setting, which in turn overrides the default theme background.
