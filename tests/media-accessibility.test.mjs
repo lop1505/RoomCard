@@ -131,6 +131,69 @@ test("runtime header images apply a validated focal point", () => {
   card.remove();
 });
 
+test("status borders can be disabled without hiding warning chips and can be restored", () => {
+  const hass = createHass({
+    states: {
+      "binary_sensor.battery_warning": {
+        entity_id: "binary_sensor.battery_warning",
+        state: "on",
+        attributes: { friendly_name: "Battery warning" }
+      }
+    }
+  });
+  const baseConfig = { controls: [], battery_sensors: ["binary_sensor.battery_warning"] };
+  const card = createRenderedCard(baseConfig, hass);
+  const cardElement = card.shadowRoot.querySelector("ha-card");
+
+  assert.equal(cardElement.classList.contains("warning-battery"), true);
+  assert.ok(card.shadowRoot.querySelector(".chip.alert"));
+
+  card.setConfig({ ...baseConfig, show_status_border: false });
+  card.hass = hass;
+  assert.equal(cardElement.classList.contains("warning-battery"), false);
+  assert.ok(card.shadowRoot.querySelector(".chip.alert"));
+
+  card.setConfig(baseConfig);
+  card.hass = hass;
+  assert.equal(cardElement.classList.contains("warning-battery"), true);
+  card.remove();
+});
+
+test("sensor-chip icons inherit the resolved chip text color", () => {
+  const hass = createHass({
+    states: {
+      "person.patrick": {
+        entity_id: "person.patrick",
+        state: "home",
+        attributes: { friendly_name: "Patrick" }
+      },
+      "binary_sensor.window": {
+        entity_id: "binary_sensor.window",
+        state: "on",
+        attributes: { friendly_name: "Window" }
+      }
+    }
+  });
+  const card = createRenderedCard({
+    controls: [],
+    presence_sensor: "person.patrick",
+    presence_chip_color: "#ffffff",
+    presence_solid_background: true,
+    window_sensors: ["binary_sensor.window"],
+    window_solid_background: true,
+    window_open_color: "#000000"
+  }, hass);
+  const chips = card.shadowRoot.querySelectorAll(".chip");
+  const style = card.shadowRoot.querySelector("style").textContent;
+
+  assert.match(style, /\.chip ha-icon \{ color: currentColor; \}/);
+  assert.equal(chips[0].style.color, "#000000");
+  assert.equal(chips[0].querySelector("ha-icon").style.color, "");
+  assert.equal(chips[1].style.color, "#ffffff");
+  assert.equal(chips[1].querySelector("ha-icon").style.color, "");
+  card.remove();
+});
+
 test("alert dialog is modal, traps focus, closes with Escape, and restores focus", async () => {
   const hass = createHass();
   const card = createRenderedCard({

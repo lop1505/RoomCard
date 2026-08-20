@@ -328,7 +328,7 @@ const TRANSLATIONS = {
     row_type: "Row Type", type_entity: "Entity", type_template: "Template",
     tmpl_content: "Content (Template)", tmpl_icon: "Icon (Template)", tmpl_color: "Color (Template)", tmpl_state: "State (Template)", tmpl_preview: "Preview",
     tmpl_light: "Light", tmpl_switch: "Switch / Socket", tmpl_select: "Select", tmpl_climate: "Climate", tmpl_cover: "Cover / Shutter", tmpl_media: "Media Player",
-    show_state: "Show State", show_label: "Show Label", show_icon: "Show Icon", show_last_changed: "Last Changed", show_sparkline: "Show Sparkline", sparkline_hours: "History (hours)", lc_just_now: "just now", state_first: "State First", text_layout: "Text Order", primary_text: "First line", primary_state: "State / value first", primary_name: "Name first",
+    show_state: "Show State", show_label: "Show Label", show_icon: "Show Icon", show_last_changed: "Last Changed", show_sparkline: "Show Sparkline", sparkline_hours: "History (hours)", sparkline_refresh: "Sparkline refresh (seconds)", sparkline_refresh_adjusted: "Enter 60–3600 seconds. The value was adjusted to {value}.", lc_just_now: "just now", state_first: "State First", text_layout: "Text Order", primary_text: "First line", primary_state: "State / value first", primary_name: "Name first",
     height: "Height", width: "Width", align: "Align", visible: "Visible", left: "Left", center: "Center", right: "Right",
     tap_action: "Tap Action", hold_action: "Hold Action", double_tap_action: "Double Tap Action",
     actions: "Actions",
@@ -356,7 +356,7 @@ const TRANSLATIONS = {
     window_solid_background: "Solid Background", window_labels: "Window Labels",
     window_custom_label: "Custom Label",
     window_open_states: "Open States (comma-separated)", window_state_colors: "State Colors", window_state_colors_add: "Add State Color",
-    sensors: "Sensors", show_chip_shadow: "Sensor Chip Shadow",
+    sensors: "Sensors", show_chip_shadow: "Sensor Chip Shadow", show_status_border: "Status border and glow", show_status_border_help: "Controls only the warning outline and glow; sensor badges remain visible.",
     icon_size: "Icon Size", global_icon_size: "Global Icon Size (px)",
     header_info_offset: "Info Line Position",
     header_name_offset: "Title Position",
@@ -424,7 +424,7 @@ const TRANSLATIONS = {
     row_type: "Zeilentyp", type_entity: "Entität", type_template: "Template",
     tmpl_content: "Text (Template)", tmpl_icon: "Icon (Template)", tmpl_color: "Farbe (Template)", tmpl_status: "Status (Template)", tmpl_preview: "Vorschau",
     tmpl_light: "Licht", tmpl_switch: "Schalter / Steckdose", tmpl_select: "Auswahl", tmpl_climate: "Klima", tmpl_cover: "Rollladen / Abdeckung", tmpl_media: "Media Player",
-    show_state: "Status anzeigen", show_label: "Bezeichnung anzeigen", show_icon: "Icon anzeigen", show_last_changed: "Letzte Änderung", show_sparkline: "Sparkline anzeigen", sparkline_hours: "Verlauf (Stunden)", lc_just_now: "gerade eben", state_first: "Wert zuerst", text_layout: "Text-Reihenfolge", primary_text: "Erste Zeile", primary_state: "Wert zuerst", primary_name: "Name zuerst",
+    show_state: "Status anzeigen", show_label: "Bezeichnung anzeigen", show_icon: "Icon anzeigen", show_last_changed: "Letzte Änderung", show_sparkline: "Sparkline anzeigen", sparkline_hours: "Verlauf (Stunden)", sparkline_refresh: "Sparkline-Aktualisierung (Sekunden)", sparkline_refresh_adjusted: "Bitte 60–3600 Sekunden eingeben. Der Wert wurde auf {value} angepasst.", lc_just_now: "gerade eben", state_first: "Wert zuerst", text_layout: "Text-Reihenfolge", primary_text: "Erste Zeile", primary_state: "Wert zuerst", primary_name: "Name zuerst",
     height: "Höhe", width: "Breite", align: "Ausrichtung", visible: "Sichtbar", left: "Links", center: "Mitte", right: "Rechts",
     tap_action: "Antippen", hold_action: "Gedrückt halten", double_tap_action: "Doppelklick",
     actions: "Aktionen",
@@ -456,7 +456,7 @@ const TRANSLATIONS = {
     window_solid_background: "Durchgefärbter Hintergrund", window_labels: "Fensterbezeichnungen",
     window_custom_label: "Eigene Bezeichnung",
     window_open_states: "Geöffnete Zustände (kommagetrennt)", window_state_colors: "Zustandsfarben", window_state_colors_add: "Farbe hinzufügen",
-    sensors: "Sensoren", show_chip_shadow: "Sensor-Chip-Schatten",
+    sensors: "Sensoren", show_chip_shadow: "Sensor-Chip-Schatten", show_status_border: "Statusrahmen und Leuchten", show_status_border_help: "Steuert nur Warnrahmen und Leuchten; Sensor-Badges bleiben sichtbar.",
     icon_size: "Icon-Größe", global_icon_size: "Globale Icon-Größe (px)",
     header_info_offset: "Info-Zeile Position",
     header_name_offset: "Titel Position",
@@ -524,7 +524,7 @@ const TRANSLATIONS = {
     row_type: "Type de ligne", type_entity: "Entité", type_template: "Template",
     tmpl_content: "Contenu (Template)", tmpl_icon: "Icône (Template)", tmpl_color: "Couleur (Template)", tmpl_state: "État (Template)", tmpl_preview: "Aperçu",
     tmpl_light: "Lumière", tmpl_switch: "Interrupteur / Prise", tmpl_select: "Sélection", tmpl_climate: "Climatisation", tmpl_cover: "Volet / Store", tmpl_media: "Lecteur multimédia",
-    show_state: "Afficher l’état", show_label: "Afficher le libellé", show_icon: "Afficher l’icône", show_last_changed: "Dernier changement", show_sparkline: "Afficher la Sparkline", sparkline_hours: "Historique (heures)", lc_just_now: "à l’instant", state_first: "Valeur d’abord", text_layout: "Ordre du texte", primary_text: "Première ligne", primary_state: "Valeur d’abord", primary_name: "Nom d’abord",
+    show_state: "Afficher l’état", show_label: "Afficher le libellé", show_icon: "Afficher l’icône", show_last_changed: "Dernier changement", show_sparkline: "Afficher la Sparkline", sparkline_hours: "Historique (heures)", sparkline_refresh: "Actualisation de la Sparkline (secondes)", sparkline_refresh_adjusted: "Saisissez 60 à 3600 secondes. La valeur a été ajustée à {value}.", lc_just_now: "à l’instant", state_first: "Valeur d’abord", text_layout: "Ordre du texte", primary_text: "Première ligne", primary_state: "Valeur d’abord", primary_name: "Nom d’abord",
     height: "Hauteur", width: "Largeur", align: "Alignement", visible: "Visible", left: "Gauche", center: "Centre", right: "Droite",
     tap_action: "Appui court", hold_action: "Appui long", double_tap_action: "Double appui",
     actions: "Actions",
@@ -551,7 +551,7 @@ const TRANSLATIONS = {
     window_solid_background: "Arrière-plan plein", window_labels: "Libellés des fenêtres",
     window_custom_label: "Libellé personnalisé",
     window_open_states: "États ouverts (séparés par virgule)", window_state_colors: "Couleurs par état", window_state_colors_add: "Ajouter couleur",
-    sensors: "Capteurs", show_chip_shadow: "Ombre des badges de capteur",
+    sensors: "Capteurs", show_chip_shadow: "Ombre des badges de capteur", show_status_border: "Contour et lueur d’état", show_status_border_help: "Contrôle uniquement le contour et la lueur d’alerte ; les badges restent visibles.",
     icon_size: "Taille icône", global_icon_size: "Taille icône globale (px)",
     header_info_offset: "Position ligne info",
     header_name_offset: "Position titre",
@@ -1256,6 +1256,7 @@ class OneLineRoomCard extends HTMLElement {
         .info-item.badge { padding: 2px 6px; border-radius: 999px; }
         .chips { position: absolute; bottom: 8px; left: 8px; display: flex; gap: 6px; flex-wrap: wrap; z-index: 2; }
         .chip { display: flex; align-items: center; gap: 4px; padding: 4px 8px; border: 0; border-radius: 8px; font-family: inherit; font-size: 11px; font-weight: bold; background: #FFF8E1; color: #FFA000; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+        .chip ha-icon { color: currentColor; }
         ha-card.no-chip-shadow .chip { box-shadow: none; }
         .chip.alert { background: #FFEBEE; color: #D32F2F; }
         .chip.humidity { background: #E3F2FD; color: #1976D2; }
@@ -1878,7 +1879,6 @@ class OneLineRoomCard extends HTMLElement {
         const chipIcon = document.createElement("ha-icon");
         chipIcon.icon = pIcon;
         chipIcon.style.setProperty("--mdc-icon-size", "14px");
-        chipIcon.style.color = presenceTextColor;
         chip.appendChild(chipIcon);
         chip.appendChild(document.createTextNode(` ${pLabel}`));
         ch.appendChild(chip);
@@ -1955,7 +1955,6 @@ class OneLineRoomCard extends HTMLElement {
       const chipIcon = document.createElement("ha-icon");
       chipIcon.icon = icon;
       chipIcon.style.setProperty("--mdc-icon-size", "14px");
-      chipIcon.style.color = chipTextColor;
       chip.appendChild(chipIcon);
       chip.appendChild(document.createTextNode(` ${label}`));
       ch.appendChild(chip);
@@ -1963,11 +1962,12 @@ class OneLineRoomCard extends HTMLElement {
 
     const cardEl = this.shadowRoot.querySelector("ha-card");
     if (cardEl) {
+      const showStatusBorder = c.show_status_border !== false;
       cardEl.classList.toggle("no-header-text-shadow", c.show_header_text_shadow === false);
       cardEl.classList.toggle("no-chip-shadow", c.show_chip_shadow === false);
-      cardEl.classList.toggle("warning-battery", batteryWarn);
-      cardEl.classList.toggle("warning-humidity", !batteryWarn && humidityWarn);
-      cardEl.classList.toggle("alert-sensor", !batteryWarn && !humidityWarn && alertSensorWarn);
+      cardEl.classList.toggle("warning-battery", showStatusBorder && batteryWarn);
+      cardEl.classList.toggle("warning-humidity", showStatusBorder && !batteryWarn && humidityWarn);
+      cardEl.classList.toggle("alert-sensor", showStatusBorder && !batteryWarn && !humidityWarn && alertSensorWarn);
       if (trimStr(c.alert_border_color)) cardEl.style.setProperty("--rc-alert-border-color", trimStr(c.alert_border_color));
       else cardEl.style.removeProperty("--rc-alert-border-color");
 
@@ -4030,7 +4030,7 @@ connectedCallback() {
     if (!this._config) return;
     const alreadyRendered = !!this.shadowRoot.innerHTML;
     const domVersion = this.shadowRoot.querySelector("[data-rc-version]")?.dataset?.rcVersion;
-    if (alreadyRendered && domVersion === VERSION) { this.updVal(); if (JSON.stringify(this._config?.controls || []) !== this._lastRenderedControlsSig) this.renBtn(); this._applyNavSelectorOptions(); this._ensureNavOptions(); this._ensureAreaOptions(); this._updateAreaSetupUI(); this._updateSensorsSectionUI(); this._updateImageSectionUI(); this._updateBadgesUI(); this._updateTypographyUI(); this._updateCardBehaviorUI(); this._updateActionsSectionUI(); this._updateHeaderSectionUI(); this._updateTabUI(); return; }
+    if (alreadyRendered && domVersion === VERSION) { this.updVal(); if (JSON.stringify(this._config?.controls || []) !== this._lastRenderedControlsSig) this.renBtn(); this._applyNavSelectorOptions(); this._ensureNavOptions(); this._ensureAreaOptions(); this._updateAreaSetupUI(); this._updateSensorsSectionUI(); this._updateSparklineRefreshUI(); this._updateImageSectionUI(); this._updateBadgesUI(); this._updateTypographyUI(); this._updateCardBehaviorUI(); this._updateActionsSectionUI(); this._updateHeaderSectionUI(); this._updateTabUI(); return; }
     
     this.shadowRoot.innerHTML = "";
     const h = this._hass;
@@ -4448,6 +4448,10 @@ connectedCallback() {
             <ha-formfield label="${getTranslation(h, "show_chip_shadow")}" style="display:flex;align-items:center;margin:4px 0 8px">
               <ha-switch id="chip-shadow-toggle"></ha-switch>
             </ha-formfield>
+            <ha-formfield label="${getTranslation(h, "show_status_border")}" style="display:flex;align-items:center;margin:4px 0 2px">
+              <ha-switch id="status-border-toggle"></ha-switch>
+            </ha-formfield>
+            <div style="font-size:11px;opacity:0.65;margin:0 0 8px 42px">${getTranslation(h, "show_status_border_help")}</div>
             <ha-entity-picker label="${getTranslation(h, "presence_sensor")}" cfg="presence_sensor" class="i" allow-custom-entity include-domains='["person", "binary_sensor", "device_tracker"]'></ha-entity-picker>
             <div class="sensor-label-wrap"><label class="window-label-field-label">${getTranslation(h, "window_custom_label")}</label><input class="window-label-input sensor-label-input" data-cfg="presence_sensor_label" type="text" placeholder="${getTranslation(h, "presence_sensor")}"></div>
             <ha-formfield label="${getTranslation(h, "presence_solid_background")}" style="display:flex;align-items:center;margin:8px 0 4px">
@@ -4544,6 +4548,10 @@ connectedCallback() {
         <div class="row">
           <ha-selector id="global-label-pos" label="${getTranslation(h, "label_position_all")}"></ha-selector>
           <oneline-room-card-textfield id="global-icon-size" label="${getTranslation(h, "global_icon_size")}" type="number" style="max-width:140px" placeholder="20"></oneline-room-card-textfield>
+        </div>
+        <div id="sparkline-refresh-wrap" style="margin-top:8px">
+          <oneline-room-card-textfield id="sparkline-refresh" label="${getTranslation(h, "sparkline_refresh")}" type="number" min="60" max="3600" placeholder="300" style="width:100%"></oneline-room-card-textfield>
+          <div id="sparkline-refresh-error" role="status" aria-live="polite" style="display:none;color:var(--error-color,#d32f2f);font-size:11px;margin-top:3px"></div>
         </div>
         <div class="cl-row" style="margin-top: 8px">
           <oneline-room-card-textfield id="global-btn-bg" cfg="global_button_background" label="${getTranslation(h, "global_button_bg")}" class="i"></oneline-room-card-textfield>
@@ -4842,6 +4850,17 @@ connectedCallback() {
         const next = { ...this._config };
         if (ev.target.checked) delete next.show_chip_shadow;
         else next.show_chip_shadow = false;
+        this._fire(next);
+      });
+    }
+    const statusBorderToggle = this.shadowRoot.getElementById("status-border-toggle");
+    if (statusBorderToggle) {
+      statusBorderToggle.checked = this._config?.show_status_border !== false;
+      statusBorderToggle.addEventListener("change", (ev) => {
+        ev.stopPropagation();
+        const next = { ...this._config };
+        if (ev.target.checked) delete next.show_status_border;
+        else next.show_status_border = false;
         this._fire(next);
       });
     }
@@ -5735,6 +5754,34 @@ if (globalLabelPos) {
         this.renBtn();
       });
     }
+    const sparklineRefresh = this.shadowRoot.getElementById("sparkline-refresh");
+    if (sparklineRefresh) {
+      sparklineRefresh.value = this._config?.sparkline_refresh ?? "";
+      sparklineRefresh.addEventListener("change", (ev) => {
+        ev.stopPropagation();
+        const raw = trimStr(ev.target.value);
+        const next = { ...this._config };
+        const error = this.shadowRoot.getElementById("sparkline-refresh-error");
+        if (!raw) {
+          delete next.sparkline_refresh;
+          if (error) { error.textContent = ""; error.style.display = "none"; }
+          this._fire(next);
+          return;
+        }
+        const numeric = Number(raw);
+        const normalized = Math.round(clampNum(numeric, 60, 3600, 300));
+        next.sparkline_refresh = normalized;
+        ev.target.value = String(normalized);
+        const adjusted = !Number.isFinite(numeric) || numeric !== normalized;
+        if (error) {
+          error.textContent = adjusted
+            ? getTranslation(this._hass, "sparkline_refresh_adjusted").replace("{value}", String(normalized))
+            : "";
+          error.style.display = adjusted ? "block" : "none";
+        }
+        this._fire(next);
+      });
+    }
     const globalBtnBg = this.shadowRoot.getElementById("global-btn-bg");
     const globalBtnBgPicker = this.shadowRoot.getElementById("global-btn-bg-picker");
     if (globalBtnBg) {
@@ -5877,6 +5924,7 @@ if (tmplSelect) {
     this._updateBulkToggleButton();
     this.updVal(); this.updCp(); this.renBtn(); this.updPreview();
     this._updateSensorsSectionUI();
+    this._updateSparklineRefreshUI();
     this._updateImageSectionUI();
     this._updateTypographyUI();
     this._updateBadgesUI();
@@ -6075,6 +6123,8 @@ if (tmplSelect) {
     if (tempUnitSel) tempUnitSel.value = normalizeTemperatureUnit(this._config?.temp_unit) || "default";
     const chipShadowToggle = this.shadowRoot?.getElementById("chip-shadow-toggle");
     if (chipShadowToggle) chipShadowToggle.checked = this._config?.show_chip_shadow !== false;
+    const statusBorderToggle = this.shadowRoot?.getElementById("status-border-toggle");
+    if (statusBorderToggle) statusBorderToggle.checked = this._config?.show_status_border !== false;
     const presenceSolidBgToggle = this.shadowRoot?.getElementById("presence-solid-bg");
     if (presenceSolidBgToggle) presenceSolidBgToggle.checked = this._config?.presence_solid_background === true;
     const presenceColor = trimStr(this._config?.presence_chip_color) || "";
@@ -6091,6 +6141,11 @@ if (tmplSelect) {
     if (solidBgToggle) solidBgToggle.checked = this._config?.window_solid_background === true;
     this._syncManualSensorLabelInputs();
     this._updateWindowLabelsUI();
+  }
+
+  _updateSparklineRefreshUI() {
+    const field = this.shadowRoot?.getElementById("sparkline-refresh");
+    if (field) field.value = this._config?.sparkline_refresh ?? "";
   }
 
   _syncManualSensorLabelInputs() {
@@ -7833,7 +7888,7 @@ const cm = box.querySelector(".cm");
 // =============================================================================
 
 const patchExistingEditor = (ExistingEditor, NewEditor) => {
-  const methods = ["render", "updVal", "updCp", "renBtn", "setConfig", "_fire", "_handleUpload", "_prepareImageUpload", "_decodeImageFile", "_canvasToBlob", "_setUploadStatus", "updPreview", "connectedCallback", "disconnectedCallback", "_ensureEditorState", "_emitConfigNow", "_flushPendingConfig", "_handlePrimarySave", "_updateBadgesUI", "_updateTypographyUI", "_updateCardBehaviorUI", "_updateHeaderSectionUI", "_updateTabUI", "_updateSensorsSectionUI", "_updateImageSectionUI", "_setImagePosition", "_updateFocalPointUI", "_setupFocalPointControl", "_renderImagePresetPicker", "_syncManualSensorLabelInputs", "_updateWindowLabelsUI", "_updateSubChipsUI", "_areAllButtonsExpanded", "_toggleAllButtonsExpanded"];
+  const methods = ["render", "updVal", "updCp", "renBtn", "setConfig", "_fire", "_handleUpload", "_prepareImageUpload", "_decodeImageFile", "_canvasToBlob", "_setUploadStatus", "updPreview", "connectedCallback", "disconnectedCallback", "_ensureEditorState", "_emitConfigNow", "_flushPendingConfig", "_handlePrimarySave", "_updateBadgesUI", "_updateTypographyUI", "_updateCardBehaviorUI", "_updateHeaderSectionUI", "_updateTabUI", "_updateSensorsSectionUI", "_updateSparklineRefreshUI", "_updateImageSectionUI", "_setImagePosition", "_updateFocalPointUI", "_setupFocalPointControl", "_renderImagePresetPicker", "_syncManualSensorLabelInputs", "_updateWindowLabelsUI", "_updateSubChipsUI", "_areAllButtonsExpanded", "_toggleAllButtonsExpanded"];
   methods.forEach((name) => {
     if (typeof NewEditor.prototype[name] === "function") {
       ExistingEditor.prototype[name] = NewEditor.prototype[name];

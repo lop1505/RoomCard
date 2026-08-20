@@ -8,6 +8,9 @@ All notable changes to OneLine Room Card are documented here.
 * Accessibility: Add keyboard activation, ARIA state and labels, visible focus, semantic inline controls, and modal focus management for the alert dialog. Closes [#97](https://github.com/lop1505/RoomCard/issues/97).
 * Runtime & Editor: Add a draggable and keyboard-adjustable header-image focal point through `image_position`, with safe validation and centered defaults. Closes [#103](https://github.com/lop1505/RoomCard/issues/103).
 * Editor: Validate JPEG/PNG/WebP uploads up to 20 MB, decode before upload, downscale images larger than 2560 px, preserve suitable originals, localize errors, and prevent duplicate submissions. Closes [#104](https://github.com/lop1505/RoomCard/issues/104).
+* Editor: Expose the card-level `sparkline_refresh` interval with localized validation and a 60–3600 second range. Closes [#101](https://github.com/lop1505/RoomCard/issues/101).
+* Runtime: Make every sensor-chip icon inherit the resolved chip text color, including solid-background and alert variants. Closes [#105](https://github.com/lop1505/RoomCard/issues/105).
+* Runtime & Editor: Add `show_status_border` (default `true`) so warning outlines and glow can be disabled without hiding active sensor chips. Closes [#106](https://github.com/lop1505/RoomCard/issues/106).
 
 ---
 
