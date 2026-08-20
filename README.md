@@ -18,6 +18,19 @@ Developed with a focus on stability, simple design, and maximum flexibility.
 
 ---
 
+## 🆕 What's new in 1.3.0
+
+* 🔢 Sensor states, header badges and climate values now respect Home Assistant's locale, units and configured display precision
+* 🌡️ Optional per-card temperature override (`temp_unit: "°C"` or `"°F"`) with correct value conversion
+* 🎨 Header text shadows and sensor-chip shadows can be disabled independently in the visual editor
+* 🚶 Presence-chip color and solid background are configurable, including automatic readable text contrast
+* 🧰 The visual editor remains usable when Home Assistant has not preloaded its internal text-field components
+* 📝 Template controls are documented with their actual JavaScript `${…}` syntax and available helpers
+
+All 1.3.0 options are available in the visual editor and remain backwards compatible with existing cards.
+
+---
+
 ## ✨ Features
 
 **Editor**
@@ -29,14 +42,14 @@ Developed with a focus on stability, simple design, and maximum flexibility.
 
 **Header**
 * 🌡️ Smart climate integration — temperature, humidity and target temp auto-populated
-* 🌍 Dynamic unit support — Celsius / Fahrenheit from HA system settings
+* 🌍 Dynamic unit support — Celsius / Fahrenheit from HA system settings or an optional per-card override
 * 🏷️ Custom header badges — any entity with optional label, name toggle and `rgba(...)` background
 * 📐 Configurable header height — set in px, or `0` to hide completely
 * 🚫 Hide background image (`show_image: false`) — collapses the header to its content height while keeping name, icon, badges and chips visible
 * 🌗 Image grayscale by light state (`image_entity`) — header image fades to grayscale when the chosen light/switch is off
-* 🚶 Presence indicator chip (`presence_sensor`) — green chip when a person / motion / device_tracker is active
+* 🚶 Presence indicator chip (`presence_sensor`) — configurable color and optional solid background when a person / motion / device tracker is active
 * 🚨 Configurable alert sensors — red header chips and red card outline when sensors trip; collapsed mode shows a count badge with click-to-list dialog
-* 🎨 Header typography — font size, weight, style and color per element
+* 🎨 Header typography — font size, weight, style, color and optional text shadow
 * 📍 Header position sliders — drag title and info line left/right with snap points
 * 🪟 Window sensor chips — custom colors for open/closed states
 * 🔋 Battery warning chips — Critical / Low / Empty with card outline
@@ -71,7 +84,7 @@ Developed with a focus on stability, simple design, and maximum flexibility.
 
 **Advanced**
 * 🖌️ CSS Custom Properties — `--rc-btn-bg`, `--rc-icon-color` for `card-mod` styling
-* 📝 Template buttons — arbitrary HTML content, icon, color and state via Jinja2
+* 📝 Template buttons — dynamic HTML content, icon, color and state via JavaScript expressions
 * ⚡ Vanilla JS, no external dependencies — fast load, no build step
 
 ---
@@ -106,6 +119,8 @@ covers all settings — no YAML required.
 | `show_image` | `true` | Show the header background image. `false` hides the `<img>` and dark gradient and lets the header collapse to content height while name / icon / badges / chips remain visible |
 | `image_entity` | — | Light / switch / input_boolean / group entity. When this entity is off, the header image fades to grayscale |
 | `header_height` | `120` | Header image height in px (`0` = hidden, ignored when `show_image: false`) |
+| `show_header_text_shadow` | `true` | Show the text shadow behind the room name and header info line |
+| `temp_unit` | HA default | Optional per-card temperature unit: `°C` or `°F`. Values are converted for display while climate service calls continue to use Home Assistant's system unit |
 | `collapsible` | `false` | Enable click-to-collapse on header |
 | `default_state` | `expanded` | `expanded` · `collapsed` |
 | `tap_action` | — | Card tap action (e.g. `navigate`) |
@@ -120,14 +135,17 @@ covers all settings — no YAML required.
 #### Sensors & chips
 | Option | Default | Description |
 |---|---|---|
-| `presence_sensor` | — | Person / `binary_sensor` / `device_tracker` entity. Adds a green presence chip when active (`on`, `home`, `active`, `detected`) |
+| `presence_sensor` | — | Person / `binary_sensor` / `device_tracker` entity. Adds a presence chip when active (`on`, `home`, `active`, `detected`) |
 | `presence_sensor_label` | — | Custom label for the presence chip |
+| `presence_chip_color` | `#4CAF50` | Base color for the presence chip |
+| `presence_solid_background` | `false` | Use `presence_chip_color` as a solid background with automatically selected readable text color |
 | `temp_sensor` | — | Temperature sensor (overrides climate) |
 | `target_temp_sensor` | — | Target temperature sensor |
 | `humid_sensor` | — | Humidity sensor (overrides climate) |
 | `temp_sensor_label` | — | Custom label prefix for the temperature value |
 | `target_temp_sensor_label` | — | Custom label prefix for the target temperature value |
 | `humid_sensor_label` | — | Custom label prefix for the humidity value |
+| `show_chip_shadow` | `true` | Show the box shadow behind presence, window and other sensor chips |
 | `humidity_warning_threshold` | `60` | Humidity warning threshold (%) |
 | `alert_sensors` | — | List of alert configurations: `{ entity, state, above, below }`. Triggers red header chips and a red card outline when active |
 | `alert_chip_mode` | `expanded` | `expanded` shows one chip per active alert; `collapsed` shows a count badge that opens a list dialog on click |
@@ -180,6 +198,32 @@ window_solid_background: true
 | `tap_action` | `more-info` | `toggle` · `more-info` · `none` |
 | `hold_action` | `toggle` | — |
 | `double_tap_action` | `none` | — |
+
+##### Template buttons
+
+Template controls use JavaScript expressions inside `${…}` — they are not
+Jinja2 templates. Expressions can be used in the `content`, `icon`, `color`,
+and `state` fields. The following values and helpers are available:
+
+| Name | Description |
+|---|---|
+| `hass` | Current Home Assistant object |
+| `states` | Entity-state map (`hass.states`) |
+| `entity(id)` | Returns the complete state object for an entity ID |
+| `attr(id, name)` | Returns one attribute from an entity |
+| `ctrl` | Current template-control configuration |
+
+```yaml
+controls:
+  - type: template
+    content: "${attr('climate.living_room', 'temperature')} °C"
+    icon: "${entity('binary_sensor.window')?.state === 'on' ? 'mdi:window-open' : 'mdi:window-closed'}"
+    color: "${entity('binary_sensor.window')?.state === 'on' ? '#FFA000' : '#9E9E9E'}"
+    state: "${states['sensor.living_room_humidity']?.state ?? '—'} %"
+```
+
+Invalid expressions render as an empty string. Since expressions run as
+JavaScript in the browser, only use template configuration you trust.
 
 ## 🎨 Background Settings
 
