@@ -948,6 +948,47 @@ const resolveTemplateCtrl = (ctrl, h) => {
   return { content, icon, color, state };
 };
 
+const TEMPLATE_VALUE_KEYS = Object.freeze(["content", "icon", "color", "state"]);
+
+const getTemplateEntityDependencies = (ctrl) => {
+  const dependencies = new Set();
+  const add = (entityId) => {
+    const value = trimStr(entityId);
+    if (/^[a-z0-9_]+\.[a-z0-9_]+$/i.test(value || "")) dependencies.add(value);
+  };
+  const declared = ctrl?.template_entities ?? ctrl?.dependencies;
+  (Array.isArray(declared) ? declared : (typeof declared === "string" ? declared.split(",") : [])).forEach(add);
+  const source = TEMPLATE_VALUE_KEYS.map((key) => String(ctrl?.[key] ?? "")).join("\n");
+  const patterns = [
+    /(?:entity|attr)\(\s*["']([^"']+)["']/g,
+    /(?:hass\.)?states\s*\[\s*["']([^"']+)["']\s*\]/g
+  ];
+  patterns.forEach((pattern) => {
+    let match;
+    while ((match = pattern.exec(source)) !== null) add(match[1]);
+  });
+  return Array.from(dependencies);
+};
+
+const templateNeedsEveryHassUpdate = (ctrl) => {
+  const source = TEMPLATE_VALUE_KEYS.map((key) => String(ctrl?.[key] ?? "")).join("\n");
+  return source.includes("${") && getTemplateEntityDependencies(ctrl).length === 0;
+};
+
+const SHARED_SPARKLINE_CACHE = new Map();
+const SHARED_SPARKLINE_PENDING = new Map();
+const SHARED_SPARKLINE_CACHE_LIMIT = 100;
+const SHARED_SPARKLINE_MAX_AGE_MS = 4 * 60 * 60 * 1000;
+
+const pruneSharedSparklineCache = (now = Date.now()) => {
+  for (const [key, entry] of SHARED_SPARKLINE_CACHE.entries()) {
+    if (!entry || now - entry.lastAccess > SHARED_SPARKLINE_MAX_AGE_MS) SHARED_SPARKLINE_CACHE.delete(key);
+  }
+  while (SHARED_SPARKLINE_CACHE.size > SHARED_SPARKLINE_CACHE_LIMIT) {
+    SHARED_SPARKLINE_CACHE.delete(SHARED_SPARKLINE_CACHE.keys().next().value);
+  }
+};
+
 // =============================================================================
 // LAST CHANGED HELPER
 // =============================================================================
@@ -981,7 +1022,19 @@ class OneLineRoomCard extends HTMLElement {
     this._sparklinePending = new Map();
     this._sparklineInterval = null;
     this._sparklineRefreshSec = 300;
+    this._sparklineVisible = true;
+    this._sparklineObserver = null;
+    this._boundPageVisibilityChange = () => this._setupSparklineInterval();
     this._closeAlertDialog = null;
+  }
+
+  connectedCallback() {
+    document.addEventListener("visibilitychange", this._boundPageVisibilityChange);
+    this._setupSparklineVisibilityObserver();
+    if (this.config) {
+      this._setupLastChangedInterval();
+      this._setupSparklineInterval();
+    }
   }
 
   disconnectedCallback() {
@@ -997,7 +1050,32 @@ class OneLineRoomCard extends HTMLElement {
       clearInterval(this._sparklineInterval);
       this._sparklineInterval = null;
     }
+    document.removeEventListener("visibilitychange", this._boundPageVisibilityChange);
+    this._sparklineObserver?.disconnect();
+    this._sparklineObserver = null;
     this._sparklinePending.clear();
+  }
+
+  _setupSparklineVisibilityObserver() {
+    this._sparklineObserver?.disconnect();
+    this._sparklineObserver = null;
+    if (typeof IntersectionObserver !== "function") {
+      this._sparklineVisible = true;
+      return;
+    }
+    this._sparklineVisible = false;
+    this._sparklineObserver = new IntersectionObserver((entries) => {
+      const entry = entries.find((candidate) => candidate.target === this) || entries[0];
+      const visible = !!entry?.isIntersecting && (entry.intersectionRatio === undefined || entry.intersectionRatio > 0);
+      if (visible === this._sparklineVisible) return;
+      this._sparklineVisible = visible;
+      this._setupSparklineInterval();
+    });
+    this._sparklineObserver.observe(this);
+  }
+
+  _isSparklinePollingActive() {
+    return this.isConnected && this._sparklineVisible && document.hidden !== true;
   }
 
   set hass(hass) {
@@ -1018,6 +1096,7 @@ class OneLineRoomCard extends HTMLElement {
   setConfig(config) {
     const prevKey = this._collapseKey;
     this.config = config;
+    this._sparklineRefreshSec = clampNum(config.sparkline_refresh, 60, 3600, 300);
     this._collapseKey = `oneline-room-card-collapsed:${this._getCollapseUniqueId(config)}`;
     if (this._collapseKey !== prevKey) {
       const stored = config.remember_state !== false ? localStorage.getItem(this._collapseKey) : null;
@@ -1030,7 +1109,6 @@ class OneLineRoomCard extends HTMLElement {
     if (!this.content) this.render();
     this.updateContent();
     this._setupLastChangedInterval();
-    this._sparklineRefreshSec = clampNum(config.sparkline_refresh, 60, 3600, 300);
     this._setupSparklineInterval();
   }
 
@@ -1058,7 +1136,7 @@ class OneLineRoomCard extends HTMLElement {
       clearInterval(this._sparklineInterval);
       this._sparklineInterval = null;
     }
-    if (!this._hasSparklineControls()) return;
+    if (!this._hasSparklineControls() || !this._isSparklinePollingActive()) return;
     this._sparklineInterval = setInterval(() => {
       this._refreshSparklineData();
     }, this._sparklineRefreshSec * 1000);
@@ -1073,60 +1151,81 @@ class OneLineRoomCard extends HTMLElement {
     if (!entity || !this._hass) return [];
     const key = this._getSparklineCacheKey(entity, hours);
     if (this._sparklinePending.has(key)) return this._sparklinePending.get(key);
-    const promise = (async () => {
-      try {
-        const start = new Date(Date.now() - hours * 3600000);
-        const result = await this._hass.callWS({
-          type: "history/history_during_period",
-          entity_ids: [entity],
-          start_time: start.toISOString(),
-          end_time: new Date().toISOString(),
-          minimal_response: true,
-          no_attributes: true
-        });
-        const raw = result[entity] || (Array.isArray(result) && result.length > 0 ? result[0] : []);
-        const points = [];
-        for (const item of raw) {
-          if (!item) continue;
-          let state; let ts;
-          if (Array.isArray(item)) {
-            state = item[0];
-            ts = item[1] ? new Date(item[1]) : null;
-          } else if (typeof item === "object") {
-            state = item.state ?? item.s;
-            const timeVal = item.last_changed ?? item.last_updated ?? item.lu ?? item.lc;
-            if (typeof timeVal === "number") ts = new Date(timeVal * 1000);
-            else if (timeVal) ts = new Date(timeVal);
+    const now = Date.now();
+    const sharedEntry = SHARED_SPARKLINE_CACHE.get(key);
+    if (sharedEntry && now - sharedEntry.fetchedAt < this._sparklineRefreshSec * 1000) {
+      sharedEntry.lastAccess = now;
+      SHARED_SPARKLINE_CACHE.delete(key);
+      SHARED_SPARKLINE_CACHE.set(key, sharedEntry);
+      this._sparklineCache.set(key, sharedEntry.data);
+      this._updateSparklineElements(key, sharedEntry.data);
+      return sharedEntry.data;
+    }
+    let promise = SHARED_SPARKLINE_PENDING.get(key);
+    if (!promise) {
+      promise = (async () => {
+        try {
+          const start = new Date(Date.now() - hours * 3600000);
+          const result = await this._hass.callWS({
+            type: "history/history_during_period",
+            entity_ids: [entity],
+            start_time: start.toISOString(),
+            end_time: new Date().toISOString(),
+            minimal_response: true,
+            no_attributes: true
+          });
+          const raw = result[entity] || (Array.isArray(result) && result.length > 0 ? result[0] : []);
+          const points = [];
+          for (const item of raw) {
+            if (!item) continue;
+            let state; let ts;
+            if (Array.isArray(item)) {
+              state = item[0];
+              ts = item[1] ? new Date(item[1]) : null;
+            } else if (typeof item === "object") {
+              state = item.state ?? item.s;
+              const timeVal = item.last_changed ?? item.last_updated ?? item.lu ?? item.lc;
+              if (typeof timeVal === "number") ts = new Date(timeVal * 1000);
+              else if (timeVal) ts = new Date(timeVal);
+            }
+            if (!ts || state == null) continue;
+            const value = parseFloat(String(state));
+            if (Number.isNaN(value)) continue;
+            points.push({ ts: ts.getTime(), value });
           }
-          if (!ts || state == null) continue;
-          const value = parseFloat(String(state));
-          if (Number.isNaN(value)) continue;
-          points.push({ ts: ts.getTime(), value });
+          if (points.length === 0) return [];
+          if (points.length === 1) {
+            const value = points[0].value;
+            return [{ x: 0, y: value }, { x: 1, y: value }];
+          }
+          const startTime = points[0].ts;
+          let endTime = points[points.length - 1].ts;
+          if (endTime === startTime) endTime = startTime + 1;
+          return points.map(p => ({ x: (p.ts - startTime) / (endTime - startTime), y: p.value }));
+        } catch (err) {
+          return [];
         }
-        if (points.length === 0) return [];
-        if (points.length === 1) {
-          const value = points[0].value;
-          return [{ x: 0, y: value }, { x: 1, y: value }];
-        }
-        const startTime = points[0].ts;
-        let endTime = points[points.length - 1].ts;
-        if (endTime === startTime) endTime = startTime + 1;
-        return points.map(p => ({ x: (p.ts - startTime) / (endTime - startTime), y: p.value }));
-      } catch (err) {
-        return [];
-      } finally {
-        this._sparklinePending.delete(key);
-      }
-    })();
+      })();
+      SHARED_SPARKLINE_PENDING.set(key, promise);
+    }
     this._sparklinePending.set(key, promise);
-    const data = await promise;
-    this._sparklineCache.set(key, data);
-    this._updateSparklineElements(key, data);
-    return data;
+    try {
+      const data = await promise;
+      const completedAt = Date.now();
+      SHARED_SPARKLINE_CACHE.delete(key);
+      SHARED_SPARKLINE_CACHE.set(key, { data, fetchedAt: completedAt, lastAccess: completedAt });
+      pruneSharedSparklineCache(completedAt);
+      this._sparklineCache.set(key, data);
+      this._updateSparklineElements(key, data);
+      return data;
+    } finally {
+      if (SHARED_SPARKLINE_PENDING.get(key) === promise) SHARED_SPARKLINE_PENDING.delete(key);
+      if (this._sparklinePending.get(key) === promise) this._sparklinePending.delete(key);
+    }
   }
 
   async _refreshSparklineData() {
-    if (!this._hasSparklineControls() || !this._hass) return;
+    if (!this._hasSparklineControls() || !this._hass || !this._isSparklinePollingActive()) return;
     const requests = [];
     for (const ctrl of this.config.controls || []) {
       if (ctrl?.show_sparkline !== true) continue;
@@ -1218,7 +1317,7 @@ class OneLineRoomCard extends HTMLElement {
       wrapper.style.display = "block";
       this._drawSparkline(wrapper, data, color || "currentColor");
     }
-    if (!this._sparklinePending.has(key) && !this._sparklineCache.has(key)) {
+    if (this._isSparklinePollingActive() && !this._sparklinePending.has(key) && !this._sparklineCache.has(key)) {
       this._fetchSparklineData(entityId, hours);
     }
   }
@@ -1411,7 +1510,7 @@ class OneLineRoomCard extends HTMLElement {
 
   _hasVisibleTemplateControl() {
     const controls = Array.isArray(this.config?.controls) ? this.config.controls : [];
-    return controls.some((ctrl) => !ctrl?.hide && ctrl?.type === "template");
+    return controls.some((ctrl) => !ctrl?.hide && ctrl?.type === "template" && templateNeedsEveryHassUpdate(ctrl));
   }
 
   _getRelevantEntityIds() {
@@ -1431,6 +1530,7 @@ class OneLineRoomCard extends HTMLElement {
     (Array.isArray(cfg.alert_sensors) ? cfg.alert_sensors : []).forEach((s) => add(typeof s === "string" ? s : s?.entity));
     (Array.isArray(cfg.controls) ? cfg.controls : []).forEach((ctrl) => {
       add(ctrl?.entity);
+      if (ctrl?.type === "template") getTemplateEntityDependencies(ctrl).forEach(add);
       if (Array.isArray(ctrl.visibility)) {
         const extract = (conds) => {
           conds.forEach(c => {
@@ -2325,6 +2425,9 @@ class OneLineRoomCard extends HTMLElement {
     let tpl = null;
     if (isTemplate) {
       tpl = resolveTemplateCtrl(ctrl, h);
+      const templateOutputSig = JSON.stringify(tpl);
+      if (!this._configChanged && btn.dataset.templateOutputSig === templateOutputSig) return;
+      btn.dataset.templateOutputSig = templateOutputSig;
       if (tpl.color) {
         col = tpl.color;
         const isHex = /^#[0-9A-F]{6}$/i.test(tpl.color);

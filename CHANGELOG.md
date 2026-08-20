@@ -12,6 +12,7 @@ All notable changes to OneLine Room Card are documented here.
 * Runtime: Make every sensor-chip icon inherit the resolved chip text color, including solid-background and alert variants. Closes [#105](https://github.com/lop1505/RoomCard/issues/105).
 * Runtime & Editor: Add `show_status_border` (default `true`) so warning outlines and glow can be disabled without hiding active sensor chips. Closes [#106](https://github.com/lop1505/RoomCard/issues/106).
 * Security: Render entity-derived labels, states, alert chips, modes, and sub-chips through DOM text APIs. Template content is text-only by default with an explicit `trusted_html: true` compatibility opt-in, and the JavaScript-template trust boundary is documented. Closes [#95](https://github.com/lop1505/RoomCard/issues/95).
+* Performance: Track literal or declared template dependencies, skip unchanged template DOM work, share and bound sparkline history requests/cache across cards, and pause polling for hidden or off-screen cards. Closes [#98](https://github.com/lop1505/RoomCard/issues/98).
 
 ---
 
