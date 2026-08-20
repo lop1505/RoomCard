@@ -89,7 +89,7 @@ All 1.3.1 options are available in the visual editor and remain backwards compat
 
 **Advanced**
 * 🖌️ CSS Custom Properties — `--rc-btn-bg`, `--rc-icon-color` for `card-mod` styling
-* 📝 Template buttons — dynamic HTML content, icon, color and state via JavaScript expressions
+* 📝 Template buttons — dynamic text, icon, color and state via JavaScript expressions, with explicit trusted-HTML opt-in
 * ⚡ Vanilla JS with no runtime dependencies — built as a single HACS artifact
 
 ---
@@ -251,7 +251,23 @@ controls:
 ```
 
 Invalid expressions render as an empty string. Since expressions run as
-JavaScript in the browser, only use template configuration you trust.
+JavaScript in the browser with access to the Home Assistant object, only use
+template configuration you wrote yourself or obtained from a source you trust.
+Copied/imported template configuration must be reviewed before use.
+
+Template `content` is rendered as plain text by default, so HTML-like entity
+values or expression results cannot create DOM elements. Existing templates
+that intentionally render markup can opt in with `trusted_html: true`:
+
+```yaml
+controls:
+  - type: template
+    trusted_html: true # only for markup you fully trust
+    content: "<strong>${states['sensor.room_mode']?.state}</strong>"
+```
+
+`trusted_html` applies only to template content. Entity names, states, alert
+labels, sub-chips, and Home Assistant attributes always render as text.
 
 ## 🎨 Background Settings
 
