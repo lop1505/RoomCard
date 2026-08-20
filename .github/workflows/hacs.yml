@@ -17,6 +17,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Verify distribution is current
+        run: cmp --silent room-card.js dist/room-card.js
+
       - name: HACS Action
         uses: hacs/action@main
         with:
