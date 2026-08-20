@@ -1,6 +1,15 @@
 const VERSION = "1.3.1";
 const LOG_FLAG = `customCards_RoomCard_Logged_${VERSION}`;
 
+const MEDIA_PLAYER_FEATURES = Object.freeze({
+  PAUSE: 1,
+  VOLUME_SET: 4,
+  VOLUME_MUTE: 8,
+  PREVIOUS_TRACK: 16,
+  NEXT_TRACK: 32,
+  PLAY: 16384
+});
+
 const ROOM_IMAGE_PRESETS = Object.freeze([
   { id: "living-room", file: "living-room.jpg", labelKey: "image_preset_living_room" },
   { id: "kitchen", file: "kitchen.jpg", labelKey: "image_preset_kitchen" },
@@ -344,7 +353,10 @@ const TRANSLATIONS = {
     sub_chips: "Sub-Chips", chip_add: "Add Chip", chip_entity: "Entity", chip_attribute: "Attribute (optional)", chip_icon: "Icon (optional)", chip_label: "Label (optional)", chips_position: "Chip Position", chips_top: "Above title", chips_bottom: "Below title",
     vis_add: "Add Condition", vis_eq: "State is equal", vis_neq: "State is not equal", vis_above: "State is strictly greater than", vis_below: "State is strictly less than",
     info_line_position: "Info Line Position", info_position_header: "Inside header (default)", info_position_below: "Below header",
-    last_activity_title: "Last Activity", last_activity_show: "Show last activity"
+    last_activity_title: "Last Activity", last_activity_show: "Show last activity",
+    a11y_close: "Close", a11y_previous_track: "Previous track", a11y_play_pause: "Play or pause", a11y_next_track: "Next track",
+    a11y_mute: "Mute or unmute", a11y_volume: "Volume", a11y_expand: "Expand room controls", a11y_collapse: "Collapse room controls",
+    a11y_activate: "Activate {name}", a11y_set_value: "Set {name}", a11y_select_option: "Select {name}"
   },
   de: {
     empty: "Leer", low: "Niedrig", critical: "Kritisch", window: "Fenster", general: "Allgemein",
@@ -439,7 +451,10 @@ const TRANSLATIONS = {
     sub_chips: "Sub-Chips", chip_add: "Chip hinzufügen", chip_entity: "Entität", chip_attribute: "Attribut (optional)", chip_icon: "Icon (optional)", chip_label: "Bezeichnung (optional)", chips_position: "Chip-Position", chips_top: "Über dem Titel", chips_bottom: "Unter dem Titel",
     vis_add: "Bedingung hinzufügen", vis_eq: "Zustand ist gleich", vis_neq: "Zustand ist nicht gleich", vis_above: "Numerisch größer als", vis_below: "Numerisch kleiner als",
     info_line_position: "Info-Zeile Position", info_position_header: "Im Header (Standard)", info_position_below: "Unter dem Header",
-    last_activity_title: "Letzte Aktivität", last_activity_show: "Letzte Aktivität anzeigen"
+    last_activity_title: "Letzte Aktivität", last_activity_show: "Letzte Aktivität anzeigen",
+    a11y_close: "Schließen", a11y_previous_track: "Vorheriger Titel", a11y_play_pause: "Wiedergabe oder Pause", a11y_next_track: "Nächster Titel",
+    a11y_mute: "Stumm schalten oder Ton einschalten", a11y_volume: "Lautstärke", a11y_expand: "Raumsteuerung aufklappen", a11y_collapse: "Raumsteuerung zuklappen",
+    a11y_activate: "{name} bedienen", a11y_set_value: "{name} einstellen", a11y_select_option: "{name} auswählen"
   },
   fr: {
     empty: "Vide", low: "Faible", critical: "Critique", window: "Fenêtre", general: "Général",
@@ -527,7 +542,10 @@ const TRANSLATIONS = {
     show_media_sound_modes: "Modes audio",
     show_media_title: "Titre média",
     info_line_position: "Position ligne info", info_position_header: "Dans l'en-tête (défaut)", info_position_below: "Sous l'en-tête",
-    last_activity_title: "Dernière activité", last_activity_show: "Afficher la dernière activité"
+    last_activity_title: "Dernière activité", last_activity_show: "Afficher la dernière activité",
+    a11y_close: "Fermer", a11y_previous_track: "Piste précédente", a11y_play_pause: "Lecture ou pause", a11y_next_track: "Piste suivante",
+    a11y_mute: "Couper ou rétablir le son", a11y_volume: "Volume", a11y_expand: "Développer les commandes", a11y_collapse: "Réduire les commandes",
+    a11y_activate: "Activer {name}", a11y_set_value: "Régler {name}", a11y_select_option: "Sélectionner {name}"
   }
 };
 
@@ -933,9 +951,12 @@ class OneLineRoomCard extends HTMLElement {
     this._sparklinePending = new Map();
     this._sparklineInterval = null;
     this._sparklineRefreshSec = 300;
+    this._closeAlertDialog = null;
   }
 
   disconnectedCallback() {
+    this._closeAlertDialog?.();
+    this._closeAlertDialog = null;
     this._activeTimers.forEach(clearTimeout);
     this._activeTimers.clear();
     if (this._lastChangedInterval) {
@@ -1204,7 +1225,7 @@ class OneLineRoomCard extends HTMLElement {
         .info-item { display: inline-flex; align-items: center; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .info-item.badge { padding: 2px 6px; border-radius: 999px; }
         .chips { position: absolute; bottom: 8px; left: 8px; display: flex; gap: 6px; flex-wrap: wrap; z-index: 2; }
-        .chip { display: flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 8px; font-size: 11px; font-weight: bold; background: #FFF8E1; color: #FFA000; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+        .chip { display: flex; align-items: center; gap: 4px; padding: 4px 8px; border: 0; border-radius: 8px; font-family: inherit; font-size: 11px; font-weight: bold; background: #FFF8E1; color: #FFA000; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
         ha-card.no-chip-shadow .chip { box-shadow: none; }
         .chip.alert { background: #FFEBEE; color: #D32F2F; }
         .chip.humidity { background: #E3F2FD; color: #1976D2; }
@@ -1240,6 +1261,7 @@ class OneLineRoomCard extends HTMLElement {
         .btn.label-bottom .btn-state { font-size: 10px; line-height: 10px; margin-top: 0; }
         .btn:hover { background: var(--rc-btn-bg-hover, rgba(128,128,128,0.1)); border-color: rgba(128,128,128,0.2); }
         .btn:active { background: var(--rc-btn-bg-active, rgba(128,128,128,0.15)); }
+        .btn:focus-visible, button:focus-visible, select:focus-visible, input:focus-visible, .img-box:focus-visible { outline: 2px solid var(--primary-color, #03a9f4); outline-offset: 2px; }
         .btn.state-unavailable { opacity: 0.56; }
         .btn.state-unavailable:hover,
         .btn.state-unavailable:active { background: var(--rc-btn-bg, var(--btn-bg, var(--card-background-color, rgba(128,128,128,0.05)))); border-color: transparent; }
@@ -1261,23 +1283,25 @@ class OneLineRoomCard extends HTMLElement {
         .btn-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--icon-color, #ff9800); cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
         .btn-slider::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: var(--icon-color, #ff9800); cursor: pointer; border: none; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
         .btn-cover-actions { display: flex; gap: 4px; width: 100%; flex: 0 0 auto; padding-bottom: 4px; }
-        .cover-action-btn { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; background: rgba(128,128,128,0.1); border-radius: 6px; padding: 4px 6px; cursor: pointer; transition: background 0.15s; touch-action: manipulation; }
+        .cover-action-btn { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; background: rgba(128,128,128,0.1); border: 0; color: inherit; font: inherit; border-radius: 6px; padding: 4px 6px; cursor: pointer; transition: background 0.15s; touch-action: manipulation; }
         .cover-action-btn:hover { background: rgba(128,128,128,0.22); }
         .cover-action-btn ha-icon { --mdc-icon-size: 16px; color: var(--primary-text-color); }
-        .media-control-bar { display: flex; align-items: center; gap: 6px; width: 100%; flex: 0 0 auto; padding: 2px 0 4px; }
-        .media-control-bar .media-ctrl-btn { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; cursor: pointer; transition: background 0.15s; touch-action: manipulation; }
-        .media-control-bar .media-ctrl-btn:hover { background: rgba(128,128,128,0.18); }
-        .media-control-bar .media-ctrl-btn ha-icon { --mdc-icon-size: 18px; color: var(--primary-text-color); }
-        .media-control-bar .media-ctrl-btn.muted ha-icon { color: var(--secondary-text-color); }
-        .media-control-bar .btn-slider-wrap { flex: 1; min-width: 0; padding: 0; }
-        .media-control-bar .btn-slider { height: 4px; }
-        .media-control-bar .vol-label { font-size: 10px; font-weight: 600; color: var(--secondary-text-color); min-width: 28px; text-align: center; flex: 0 0 auto; }
+        .media-transport-row, .media-volume-row { display: flex; align-items: center; gap: 6px; width: 100%; flex: 0 0 auto; }
+        .media-transport-row { justify-content: center; padding-top: 2px; }
+        .media-volume-row { padding: 2px 0 4px; }
+        .media-ctrl-btn { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: inherit; cursor: pointer; transition: background 0.15s; touch-action: manipulation; }
+        .media-ctrl-btn:hover { background: rgba(128,128,128,0.18); }
+        .media-ctrl-btn ha-icon { --mdc-icon-size: 19px; color: var(--primary-text-color); }
+        .media-ctrl-btn.muted ha-icon { color: var(--secondary-text-color); }
+        .media-volume-row .btn-slider-wrap { flex: 1; min-width: 0; padding: 0; }
+        .media-volume-row .btn-slider { height: 4px; }
+        .media-volume-row .vol-label { font-size: 10px; font-weight: 600; color: var(--secondary-text-color); min-width: 32px; text-align: center; flex: 0 0 auto; }
         .media-thumb { width: 40px; height: 40px; border-radius: 4px; object-fit: cover; flex-shrink: 0; }
         .media-full-layout { display: flex; gap: 10px; width: 100%; align-items: stretch; }
-        .media-full-layout .media-thumb { width: 56px; height: auto; min-height: 56px; border-radius: 6px; align-self: stretch; }
+        .media-full-layout .media-thumb { width: 72px; height: 72px; aspect-ratio: 1; border-radius: 6px; align-self: center; object-fit: cover; }
         .media-full-layout .media-right { display: flex; flex-direction: column; flex: 1; min-width: 0; justify-content: center; gap: 2px; }
         .btn-cover-presets { display: flex; gap: 4px; width: 100%; flex: 0 0 auto; padding-bottom: 4px; }
-        .preset-btn { flex: 1; display: flex; align-items: center; justify-content: center; background: rgba(128,128,128,0.1); border-radius: 6px; padding: 3px 4px; cursor: pointer; transition: background 0.15s, color 0.15s; font-size: 11px; font-weight: 600; color: var(--secondary-text-color); white-space: nowrap; touch-action: manipulation; }
+        .preset-btn { flex: 1; display: flex; align-items: center; justify-content: center; background: rgba(128,128,128,0.1); border: 0; border-radius: 6px; padding: 3px 4px; cursor: pointer; transition: background 0.15s, color 0.15s; font: inherit; font-size: 11px; font-weight: 600; color: var(--secondary-text-color); white-space: nowrap; touch-action: manipulation; }
         .preset-btn:hover { background: rgba(128,128,128,0.22); color: var(--primary-text-color); }
         .preset-btn.active { background: var(--icon-color, var(--primary-color, #ff9800)); color: #fff; }
         .btn-select-dropdown { width: 100%; padding-bottom: 4px; }
@@ -1286,7 +1310,7 @@ class OneLineRoomCard extends HTMLElement {
         .btn-select-options { flex-wrap: wrap; }
         .btn-select-options .preset-btn { flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
         .btn-color-favorites { display: flex; gap: 6px; width: 100%; flex: 0 0 auto; padding-bottom: 4px; flex-wrap: wrap; }
-        .color-swatch { width: 20px; height: 20px; border-radius: 50%; cursor: pointer; flex-shrink: 0; border: 2px solid transparent; transition: transform 0.15s, border-color 0.15s; box-shadow: 0 1px 3px rgba(0,0,0,0.25); touch-action: manipulation; }
+        .color-swatch { width: 20px; height: 20px; padding: 0; border-radius: 50%; cursor: pointer; flex-shrink: 0; border: 2px solid transparent; transition: transform 0.15s, border-color 0.15s; box-shadow: 0 1px 3px rgba(0,0,0,0.25); touch-action: manipulation; }
         .color-swatch:hover { transform: scale(1.2); }
         .color-swatch.active { border-color: var(--primary-text-color); transform: scale(1.15); }
         .controls { transition: max-height 0.35s ease, padding 0.35s ease; overflow: hidden; max-height: 2000px; }
@@ -1303,6 +1327,11 @@ class OneLineRoomCard extends HTMLElement {
         .btn-chip ha-icon { --mdc-icon-size: 11px; }
         .info-bar { display: none; flex-wrap: nowrap; gap: 6px; padding: 4px 12px 6px; align-items: center; overflow: hidden; font-size: var(--rc-header-info-size, 12px); font-weight: var(--rc-header-info-weight, normal); font-style: var(--rc-header-info-style, normal); color: var(--rc-header-info-color, var(--secondary-text-color)); }
         .info-bar.active { display: flex; }
+        @media (max-width: 480px) {
+          .media-full-layout { gap: 8px; }
+          .media-full-layout .media-thumb { width: 60px; height: 60px; }
+          .media-ctrl-btn { width: 30px; height: 30px; }
+        }
       </style>
       <ha-card>
         <div class="container">
@@ -1440,29 +1469,59 @@ class OneLineRoomCard extends HTMLElement {
   }
 
   _showAlertDialog(alerts) {
-    const dialog = document.createElement("div");
-    dialog.className = "alert-dialog-container";
-    const title = getTranslation(this._hass, "active_alerts");
-    dialog.innerHTML = `
-      <div class="alert-dialog-backdrop"></div>
-      <div class="alert-dialog">
-        <div class="alert-dialog-header">
-          <h2>${title}</h2>
-          <button class="alert-dialog-close" aria-label="Close">✕</button>
-        </div>
-        <div class="alert-dialog-content">
-          <div class="alert-entity-list">
-            ${alerts.map(a => `
-              <div class="alert-entity-row" data-entity="${a.entity_id}">
-                <ha-icon icon="${a.icon}" style="color:#FF5252!important;--mdc-icon-size:24px"></ha-icon>
-                <span class="alert-entity-name">${a.friendly_name}</span>
-                <span class="alert-entity-state">${a.state}</span>
-              </div>
-            `).join("")}
-          </div>
-        </div>
-      </div>
-    `;
+    this._closeAlertDialog?.();
+    const previouslyFocused = this.shadowRoot.activeElement || document.activeElement;
+    const container = document.createElement("div");
+    container.className = "alert-dialog-container";
+
+    const backdrop = document.createElement("div");
+    backdrop.className = "alert-dialog-backdrop";
+    backdrop.setAttribute("aria-hidden", "true");
+
+    const panel = document.createElement("div");
+    panel.className = "alert-dialog";
+    panel.setAttribute("role", "dialog");
+    panel.setAttribute("aria-modal", "true");
+    panel.setAttribute("aria-labelledby", "alert-dialog-title");
+
+    const header = document.createElement("div");
+    header.className = "alert-dialog-header";
+    const heading = document.createElement("h2");
+    heading.id = "alert-dialog-title";
+    heading.textContent = getTranslation(this._hass, "active_alerts");
+    const closeButton = document.createElement("button");
+    closeButton.type = "button";
+    closeButton.className = "alert-dialog-close";
+    closeButton.setAttribute("aria-label", getTranslation(this._hass, "a11y_close"));
+    closeButton.textContent = "✕";
+    header.append(heading, closeButton);
+
+    const content = document.createElement("div");
+    content.className = "alert-dialog-content";
+    const list = document.createElement("div");
+    list.className = "alert-entity-list";
+    alerts.forEach((alert) => {
+      const row = document.createElement("button");
+      row.type = "button";
+      row.className = "alert-entity-row";
+      row.dataset.entity = alert.entity_id;
+      row.setAttribute("aria-label", `${alert.friendly_name}: ${alert.state}`);
+      const icon = document.createElement("ha-icon");
+      icon.setAttribute("icon", alert.icon);
+      icon.style.cssText = "color:#FF5252!important;--mdc-icon-size:24px";
+      const name = document.createElement("span");
+      name.className = "alert-entity-name";
+      name.textContent = alert.friendly_name;
+      const state = document.createElement("span");
+      state.className = "alert-entity-state";
+      state.textContent = alert.state;
+      row.append(icon, name, state);
+      list.appendChild(row);
+    });
+    content.appendChild(list);
+    panel.append(header, content);
+    container.append(backdrop, panel);
+
     const style = document.createElement("style");
     style.textContent = `
       .alert-dialog-container { position: fixed; inset: 0; z-index: 10000; display: flex; align-items: center; justify-content: center; }
@@ -1474,35 +1533,67 @@ class OneLineRoomCard extends HTMLElement {
       .alert-dialog-close:hover { background: rgba(0,0,0,0.05); border-radius: 4px; }
       .alert-dialog-content { flex: 1; overflow-y: auto; padding: 0; }
       .alert-entity-list { display: flex; flex-direction: column; }
-      .alert-entity-row { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid rgba(0,0,0,0.05); cursor: pointer; transition: background-color 0.15s; }
+      .alert-entity-row { width: 100%; display: flex; align-items: center; gap: 12px; padding: 12px 16px; border: 0; border-bottom: 1px solid rgba(0,0,0,0.05); background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; transition: background-color 0.15s; }
       .alert-entity-row:last-child { border-bottom: none; }
       .alert-entity-row:hover { background-color: rgba(0,0,0,0.03); }
+      .alert-dialog-close:focus-visible, .alert-entity-row:focus-visible { outline: 2px solid var(--primary-color, #03a9f4); outline-offset: -2px; }
       .alert-entity-name { flex: 1; font-weight: 500; color: var(--primary-text-color); }
       .alert-entity-state { font-size: 12px; color: var(--secondary-text-color, #888); text-transform: capitalize; }
     `;
-    dialog.appendChild(style);
-    this.shadowRoot.appendChild(dialog);
+    container.appendChild(style);
+    this.shadowRoot.appendChild(container);
 
-    const closeDialog = () => dialog.remove();
-    const handleEscape = (e) => {
-      if (e.key === "Escape") {
-        closeDialog();
-        document.removeEventListener("keydown", handleEscape);
+    let closing = false;
+    const closeDialog = () => {
+      if (closing && !container.isConnected) return;
+      closing = true;
+      document.removeEventListener("keydown", handleKeydown);
+      container.remove();
+      if (this._closeAlertDialog === closeDialog) this._closeAlertDialog = null;
+      if (previouslyFocused?.isConnected && typeof previouslyFocused.focus === "function") {
+        const focusTimer = setTimeout(() => {
+          this._activeTimers.delete(focusTimer);
+          previouslyFocused.focus();
+        }, 0);
+        this._activeTimers.add(focusTimer);
       }
     };
-    dialog.querySelector(".alert-dialog-close").addEventListener("click", closeDialog);
-    dialog.querySelector(".alert-dialog-backdrop").addEventListener("click", closeDialog);
-    document.addEventListener("keydown", handleEscape);
-    dialog.querySelectorAll(".alert-entity-row").forEach(row => {
+    this._closeAlertDialog = closeDialog;
+    const handleKeydown = (e) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        const closeTimer = setTimeout(() => {
+          this._activeTimers.delete(closeTimer);
+          closeDialog();
+        }, 0);
+        this._activeTimers.add(closeTimer);
+        return;
+      }
+      if (e.key === "Tab") {
+        const focusable = [closeButton, ...list.querySelectorAll("button")];
+        if (focusable.length === 0) return;
+        const current = this.shadowRoot.activeElement;
+        const currentIndex = focusable.indexOf(current);
+        const nextIndex = e.shiftKey
+          ? (currentIndex <= 0 ? focusable.length - 1 : currentIndex - 1)
+          : (currentIndex < 0 || currentIndex === focusable.length - 1 ? 0 : currentIndex + 1);
+        e.preventDefault();
+        focusable[nextIndex].focus();
+      }
+    };
+    closeButton.addEventListener("click", closeDialog);
+    backdrop.addEventListener("click", closeDialog);
+    document.addEventListener("keydown", handleKeydown);
+    list.querySelectorAll(".alert-entity-row").forEach(row => {
       row.addEventListener("click", () => {
         const entityId = row.dataset.entity;
         if (entityId && this._hass) {
-          this._fireAction("more-info", { entity: entityId });
+          this._fireAction("tap", { entity: entityId, tap_action: { action: "more-info" } });
         }
         closeDialog();
-        document.removeEventListener("keydown", handleEscape);
       });
     });
+    closeButton.focus();
   }
 
   _getRenderMetaSignature(hass) {
@@ -1783,9 +1874,11 @@ class OneLineRoomCard extends HTMLElement {
     });
     const alertChipMode = c.alert_chip_mode || "expanded";
     if (alertChipMode === "collapsed" && activeAlerts.length > 0) {
-      const chip = document.createElement("div");
+      const chip = document.createElement("button");
+      chip.type = "button";
       chip.className = "chip alert";
       chip.innerHTML = `<ha-icon icon="mdi:alert" style="--mdc-icon-size:14px"></ha-icon> ${activeAlerts.length}`;
+      chip.setAttribute("aria-label", `${getTranslation(h, "active_alerts")}: ${activeAlerts.length}`);
       chip.style.cursor = "pointer";
       chip.addEventListener("click", () => this._showAlertDialog(activeAlerts));
       ch.appendChild(chip);
@@ -1870,8 +1963,28 @@ class OneLineRoomCard extends HTMLElement {
     if (collapseBtn) {
       const isCollapsible = c.collapsible === true;
       collapseBtn.style.display = isCollapsible ? "flex" : "none";
+      collapseBtn.setAttribute("aria-hidden", "true");
       collapseBtn.classList.toggle("open", !this._collapsed);
       this.controls.classList.toggle("collapsed", isCollapsible && this._collapsed);
+      const imageBox = this.shadowRoot.querySelector(".img-box");
+      const hasHeaderAction = isCollapsible
+        || (c.tap_action?.action && c.tap_action.action !== "none")
+        || (c.hold_action?.action && c.hold_action.action !== "none")
+        || (c.double_tap_action?.action && c.double_tap_action.action !== "none");
+      if (imageBox && hasHeaderAction) {
+        imageBox.setAttribute("role", "button");
+        imageBox.tabIndex = 0;
+        imageBox.setAttribute("aria-label", isCollapsible
+          ? getTranslation(h, this._collapsed ? "a11y_expand" : "a11y_collapse")
+          : (c.name || getTranslation(h, "a11y_activate").replace("{name}", "RoomCard")));
+        if (isCollapsible) imageBox.setAttribute("aria-expanded", this._collapsed ? "false" : "true");
+        else imageBox.removeAttribute("aria-expanded");
+      } else if (imageBox) {
+        imageBox.removeAttribute("role");
+        imageBox.removeAttribute("tabindex");
+        imageBox.removeAttribute("aria-label");
+        imageBox.removeAttribute("aria-expanded");
+      }
     }
 
     let visibleCtrls = (c.controls || []).filter(ctrl => {
@@ -2139,6 +2252,12 @@ class OneLineRoomCard extends HTMLElement {
     return [];
   }
 
+  _supportsMediaFeature(stateObj, feature) {
+    const supported = stateObj?.attributes?.supported_features;
+    if (!Number.isFinite(Number(supported))) return true;
+    return (Number(supported) & feature) !== 0;
+  }
+
   _updateBtnState(btn, ctrl, h) {
     const systemTempUnit = normalizeTemperatureUnit(h.config.unit_system.temperature) || "°C";
     const configuredTempUnit = normalizeTemperatureUnit(this.config?.temp_unit);
@@ -2320,8 +2439,16 @@ class OneLineRoomCard extends HTMLElement {
     btn.classList.toggle("state-unavailable", isUnavail);
     if (!isTemplate) {
       btn.style.cursor = isUnavail ? "default" : "pointer";
+      btn.setAttribute("role", "button");
+      btn.tabIndex = isUnavail ? -1 : 0;
+      btn.setAttribute("aria-label", [nameTxt, showState ? stateText : ""].filter(Boolean).join(", "));
+      btn.setAttribute("aria-disabled", isUnavail ? "true" : "false");
+    } else {
+      btn.removeAttribute("role");
+      btn.removeAttribute("tabindex");
+      btn.removeAttribute("aria-label");
+      btn.removeAttribute("aria-disabled");
     }
-    btn.setAttribute("aria-disabled", isUnavail ? "true" : "false");
     if (isUnavail) btn.title = unavailableText;
     else btn.removeAttribute("title");
 
@@ -2345,7 +2472,7 @@ class OneLineRoomCard extends HTMLElement {
     const hasBrightnessPresets = ctrl.show_brightness_presets === true && domain === "light" && !isUnavail;
     const hasColorFavorites = ctrl.show_color_favorites === true && domain === "light" && !isUnavail;
     const hasSelectOptions = isSelectDomain && !isUnavail && Array.isArray(st?.attributes?.options) && st.attributes.options.length > 0;
-    const isMediaFull = domain === "media_player" && !isUnavail && sliderCaps.supported && (controlMode === "full" || !controlMode || controlMode === "default");
+    const isMediaFull = domain === "media_player" && !isUnavail && (controlMode === "full" || !controlMode || controlMode === "default");
 
     if (isBgSlider) {
       btn.style.position = "relative";
@@ -2409,13 +2536,45 @@ class OneLineRoomCard extends HTMLElement {
         const txtDiv = topDiv.querySelector(".btn-txt");
         if (txtDiv) rightDiv.appendChild(txtDiv);
 
-        // Combined media control bar: [Mute] [---Slider---] [Play/Pause] [Next]
-        const bar = document.createElement("div");
-        bar.className = "media-control-bar";
+        const createMediaButton = (className, icon, label, service) => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = className;
+          button.setAttribute("aria-label", label);
+          button.innerHTML = `<ha-icon icon="${icon}"></ha-icon>`;
+          button.addEventListener("pointerdown", e => e.stopPropagation());
+          button.addEventListener("click", e => {
+            e.stopPropagation();
+            if (!this._isEntityUnavailable(ctrl.entity)) {
+              this._hass.callService("media_player", service, { entity_id: ctrl.entity });
+            }
+          });
+          return button;
+        };
+
+        // Transport row: [Previous] [Play/Pause] [Next]
+        const transportRow = document.createElement("div");
+        transportRow.className = "media-transport-row";
+        if (this._supportsMediaFeature(st, MEDIA_PLAYER_FEATURES.PREVIOUS_TRACK)) {
+          transportRow.appendChild(createMediaButton("media-ctrl-btn media-previous", "mdi:skip-previous", getTranslation(h, "a11y_previous_track"), "media_previous_track"));
+        }
+        if (this._supportsMediaFeature(st, MEDIA_PLAYER_FEATURES.PLAY) || this._supportsMediaFeature(st, MEDIA_PLAYER_FEATURES.PAUSE)) {
+          transportRow.appendChild(createMediaButton("media-ctrl-btn media-play-pause", "mdi:play-pause", getTranslation(h, "a11y_play_pause"), "media_play_pause"));
+        }
+        if (this._supportsMediaFeature(st, MEDIA_PLAYER_FEATURES.NEXT_TRACK)) {
+          transportRow.appendChild(createMediaButton("media-ctrl-btn media-next", "mdi:skip-next", getTranslation(h, "a11y_next_track"), "media_next_track"));
+        }
+        if (transportRow.childElementCount > 0) rightDiv.appendChild(transportRow);
+
+        // Volume row: [Mute] [---Slider---] [Percentage]
+        const volumeRow = document.createElement("div");
+        volumeRow.className = "media-volume-row";
         let currentMuted = st?.attributes?.is_volume_muted === true;
-        // Mute button
-        const muteBtn = document.createElement("div");
+        const muteBtn = document.createElement("button");
+        muteBtn.type = "button";
         muteBtn.className = `media-ctrl-btn${currentMuted ? " muted" : ""}`;
+        muteBtn.setAttribute("aria-label", getTranslation(h, "a11y_mute"));
+        muteBtn.setAttribute("aria-pressed", currentMuted ? "true" : "false");
         muteBtn.innerHTML = `<ha-icon icon="${currentMuted ? "mdi:volume-off" : "mdi:volume-high"}"></ha-icon>`;
         muteBtn.addEventListener("pointerdown", e => e.stopPropagation());
         muteBtn.addEventListener("click", e => {
@@ -2432,6 +2591,7 @@ class OneLineRoomCard extends HTMLElement {
             // Immediate visual feedback
             muteBtn.querySelector("ha-icon").setAttribute("icon", newMuted ? "mdi:volume-off" : "mdi:volume-high");
             muteBtn.classList.toggle("muted", newMuted);
+            muteBtn.setAttribute("aria-pressed", newMuted ? "true" : "false");
             if (newMuted) {
               slider.style.setProperty("--slider-pct", "0%");
               volLabel.textContent = "0%";
@@ -2444,7 +2604,7 @@ class OneLineRoomCard extends HTMLElement {
             }
           }
         });
-        bar.appendChild(muteBtn);
+        if (this._supportsMediaFeature(st, MEDIA_PLAYER_FEATURES.VOLUME_MUTE)) volumeRow.appendChild(muteBtn);
         // Volume slider
         const wrap = document.createElement("div");
         wrap.className = "btn-slider-wrap";
@@ -2452,6 +2612,8 @@ class OneLineRoomCard extends HTMLElement {
         slider.type = "range";
         slider.className = "btn-slider";
         slider.min = sliderCaps.min; slider.max = sliderCaps.max; slider.step = sliderCaps.step; slider.value = sliderCaps.value;
+        slider.setAttribute("aria-label", getTranslation(h, "a11y_volume"));
+        slider.setAttribute("aria-valuetext", `${Math.round(sliderCaps.value)}%`);
         slider.style.setProperty("--slider-pct", `${sliderCaps.pct}%`);
         const volLabel = document.createElement("span");
         volLabel.className = "vol-label";
@@ -2462,6 +2624,7 @@ class OneLineRoomCard extends HTMLElement {
           const v = +e.target.value;
           const pct = ((v - sliderCaps.min) / (sliderCaps.max - sliderCaps.min)) * 100;
           e.target.style.setProperty("--slider-pct", `${pct}%`);
+          e.target.setAttribute("aria-valuetext", `${Math.round(v)}%`);
           volLabel.textContent = `${Math.round(v)}%`;
         });
         slider.addEventListener("change", e => {
@@ -2469,33 +2632,11 @@ class OneLineRoomCard extends HTMLElement {
           this._hass.callService("media_player", "volume_set", { entity_id: ctrl.entity, volume_level: v / 100 });
         });
         wrap.appendChild(slider);
-        bar.appendChild(wrap);
-        bar.appendChild(volLabel);
-        // Play/Pause button
-        const playBtn = document.createElement("div");
-        playBtn.className = "media-ctrl-btn";
-        playBtn.innerHTML = `<ha-icon icon="mdi:play-pause"></ha-icon>`;
-        playBtn.addEventListener("pointerdown", e => e.stopPropagation());
-        playBtn.addEventListener("click", e => {
-          e.stopPropagation();
-          if (!this._isEntityUnavailable(ctrl.entity)) {
-            this._hass.callService("media_player", "media_play_pause", { entity_id: ctrl.entity });
-          }
-        });
-        bar.appendChild(playBtn);
-        // Next track button
-        const nextBtn = document.createElement("div");
-        nextBtn.className = "media-ctrl-btn";
-        nextBtn.innerHTML = `<ha-icon icon="mdi:skip-next"></ha-icon>`;
-        nextBtn.addEventListener("pointerdown", e => e.stopPropagation());
-        nextBtn.addEventListener("click", e => {
-          e.stopPropagation();
-          if (!this._isEntityUnavailable(ctrl.entity)) {
-            this._hass.callService("media_player", "media_next_track", { entity_id: ctrl.entity });
-          }
-        });
-        bar.appendChild(nextBtn);
-        rightDiv.appendChild(bar);
+        if (sliderCaps.supported && this._supportsMediaFeature(st, MEDIA_PLAYER_FEATURES.VOLUME_SET)) {
+          volumeRow.appendChild(wrap);
+          volumeRow.appendChild(volLabel);
+        }
+        if (volumeRow.childElementCount > 0) rightDiv.appendChild(volumeRow);
         layout.appendChild(rightDiv);
         // Replace topDiv content with the full layout
         topDiv.innerHTML = "";
@@ -2507,6 +2648,7 @@ class OneLineRoomCard extends HTMLElement {
         slider.type = "range";
         slider.className = "btn-slider";
         slider.min = sliderCaps.min; slider.max = sliderCaps.max; slider.step = sliderCaps.step; slider.value = sliderCaps.value;
+        slider.setAttribute("aria-label", getTranslation(h, "a11y_set_value").replace("{name}", nameTxt));
         slider.style.setProperty("--slider-pct", `${sliderCaps.pct}%`);
         if (sliderCaps.action === "color_temp") {
           slider.style.background = `linear-gradient(to right, #a2c8ff 0%, #ffcf91 100%)`;
@@ -2576,8 +2718,10 @@ class OneLineRoomCard extends HTMLElement {
         const actDiv = document.createElement("div");
         actDiv.className = "btn-cover-actions";
         inlineBtns.forEach(({ icon, action, service, custom }) => {
-          const b = document.createElement("div");
+          const b = document.createElement("button");
+          b.type = "button";
           b.className = "cover-action-btn";
+          b.setAttribute("aria-label", (service || custom || action).replaceAll("_", " ").replace(".", " "));
           b.innerHTML = `<ha-icon icon="${icon}"></ha-icon>`;
           b.addEventListener("pointerdown", e => e.stopPropagation());
           b.addEventListener("click", e => {
@@ -2621,9 +2765,11 @@ class OneLineRoomCard extends HTMLElement {
         const presetsDiv = document.createElement("div");
         presetsDiv.className = "btn-cover-presets";
         rawPresets.forEach(pos => {
-          const pb = document.createElement("div");
+          const pb = document.createElement("button");
+          pb.type = "button";
           pb.className = "preset-btn";
           pb.textContent = `${pos}%`;
+          pb.setAttribute("aria-label", `${getTranslation(h, "a11y_set_value").replace("{name}", nameTxt)}: ${pos}%`);
           const isActive = Math.abs(currentPos - pos) < 2;
           if (isActive) pb.classList.add("active");
           pb.addEventListener("pointerdown", e => e.stopPropagation());
@@ -2654,7 +2800,8 @@ class OneLineRoomCard extends HTMLElement {
         const presetsDiv = document.createElement("div");
         presetsDiv.className = "btn-cover-presets";
         rawPresets.forEach(val => {
-          const pb = document.createElement("div");
+          const pb = document.createElement("button");
+          pb.type = "button";
           pb.className = "preset-btn";
           let label, isActive;
           if (val === "auto") {
@@ -2671,6 +2818,7 @@ class OneLineRoomCard extends HTMLElement {
             isActive = Math.abs(currentTarget - val) < 0.5;
           }
           pb.textContent = label;
+          pb.setAttribute("aria-label", `${getTranslation(h, "a11y_set_value").replace("{name}", nameTxt)}: ${label}`);
           if (isActive) pb.classList.add("active");
           pb.addEventListener("pointerdown", e => e.stopPropagation());
           pb.addEventListener("click", e => {
@@ -2704,10 +2852,12 @@ class OneLineRoomCard extends HTMLElement {
             heat_cool: "mdi:sun-snowflake", dry: "mdi:water-percent", fan_only: "mdi:fan"
           };
           modes.forEach(mode => {
-            const pb = document.createElement("div");
+            const pb = document.createElement("button");
+            pb.type = "button";
             pb.className = "preset-btn";
             const ic = iconForMode[String(mode).toLowerCase()];
             pb.innerHTML = ic ? `<ha-icon icon="${ic}" style="--mdc-icon-size:14px"></ha-icon> ${mode}` : mode;
+            pb.setAttribute("aria-label", `${getTranslation(h, "a11y_select_option").replace("{name}", nameTxt)}: ${mode}`);
             if (String(mode).toLowerCase() === current) pb.classList.add("active");
             pb.addEventListener("pointerdown", e => e.stopPropagation());
             pb.addEventListener("click", e => {
@@ -2730,9 +2880,11 @@ class OneLineRoomCard extends HTMLElement {
           const div = document.createElement("div");
           div.className = "btn-cover-presets";
           modes.forEach(mode => {
-            const pb = document.createElement("div");
+            const pb = document.createElement("button");
+            pb.type = "button";
             pb.className = "preset-btn";
             pb.innerHTML = `<ha-icon icon="mdi:fan" style="--mdc-icon-size:14px"></ha-icon> ${mode}`;
+            pb.setAttribute("aria-label", `${getTranslation(h, "a11y_select_option").replace("{name}", nameTxt)}: ${mode}`);
             if (String(mode).toLowerCase() === current) pb.classList.add("active");
             pb.addEventListener("pointerdown", e => e.stopPropagation());
             pb.addEventListener("click", e => {
@@ -2762,9 +2914,11 @@ class OneLineRoomCard extends HTMLElement {
         const presetsDiv = document.createElement("div");
         presetsDiv.className = "btn-cover-presets";
         presets.forEach(pct => {
-          const pb = document.createElement("div");
+          const pb = document.createElement("button");
+          pb.type = "button";
           pb.className = "preset-btn";
           pb.textContent = `${pct}%`;
+          pb.setAttribute("aria-label", `${getTranslation(h, "a11y_set_value").replace("{name}", nameTxt)}: ${pct}%`);
           const isActive = st?.state === "on" && Math.abs(currentBrightness - pct) < 2;
           if (isActive) pb.classList.add("active");
           pb.addEventListener("pointerdown", e => e.stopPropagation());
@@ -2813,9 +2967,11 @@ class OneLineRoomCard extends HTMLElement {
           const swatchRow = document.createElement("div");
           swatchRow.className = "btn-color-favorites";
           favorites.forEach(rgb => {
-            const sw = document.createElement("div");
+            const sw = document.createElement("button");
+            sw.type = "button";
             sw.className = "color-swatch";
             sw.style.background = `rgb(${rgb.join(",")})`;
+            sw.setAttribute("aria-label", `${getTranslation(h, "a11y_set_value").replace("{name}", nameTxt)}: RGB ${rgb.join(", ")}`);
             const isActive = Array.isArray(currentRgb)
               && Math.abs(currentRgb[0] - rgb[0]) < 8
               && Math.abs(currentRgb[1] - rgb[1]) < 8
@@ -2844,10 +3000,12 @@ class OneLineRoomCard extends HTMLElement {
             const optionsDiv = document.createElement("div");
             optionsDiv.className = "btn-cover-presets btn-select-options";
             options.forEach(option => {
-              const pb = document.createElement("div");
+              const pb = document.createElement("button");
+              pb.type = "button";
               pb.className = "preset-btn";
               pb.textContent = option;
               pb.title = option;
+              pb.setAttribute("aria-label", `${getTranslation(h, "a11y_select_option").replace("{name}", nameTxt)}: ${option}`);
               if (currentOption === option) pb.classList.add("active");
               pb.addEventListener("pointerdown", e => e.stopPropagation());
               pb.addEventListener("click", e => {
@@ -2864,6 +3022,7 @@ class OneLineRoomCard extends HTMLElement {
             const wrapDiv = document.createElement("div");
             wrapDiv.className = "btn-select-dropdown";
             const sel = document.createElement("select");
+            sel.setAttribute("aria-label", getTranslation(h, "a11y_select_option").replace("{name}", nameTxt));
             options.forEach(option => {
               const opt = document.createElement("option");
               opt.value = option;
@@ -2921,6 +3080,13 @@ class OneLineRoomCard extends HTMLElement {
       return id;
     };
     const cancelTimeout = (id) => { clearTimeout(id); this._activeTimers.delete(id); };
+    const triggerTap = () => {
+      if (this._isEntityUnavailable(ctrl.entity) || held) return;
+      if (config.double_tap_action.action !== "none") {
+        if (timer) { cancelTimeout(timer); timer = null; this._fireAction("double_tap", config); }
+        else { timer = trackTimeout(() => { timer = null; this._fireAction("tap", config); }, 250); }
+      } else { this._fireAction("tap", config); }
+    };
     node.addEventListener("pointerdown", (e) => {
       if (this._isEntityUnavailable(ctrl.entity)) return;
       startX = e.clientX;
@@ -2992,13 +3158,25 @@ class OneLineRoomCard extends HTMLElement {
     node.addEventListener("pointercancel", cancel);
     node.addEventListener("click", (e) => {
       e.stopPropagation();
-      if (this._isEntityUnavailable(ctrl.entity)) return;
       if (isDragging || held) return;
-      if (config.double_tap_action.action !== "none") {
-        if (timer) { cancelTimeout(timer); timer = null; this._fireAction("double_tap", config); }
-        else { timer = trackTimeout(() => { timer = null; this._fireAction("tap", config); }, 250); }
-      } else { this._fireAction("tap", config); }
+      triggerTap();
     });
+    node.addEventListener("keydown", (e) => {
+      if (e.target !== node || !["Enter", " "].includes(e.key) || e.repeat || this._isEntityUnavailable(ctrl.entity)) return;
+      e.preventDefault();
+      held = false;
+      if (config.hold_action.action !== "none") {
+        holdTimer = trackTimeout(() => { held = true; this._fireAction("hold", config); }, 500);
+      }
+    });
+    node.addEventListener("keyup", (e) => {
+      if (e.target !== node || !["Enter", " "].includes(e.key) || this._isEntityUnavailable(ctrl.entity)) return;
+      e.preventDefault();
+      if (holdTimer) { cancelTimeout(holdTimer); holdTimer = null; }
+      if (held) { held = false; return; }
+      triggerTap();
+    });
+    node.addEventListener("blur", cancel);
   }
 
   _attachHeaderActions(node) {
@@ -3041,6 +3219,25 @@ class OneLineRoomCard extends HTMLElement {
     });
     node.addEventListener("pointerleave", cancel);
     node.addEventListener("pointercancel", cancel);
+    node.addEventListener("keydown", (e) => {
+      if (e.target !== node || !["Enter", " "].includes(e.key) || e.repeat) return;
+      e.preventDefault();
+      held = false;
+      if (config.hold_action?.action !== "none") {
+        holdTimer = trackTimeout(() => { held = true; this._fireAction("hold", config); }, 500);
+      }
+    });
+    node.addEventListener("keyup", (e) => {
+      if (e.target !== node || !["Enter", " "].includes(e.key)) return;
+      e.preventDefault();
+      if (holdTimer) { cancelTimeout(holdTimer); holdTimer = null; }
+      if (held) { held = false; return; }
+      if (config.double_tap_action.action !== "none") {
+        if (timer) { cancelTimeout(timer); timer = null; this._fireAction("double_tap", config); }
+        else { timer = trackTimeout(() => { timer = null; handleTap(); }, 250); }
+      } else { handleTap(); }
+    });
+    node.addEventListener("blur", cancel);
   }
 
   _fireAction(type, config) {
@@ -3076,6 +3273,11 @@ const eventDetail = {
     if (this._collapseKey && this.config?.remember_state !== false) localStorage.setItem(this._collapseKey, this._collapsed ? "1" : "0");
     const collapseBtn = this.shadowRoot.getElementById("collapse-btn");
     if (collapseBtn) collapseBtn.classList.toggle("open", !this._collapsed);
+    const imageBox = this.shadowRoot.querySelector(".img-box");
+    if (imageBox) {
+      imageBox.setAttribute("aria-expanded", this._collapsed ? "false" : "true");
+      imageBox.setAttribute("aria-label", getTranslation(this._hass, this._collapsed ? "a11y_expand" : "a11y_collapse"));
+    }
     this.controls.classList.toggle("collapsed", this._collapsed);
   }
 
