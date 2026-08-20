@@ -88,6 +88,46 @@ test("disconnecting the editor clears its pending event timer", async () => {
   assert.equal(emitted, false);
 });
 
+test("sparkline refresh editor loads, clamps, validates, and removes the card-level value", () => {
+  const editor = createEditor();
+  editor.setConfig({ controls: [], sparkline_refresh: 120 });
+  const field = editor.shadowRoot.getElementById("sparkline-refresh");
+  const error = editor.shadowRoot.getElementById("sparkline-refresh-error");
+
+  assert.equal(String(field.value), "120");
+  field.value = "10";
+  field.dispatchEvent(new Event("change", { bubbles: true }));
+  assert.equal(editor._config.sparkline_refresh, 60);
+  assert.match(error.textContent, /60/);
+  assert.equal(error.style.display, "block");
+
+  field.value = "600";
+  field.dispatchEvent(new Event("change", { bubbles: true }));
+  assert.equal(editor._config.sparkline_refresh, 600);
+  assert.equal(error.textContent, "");
+
+  field.value = "";
+  field.dispatchEvent(new Event("change", { bubbles: true }));
+  assert.equal("sparkline_refresh" in editor._config, false);
+  editor.remove();
+});
+
+test("status border editor switch defaults on and stores only the disabled override", () => {
+  const editor = createEditor();
+  editor.setConfig({ controls: [] });
+  const toggle = editor.shadowRoot.getElementById("status-border-toggle");
+
+  assert.equal(toggle.checked, true);
+  toggle.checked = false;
+  toggle.dispatchEvent(new Event("change", { bubbles: true }));
+  assert.equal(editor._config.show_status_border, false);
+
+  toggle.checked = true;
+  toggle.dispatchEvent(new Event("change", { bubbles: true }));
+  assert.equal("show_status_border" in editor._config, false);
+  editor.remove();
+});
+
 test("image focal positions validate, clamp, update the preview, and clean centered config", () => {
   assert.deepEqual(parseImagePosition("40% 65%"), { x: 40, y: 65, value: "40% 65%", isDefault: false });
   assert.deepEqual(parseImagePosition("-10% 140%"), { x: 0, y: 100, value: "0% 100%", isDefault: false });

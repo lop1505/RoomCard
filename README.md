@@ -139,7 +139,7 @@ covers all settings — no YAML required.
 | `global_icon_size` | `20px` | Default icon size for all buttons |
 | `global_button_background` | — | Default button background (e.g. `rgba(0,0,0,0)`) |
 | `show_card_last_activity` | `false` | Show a header badge with elapsed time since the most recently changed button entity (e.g. `5 min`, `2h 15min`). Auto-refreshes every 60 s. |
-| `sparkline_refresh` | `300` | Auto-refresh cadence for all sparkline buttons in seconds (60–3600) |
+| `sparkline_refresh` | `300` | Auto-refresh cadence for all sparkline buttons in seconds (60–3600); configurable in the visual editor under **Buttons** |
 
 #### Built-in room images
 
@@ -173,6 +173,7 @@ image_preset: living-room
 | `target_temp_sensor_label` | — | Custom label prefix for the target temperature value |
 | `humid_sensor_label` | — | Custom label prefix for the humidity value |
 | `show_chip_shadow` | `true` | Show the box shadow behind presence, window and other sensor chips |
+| `show_status_border` | `true` | Show the warning outline/glow for battery, humidity and alert states. `false` keeps the sensor chips visible but removes the card-level status border |
 | `humidity_warning_threshold` | `60` | Humidity warning threshold (%) |
 | `alert_sensors` | — | List of alert configurations: `{ entity, state, above, below }`. Triggers red header chips and a red card outline when active |
 | `alert_chip_mode` | `expanded` | `expanded` shows one chip per active alert; `collapsed` shows a count badge that opens a list dialog on click |
