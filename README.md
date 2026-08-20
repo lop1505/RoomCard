@@ -9,12 +9,12 @@
 A clean, performant, and fully visually configurable room card for Home Assistant.
 Developed with a focus on stability, simple design, and maximum flexibility.
 
-![Preview](preview.png)
-![Preview](preview_dark.png)
+![Preview](docs/images/preview.png)
+![Preview](docs/images/preview_dark.png)
 
 **Collapsed**
 
-![Preview](preview_collapsed.png)
+![Preview](docs/images/preview_collapsed.png)
 
 ---
 
@@ -83,7 +83,7 @@ All 1.3.1 options are available in the visual editor and remain backwards compat
 **Advanced**
 * 🖌️ CSS Custom Properties — `--rc-btn-bg`, `--rc-icon-color` for `card-mod` styling
 * 📝 Template buttons — dynamic HTML content, icon, color and state via JavaScript expressions
-* ⚡ Vanilla JS, no external dependencies — fast load, no build step
+* ⚡ Vanilla JS with no runtime dependencies — built as a single HACS artifact
 
 ---
 
@@ -138,6 +138,10 @@ covers all settings — no YAML required.
 Open the visual editor and go to **Configuration → Header → Image → Built-in room image**. Select a thumbnail to use it immediately. Choose **Own image** to return to the existing URL field or uploader.
 
 Available preset IDs: `living-room`, `kitchen`, `bedroom`, `bathroom`, `dining-room`, `home-office`, `childrens-room`, `hallway`, `guest-room`, `garage`, `garden-patio`, `balcony`, `basement`, `laundry-room`, `attic`, and `workshop`.
+
+![Built-in room image presets](docs/images/preview_room_presets.jpg)
+
+The generation and usage record for the bundled images is documented in [docs/room-image-provenance.md](docs/room-image-provenance.md).
 
 ```yaml
 type: custom:oneline-room-card
@@ -285,6 +289,12 @@ card_mod:
 ## 📋 Changelog
 
 See [CHANGELOG.md](CHANGELOG.md) for the full release history.
+
+---
+
+## 🛠️ Development
+
+The canonical source lives in `src/room-card.js`; `dist/room-card.js` is the generated HACS artifact. See [CONTRIBUTING.md](CONTRIBUTING.md) for the repository layout and the build, test, and release checks.
 
 ---
 

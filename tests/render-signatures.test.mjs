@@ -17,6 +17,8 @@ globalThis.customElements = {
   whenDefined: () => Promise.resolve()
 };
 
+// Tests exercise the exact artifact installed by HACS. The build and release
+// checks separately ensure this file is identical to the canonical source.
 const sourceUrl = new URL("../dist/room-card.js", import.meta.url);
 const source = await readFile(sourceUrl, "utf8");
 const moduleUrl = `data:text/javascript;base64,${Buffer.from(source).toString("base64")}`;
