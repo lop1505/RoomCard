@@ -116,6 +116,21 @@ test("media controls hide actions not advertised by supported_features", () => {
   card.remove();
 });
 
+test("runtime header images apply a validated focal point", () => {
+  const card = createRenderedCard({
+    name: "Room",
+    image: "/local/room.jpg",
+    image_position: "40% 65%",
+    controls: []
+  }, createHass());
+  assert.equal(card.shadowRoot.getElementById("bg").style.objectPosition, "40% 65%");
+
+  card.setConfig({ name: "Room", image: "/local/room.jpg", image_position: "invalid", controls: [] });
+  card.hass = createHass();
+  assert.equal(card.shadowRoot.getElementById("bg").style.objectPosition, "50% 50%");
+  card.remove();
+});
+
 test("alert dialog is modal, traps focus, closes with Escape, and restores focus", async () => {
   const hass = createHass();
   const card = createRenderedCard({

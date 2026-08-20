@@ -124,6 +124,7 @@ covers all settings — no YAML required.
 | `entity` | — | Main entity (drives header icon color) |
 | `image` | — | Header background image URL |
 | `image_preset` | — | Bundled room image ID, e.g. `living-room`, `kitchen` or `bathroom`. A custom `image` URL takes precedence when both are present |
+| `image_position` | `50% 50%` | Header image focal point as horizontal and vertical percentages, e.g. `40% 65%` |
 | `show_image` | `true` | Show the header background image. `false` hides the `<img>` and dark gradient and lets the header collapse to content height while name / icon / badges / chips remain visible |
 | `image_entity` | — | Light / switch / input_boolean / group entity. When this entity is off, the header image fades to grayscale |
 | `header_height` | `120` | Header image height in px (`0` = hidden, ignored when `show_image: false`) |
@@ -143,6 +144,8 @@ covers all settings — no YAML required.
 #### Built-in room images
 
 Open the visual editor and go to **Configuration → Header → Image → Built-in room image**. Select a thumbnail to use it immediately. Choose **Own image** to return to the existing URL field or uploader.
+
+The same Image section includes a draggable focal-point marker, keyboard-accessible horizontal/vertical sliders, and a Center reset. Uploads accept JPEG, PNG, and WebP files up to 20 MB. Images larger than 2560 px on either side are downscaled before Home Assistant stores them; smaller suitable images are uploaded unchanged.
 
 Available preset IDs: `living-room`, `kitchen`, `bedroom`, `bathroom`, `dining-room`, `home-office`, `childrens-room`, `hallway`, `guest-room`, `garage`, `garden-patio`, `balcony`, `basement`, `laundry-room`, `attic`, and `workshop`.
 
