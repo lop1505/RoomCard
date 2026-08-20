@@ -4,7 +4,12 @@ All notable changes to OneLine Room Card are documented here.
 
 ## [Unreleased]
 
+---
+
+## [1.3.1]
+
 * Runtime & Editor: Add 16 bundled room-image presets with a visual thumbnail picker. Find them under **Configuration → Header → Image → Built-in room image**. Existing `image` URLs and Home Assistant uploads remain fully supported and take precedence over `image_preset` in YAML. HACS now installs the card and its optimized image assets together from `dist/`. Closes [#107](https://github.com/lop1505/RoomCard/issues/107).
+* Runtime: Invalidate cached render snapshots when Home Assistant display precision, units, device class, locale number format, locale language, or unit-system metadata changes. Formatted sensor states, header badges, temperature, humidity, and climate values now update immediately even when the underlying entity state is unchanged. Fixes [#108](https://github.com/lop1505/RoomCard/issues/108).
 
 ---
 

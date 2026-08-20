@@ -1,4 +1,4 @@
-const VERSION = "1.3.0";
+const VERSION = "1.3.1";
 const LOG_FLAG = `customCards_RoomCard_Logged_${VERSION}`;
 
 const ROOM_IMAGE_PRESETS = Object.freeze([
@@ -1379,12 +1379,18 @@ class OneLineRoomCard extends HTMLElement {
     return Array.from(ids);
   }
 
-  _getStateSignature(stateObj) {
+  _getStateSignature(entityId, stateObj, hass) {
     if (!stateObj) return "__missing__";
     const attrs = stateObj.attributes || {};
+    const registryEntry = hass?.entities?.[entityId] || {};
     const rgb = Array.isArray(attrs.rgb_color) ? attrs.rgb_color.join(",") : "";
     return [
       stateObj.state ?? "",
+      attrs.unit_of_measurement ?? "",
+      attrs.device_class ?? "",
+      registryEntry.display_precision ?? "",
+      registryEntry.unit_of_measurement ?? "",
+      registryEntry.device_class ?? "",
       attrs.current_temperature ?? "",
       attrs.temperature ?? "",
       attrs.current_humidity ?? "",
@@ -1501,15 +1507,21 @@ class OneLineRoomCard extends HTMLElement {
 
   _getRenderMetaSignature(hass) {
     const lang = hass?.language || "";
-    const tempUnit = hass?.config?.unit_system?.temperature || "";
-    return `${lang}|${tempUnit}`;
+    const localeLanguage = hass?.locale?.language || "";
+    const numberFormat = hass?.locale?.number_format || "";
+    const unitSystem = hass?.config?.unit_system || {};
+    const unitSystemSignature = Object.keys(unitSystem)
+      .sort()
+      .map((key) => `${key}:${unitSystem[key] ?? ""}`)
+      .join(",");
+    return `${lang}|${localeLanguage}|${numberFormat}|${unitSystemSignature}`;
   }
 
   _buildStateSnapshot(hass) {
     const states = hass?.states || {};
     if (!this._cachedEntityIds) this._cachedEntityIds = this._getRelevantEntityIds();
     const next = new Map();
-    this._cachedEntityIds.forEach((id) => next.set(id, this._getStateSignature(states[id])));
+    this._cachedEntityIds.forEach((id) => next.set(id, this._getStateSignature(id, states[id], hass)));
     return next;
   }
 

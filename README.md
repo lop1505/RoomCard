@@ -18,16 +18,13 @@ Developed with a focus on stability, simple design, and maximum flexibility.
 
 ---
 
-## 🆕 What's new in 1.3.0
+## 🆕 What's new in 1.3.1
 
-* 🔢 Sensor states, header badges and climate values now respect Home Assistant's locale, units and configured display precision
-* 🌡️ Optional per-card temperature override (`temp_unit: "°C"` or `"°F"`) with correct value conversion
-* 🎨 Header text shadows and sensor-chip shadows can be disabled independently in the visual editor
-* 🚶 Presence-chip color and solid background are configurable, including automatic readable text contrast
-* 🧰 The visual editor remains usable when Home Assistant has not preloaded its internal text-field components
-* 📝 Template controls are documented with their actual JavaScript `${…}` syntax and available helpers
+* 🏠 Choose from 16 bundled room-image presets in **Configuration → Header → Image → Built-in room image**
+* 🖼️ Custom image URLs and Home Assistant uploads remain supported and take precedence over presets
+* 🔄 Display-precision, unit, device-class and locale-number-format changes now refresh immediately without waiting for the entity state to change
 
-All 1.3.0 options are available in the visual editor and remain backwards compatible with existing cards.
+All 1.3.1 options are available in the visual editor and remain backwards compatible with existing cards.
 
 ---
 
