@@ -2,6 +2,16 @@
 
 All notable changes to OneLine Room Card are documented here.
 
+## [1.3.0]
+
+* Editor: Keep text and number inputs visible and editable on a cold Home Assistant dashboard load when the internal `ha-textfield` component has not been registered yet. The editor now uses a compatibility wrapper that supports the current `ha-input`, the legacy `ha-textfield`, and a native fallback. Fixes [#92](https://github.com/lop1505/RoomCard/issues/92).
+* Runtime & Editor: Format sensor states and climate attributes with Home Assistant's locale-aware display helpers, so configured numeric precision and units are respected. Header text and sensor-chip shadows can now be disabled independently with `show_header_text_shadow: false` and `show_chip_shadow: false`. Fixes [#91](https://github.com/lop1505/RoomCard/issues/91).
+* Documentation: Correct the template-control syntax from Jinja2 to JavaScript `${…}` expressions, document the available helpers, and add a working YAML example. Fixes [#90](https://github.com/lop1505/RoomCard/issues/90).
+* Runtime & Editor: Add an optional per-card `temp_unit` override (`°C` or `°F`) in the visual Sensors editor. Header temperatures, climate-button states, live slider labels, and climate preset labels are converted for display without changing the values sent to Home Assistant services. Fixes [#89](https://github.com/lop1505/RoomCard/issues/89).
+* Runtime & Editor: Make the presence chip color configurable with `presence_chip_color` and add `presence_solid_background` for a full-color chip with automatically selected readable text and icon colors. Both options are available next to the presence sensor in the visual editor. Fixes [#88](https://github.com/lop1505/RoomCard/issues/88).
+
+---
+
 ## [1.2.9]
 
 * Runtime & Editor: **Window Labels and Solid Backgrounds** — Window/door chips now support per-entity custom labels via `window_labels` and an optional `window_solid_background` mode for full-color chips with readable text contrast. Added visual editor controls under *Sensors* and documented the YAML options. Closes [#84](https://github.com/lop1505/RoomCard/issues/84).
