@@ -19,9 +19,6 @@ jobs:
 
       - name: Check JavaScript syntax
         run: node --check dist/room-card.js
-        
-      - name: Check JavaScript syntax
-        run: node --check room-card.js
 
       - name: Test render snapshot invalidation
         run: node scripts/test-render-signatures.mjs
