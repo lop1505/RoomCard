@@ -1,4 +1,5 @@
 const VERSION = "1.3.1";
+const EDITOR_DOM_REVISION = "2";
 const LOG_FLAG = `customCards_RoomCard_Logged_${VERSION}`;
 
 const MEDIA_PLAYER_FEATURES = Object.freeze({
@@ -948,6 +949,24 @@ const resolveTemplateCtrl = (ctrl, h) => {
   return { content, icon, color, state };
 };
 
+const resolveSubChipPresentations = (ctrl, h) => {
+  const presentations = [];
+  for (const chip of (Array.isArray(ctrl?.sub_chips) ? ctrl.sub_chips : [])) {
+    if (!chip?.entity || !h?.states?.[chip.entity]) continue;
+    const chipState = h.states[chip.entity];
+    const value = chip.attribute
+      ? chipState.attributes?.[chip.attribute]
+      : (h.formatEntityState ? h.formatEntityState(chipState) : chipState.state);
+    const displayValue = value != null ? String(value) : "";
+    let label = chip.label || "";
+    if (label.includes("{state}")) label = label.replace("{state}", displayValue);
+    else if (label && displayValue) label = `${label}: ${displayValue}`;
+    else if (!label && displayValue) label = displayValue;
+    presentations.push({ icon: chip.icon || "", label });
+  }
+  return presentations;
+};
+
 const TEMPLATE_VALUE_KEYS = Object.freeze(["content", "icon", "color", "state"]);
 
 const getTemplateEntityDependencies = (ctrl) => {
@@ -1016,6 +1035,7 @@ class OneLineRoomCard extends HTMLElement {
     this._lastStates = new Map();
     this._lastRenderMetaSig = "";
     this._cachedEntityIds = null;
+    this._templateDependencyEntityIds = null;
     this._activeTimers = new Set();
     this._lastChangedInterval = null;
     this._sparklineCache = new Map();
@@ -1106,6 +1126,7 @@ class OneLineRoomCard extends HTMLElement {
     this._lastStates = new Map();
     this._lastRenderMetaSig = "";
     this._cachedEntityIds = null;
+    this._templateDependencyEntityIds = null;
     if (!this.content) this.render();
     this.updateContent();
     this._setupLastChangedInterval();
@@ -1454,7 +1475,7 @@ class OneLineRoomCard extends HTMLElement {
         .color-swatch.active { border-color: var(--primary-text-color); transform: scale(1.15); }
         .controls { transition: max-height 0.35s ease, padding 0.35s ease; overflow: hidden; max-height: 2000px; }
         .controls.collapsed { max-height: 0 !important; padding-top: 0 !important; padding-bottom: 0 !important; }
-        .collapse-btn { position: absolute; bottom: 8px; right: 8px; z-index: 3; width: 28px; height: 28px; border-radius: 50%; background: rgba(0,0,0,0.38); display: none; align-items: center; justify-content: center; cursor: pointer; }
+        .collapse-btn { position: absolute; bottom: 8px; right: 8px; z-index: 3; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 50%; background: rgba(0,0,0,0.38); display: none; align-items: center; justify-content: center; cursor: pointer; }
         .collapse-btn ha-icon { --mdc-icon-size: 18px; color: white; transition: transform 0.35s ease; }
         .collapse-btn.open ha-icon { transform: rotate(180deg); }
         .btn-chips { display: flex; flex-direction: row; flex-wrap: wrap; gap: 2px; align-items: center; max-width: 100%; margin-top: 2px; }
@@ -1484,7 +1505,7 @@ class OneLineRoomCard extends HTMLElement {
               </div>
             </div>
             <div id="chips" class="chips"></div>
-            <div id="collapse-btn" class="collapse-btn"><ha-icon icon="mdi:chevron-down"></ha-icon></div>
+            <button id="collapse-btn" class="collapse-btn" type="button"><ha-icon icon="mdi:chevron-down"></ha-icon></button>
           </div>
           <div id="info-bar" class="info-bar"></div>
           <div id="ctrls" class="controls"></div>
@@ -1495,6 +1516,16 @@ class OneLineRoomCard extends HTMLElement {
     this.controls = this.shadowRoot.getElementById("ctrls");
     const imageBox = this.shadowRoot.querySelector(".img-box");
     if (imageBox) this._attachHeaderActions(imageBox);
+    const collapseButton = this.shadowRoot.getElementById("collapse-btn");
+    if (collapseButton) {
+      ["pointerdown", "pointerup", "pointercancel"].forEach((eventName) => {
+        collapseButton.addEventListener(eventName, (event) => event.stopPropagation());
+      });
+      collapseButton.addEventListener("click", (event) => {
+        event.stopPropagation();
+        this._toggleCollapse();
+      });
+    }
 
     if (this.config) {
       this._configChanged = true;
@@ -1511,6 +1542,15 @@ class OneLineRoomCard extends HTMLElement {
   _hasVisibleTemplateControl() {
     const controls = Array.isArray(this.config?.controls) ? this.config.controls : [];
     return controls.some((ctrl) => !ctrl?.hide && ctrl?.type === "template" && templateNeedsEveryHassUpdate(ctrl));
+  }
+
+  _getTemplateDependencyEntityIds() {
+    const ids = new Set();
+    for (const ctrl of (Array.isArray(this.config?.controls) ? this.config.controls : [])) {
+      if (ctrl?.type !== "template") continue;
+      getTemplateEntityDependencies(ctrl).forEach((entityId) => ids.add(entityId));
+    }
+    return ids;
   }
 
   _getRelevantEntityIds() {
@@ -1548,10 +1588,31 @@ class OneLineRoomCard extends HTMLElement {
     return Array.from(ids);
   }
 
-  _getStateSignature(entityId, stateObj, hass) {
+  _getStateSignature(entityId, stateObj, hass, trackFullState = false) {
     if (!stateObj) return "__missing__";
     const attrs = stateObj.attributes || {};
     const registryEntry = hass?.entities?.[entityId] || {};
+    if (trackFullState) {
+      let serializedState = "";
+      try {
+        serializedState = JSON.stringify({
+          entity_id: stateObj.entity_id ?? entityId,
+          state: stateObj.state ?? "",
+          attributes: attrs,
+          last_changed: stateObj.last_changed ?? "",
+          last_updated: stateObj.last_updated ?? "",
+          context: stateObj.context ?? null
+        });
+      } catch (error) {
+        serializedState = `${stateObj.state ?? ""}|${String(attrs)}`;
+      }
+      return [
+        serializedState,
+        registryEntry.display_precision ?? "",
+        registryEntry.unit_of_measurement ?? "",
+        registryEntry.device_class ?? ""
+      ].join("|");
+    }
     const rgb = Array.isArray(attrs.rgb_color) ? attrs.rgb_color.join(",") : "";
     return [
       stateObj.state ?? "",
@@ -1751,8 +1812,14 @@ class OneLineRoomCard extends HTMLElement {
   _buildStateSnapshot(hass) {
     const states = hass?.states || {};
     if (!this._cachedEntityIds) this._cachedEntityIds = this._getRelevantEntityIds();
+    if (!this._templateDependencyEntityIds) {
+      this._templateDependencyEntityIds = this._getTemplateDependencyEntityIds();
+    }
     const next = new Map();
-    this._cachedEntityIds.forEach((id) => next.set(id, this._getStateSignature(id, states[id], hass)));
+    this._cachedEntityIds.forEach((id) => next.set(
+      id,
+      this._getStateSignature(id, states[id], hass, this._templateDependencyEntityIds.has(id))
+    ));
     return next;
   }
 
@@ -1778,6 +1845,53 @@ class OneLineRoomCard extends HTMLElement {
     if (!this.config || !hass) return;
     this._lastRenderMetaSig = this._getRenderMetaSignature(hass);
     this._lastStates = this._buildStateSnapshot(hass);
+  }
+
+  _syncCollapseUI() {
+    const config = this.config || {};
+    const isCollapsible = config.collapsible === true;
+    const isCollapsed = isCollapsible && this._collapsed === true;
+    const collapseLabel = getTranslation(this._hass, isCollapsed ? "a11y_expand" : "a11y_collapse");
+    const collapseButton = this.shadowRoot.getElementById("collapse-btn");
+    if (collapseButton) {
+      collapseButton.style.display = isCollapsible ? "flex" : "none";
+      collapseButton.classList.toggle("open", !isCollapsed);
+      collapseButton.setAttribute("aria-label", collapseLabel);
+      collapseButton.setAttribute("aria-expanded", isCollapsed ? "false" : "true");
+      collapseButton.tabIndex = isCollapsible ? 0 : -1;
+    }
+
+    if (this.controls) {
+      this.controls.classList.toggle("collapsed", isCollapsed);
+      if (isCollapsed) {
+        this.controls.setAttribute("inert", "");
+        this.controls.setAttribute("aria-hidden", "true");
+      } else {
+        this.controls.removeAttribute("inert");
+        this.controls.removeAttribute("aria-hidden");
+      }
+    }
+
+    const imageBox = this.shadowRoot.querySelector(".img-box");
+    if (!imageBox) return;
+    const hasExplicitTap = config.tap_action !== undefined;
+    const headerTogglesCollapse = isCollapsible && !hasExplicitTap;
+    const hasExplicitAction = [config.tap_action, config.hold_action, config.double_tap_action]
+      .some((action) => action?.action && action.action !== "none");
+    if (headerTogglesCollapse || hasExplicitAction) {
+      imageBox.setAttribute("role", "button");
+      imageBox.tabIndex = 0;
+      imageBox.setAttribute("aria-label", headerTogglesCollapse
+        ? collapseLabel
+        : (config.name || getTranslation(this._hass, "a11y_activate").replace("{name}", "RoomCard")));
+      if (headerTogglesCollapse) imageBox.setAttribute("aria-expanded", isCollapsed ? "false" : "true");
+      else imageBox.removeAttribute("aria-expanded");
+    } else {
+      imageBox.removeAttribute("role");
+      imageBox.removeAttribute("tabindex");
+      imageBox.removeAttribute("aria-label");
+      imageBox.removeAttribute("aria-expanded");
+    }
   }
 
   _updateContentState() {
@@ -2106,33 +2220,7 @@ class OneLineRoomCard extends HTMLElement {
       setStrProp("--rc-header-info-color", c.header_info_color, "white");
     }
 
-    const collapseBtn = this.shadowRoot.getElementById("collapse-btn");
-    if (collapseBtn) {
-      const isCollapsible = c.collapsible === true;
-      collapseBtn.style.display = isCollapsible ? "flex" : "none";
-      collapseBtn.setAttribute("aria-hidden", "true");
-      collapseBtn.classList.toggle("open", !this._collapsed);
-      this.controls.classList.toggle("collapsed", isCollapsible && this._collapsed);
-      const imageBox = this.shadowRoot.querySelector(".img-box");
-      const hasHeaderAction = isCollapsible
-        || (c.tap_action?.action && c.tap_action.action !== "none")
-        || (c.hold_action?.action && c.hold_action.action !== "none")
-        || (c.double_tap_action?.action && c.double_tap_action.action !== "none");
-      if (imageBox && hasHeaderAction) {
-        imageBox.setAttribute("role", "button");
-        imageBox.tabIndex = 0;
-        imageBox.setAttribute("aria-label", isCollapsible
-          ? getTranslation(h, this._collapsed ? "a11y_expand" : "a11y_collapse")
-          : (c.name || getTranslation(h, "a11y_activate").replace("{name}", "RoomCard")));
-        if (isCollapsible) imageBox.setAttribute("aria-expanded", this._collapsed ? "false" : "true");
-        else imageBox.removeAttribute("aria-expanded");
-      } else if (imageBox) {
-        imageBox.removeAttribute("role");
-        imageBox.removeAttribute("tabindex");
-        imageBox.removeAttribute("aria-label");
-        imageBox.removeAttribute("aria-expanded");
-      }
-    }
+    this._syncCollapseUI();
 
     let visibleCtrls = (c.controls || []).filter(ctrl => {
       if (ctrl.hide) return false;
@@ -2412,6 +2500,11 @@ class OneLineRoomCard extends HTMLElement {
     const s = st ? st.state : "N/A";
     const domain = ctrl.entity ? ctrl.entity.split(".")[0] : "";
     const isTemplate = ctrl.type === "template";
+    const subChipPresentations = resolveSubChipPresentations(ctrl, h);
+    const activeElement = this.shadowRoot.activeElement;
+    const focusedControlKey = activeElement && btn.contains(activeElement)
+      ? activeElement.dataset?.rcFocusKey || ""
+      : "";
 
     let typ = "default";
     if (domain === "cover") typ = "shutter";
@@ -2425,7 +2518,7 @@ class OneLineRoomCard extends HTMLElement {
     let tpl = null;
     if (isTemplate) {
       tpl = resolveTemplateCtrl(ctrl, h);
-      const templateOutputSig = JSON.stringify(tpl);
+      const templateOutputSig = JSON.stringify({ template: tpl, subChips: subChipPresentations });
       if (!this._configChanged && btn.dataset.templateOutputSig === templateOutputSig) return;
       btn.dataset.templateOutputSig = templateOutputSig;
       if (tpl.color) {
@@ -2539,27 +2632,10 @@ class OneLineRoomCard extends HTMLElement {
     })();
     const chipsPos = ctrl.chips_position === "top" ? "top" : "bottom";
     let chipsEl = null;
-    if (Array.isArray(ctrl.sub_chips) && ctrl.sub_chips.length > 0) {
+    if (subChipPresentations.length > 0) {
       chipsEl = document.createElement("div");
       chipsEl.className = `btn-chips${chipsPos === "top" ? " chips-top" : ""}`;
-      for (const chip of ctrl.sub_chips) {
-        if (!chip.entity || !h?.states?.[chip.entity]) continue;
-        const chipSt = h.states[chip.entity];
-        let val;
-        if (chip.attribute) {
-          val = chipSt.attributes[chip.attribute];
-        } else {
-          val = h.formatEntityState ? h.formatEntityState(chipSt) : chipSt.state;
-        }
-        const displayVal = val != null ? String(val) : "";
-        let label = chip.label || "";
-        if (label && label.includes("{state}")) {
-          label = label.replace("{state}", displayVal);
-        } else if (label && displayVal) {
-          label = `${label}: ${displayVal}`;
-        } else if (!chip.label && displayVal) {
-          label = displayVal;
-        }
+      for (const chip of subChipPresentations) {
         const chipEl = document.createElement("div");
         chipEl.className = "btn-chip";
         if (chip.icon) {
@@ -2567,10 +2643,10 @@ class OneLineRoomCard extends HTMLElement {
           chipIcon.setAttribute("icon", String(chip.icon));
           chipEl.appendChild(chipIcon);
         }
-        if (label) {
+        if (chip.label) {
           const chipText = document.createElement("span");
           chipText.style.marginLeft = chip.icon ? "4px" : "0";
-          chipText.textContent = label;
+          chipText.textContent = chip.label;
           chipEl.appendChild(chipText);
         }
         chipsEl.appendChild(chipEl);
@@ -2726,6 +2802,7 @@ class OneLineRoomCard extends HTMLElement {
           const button = document.createElement("button");
           button.type = "button";
           button.className = className;
+          button.dataset.rcFocusKey = service;
           button.setAttribute("aria-label", label);
           const buttonIcon = document.createElement("ha-icon");
           buttonIcon.setAttribute("icon", icon);
@@ -2761,6 +2838,7 @@ class OneLineRoomCard extends HTMLElement {
         const muteBtn = document.createElement("button");
         muteBtn.type = "button";
         muteBtn.className = `media-ctrl-btn${currentMuted ? " muted" : ""}`;
+        muteBtn.dataset.rcFocusKey = "volume_mute";
         muteBtn.setAttribute("aria-label", getTranslation(h, "a11y_mute"));
         muteBtn.setAttribute("aria-pressed", currentMuted ? "true" : "false");
         const muteIcon = document.createElement("ha-icon");
@@ -2801,6 +2879,7 @@ class OneLineRoomCard extends HTMLElement {
         const slider = document.createElement("input");
         slider.type = "range";
         slider.className = "btn-slider";
+        slider.dataset.rcFocusKey = "volume_level";
         slider.min = sliderCaps.min; slider.max = sliderCaps.max; slider.step = sliderCaps.step; slider.value = sliderCaps.value;
         slider.setAttribute("aria-label", getTranslation(h, "a11y_volume"));
         slider.setAttribute("aria-valuetext", `${Math.round(sliderCaps.value)}%`);
@@ -3258,6 +3337,11 @@ class OneLineRoomCard extends HTMLElement {
     } else {
       btn.classList.remove("has-inline-ctrl");
     }
+    if (focusedControlKey && !this.controls?.hasAttribute("inert")) {
+      const replacement = Array.from(btn.querySelectorAll("[data-rc-focus-key]"))
+        .find((element) => element.dataset.rcFocusKey === focusedControlKey);
+      replacement?.focus();
+    }
   }
 
   _attachActions(node, ctrl) {
@@ -3382,15 +3466,20 @@ class OneLineRoomCard extends HTMLElement {
   }
 
   _attachHeaderActions(node) {
-    const cfg = this.config || {};
-    const config = {
-      entity: cfg.entity,
-      tap_action: cfg.tap_action,
-      hold_action: cfg.hold_action || { action: "none" },
-      double_tap_action: cfg.double_tap_action || { action: "none" }
+    const getActionContext = () => {
+      const config = this.config || {};
+      return {
+        cardConfig: config,
+        actionConfig: {
+          entity: config.entity,
+          tap_action: config.tap_action,
+          hold_action: config.hold_action || { action: "none" },
+          double_tap_action: config.double_tap_action || { action: "none" }
+        },
+        hasExplicitTap: config.tap_action !== undefined
+      };
     };
     node.style.touchAction = "manipulation";
-    const explicitTap = cfg.tap_action !== undefined;
     let timer = null, held = false, holdTimer = null;
     const trackTimeout = (fn, ms) => {
       const id = setTimeout(() => { this._activeTimers.delete(id); fn(); }, ms);
@@ -3399,23 +3488,26 @@ class OneLineRoomCard extends HTMLElement {
     };
     const cancelTimeout = (id) => { clearTimeout(id); this._activeTimers.delete(id); };
     const handleTap = () => {
-      if (!explicitTap && cfg.collapsible === true) { this._toggleCollapse(); return; }
-      this._fireAction("tap", config);
+      const { cardConfig, actionConfig, hasExplicitTap } = getActionContext();
+      if (!hasExplicitTap && cardConfig.collapsible === true) { this._toggleCollapse(); return; }
+      this._fireAction("tap", actionConfig);
     };
     const cancel = () => {
       if (holdTimer) { cancelTimeout(holdTimer); holdTimer = null; }
     };
     node.addEventListener("pointerdown", () => {
       held = false;
-      if (config.hold_action?.action !== "none") {
-        holdTimer = trackTimeout(() => { held = true; this._fireAction("hold", config); }, 500);
+      const { actionConfig } = getActionContext();
+      if (actionConfig.hold_action?.action !== "none") {
+        holdTimer = trackTimeout(() => { held = true; this._fireAction("hold", actionConfig); }, 500);
       }
     });
     node.addEventListener("pointerup", (e) => {
       if (holdTimer) cancelTimeout(holdTimer);
       if (held) { held = false; return; }
-      if (config.double_tap_action.action !== "none") {
-        if (timer) { cancelTimeout(timer); timer = null; this._fireAction("double_tap", config); }
+      const { actionConfig } = getActionContext();
+      if (actionConfig.double_tap_action.action !== "none") {
+        if (timer) { cancelTimeout(timer); timer = null; this._fireAction("double_tap", actionConfig); }
         else { timer = trackTimeout(() => { timer = null; handleTap(); }, 250); }
       } else { handleTap(); }
     });
@@ -3425,8 +3517,9 @@ class OneLineRoomCard extends HTMLElement {
       if (e.target !== node || !["Enter", " "].includes(e.key) || e.repeat) return;
       e.preventDefault();
       held = false;
-      if (config.hold_action?.action !== "none") {
-        holdTimer = trackTimeout(() => { held = true; this._fireAction("hold", config); }, 500);
+      const { actionConfig } = getActionContext();
+      if (actionConfig.hold_action?.action !== "none") {
+        holdTimer = trackTimeout(() => { held = true; this._fireAction("hold", actionConfig); }, 500);
       }
     });
     node.addEventListener("keyup", (e) => {
@@ -3434,8 +3527,9 @@ class OneLineRoomCard extends HTMLElement {
       e.preventDefault();
       if (holdTimer) { cancelTimeout(holdTimer); holdTimer = null; }
       if (held) { held = false; return; }
-      if (config.double_tap_action.action !== "none") {
-        if (timer) { cancelTimeout(timer); timer = null; this._fireAction("double_tap", config); }
+      const { actionConfig } = getActionContext();
+      if (actionConfig.double_tap_action.action !== "none") {
+        if (timer) { cancelTimeout(timer); timer = null; this._fireAction("double_tap", actionConfig); }
         else { timer = trackTimeout(() => { timer = null; handleTap(); }, 250); }
       } else { handleTap(); }
     });
@@ -3473,14 +3567,7 @@ const eventDetail = {
   _toggleCollapse() {
     this._collapsed = !this._collapsed;
     if (this._collapseKey && this.config?.remember_state !== false) localStorage.setItem(this._collapseKey, this._collapsed ? "1" : "0");
-    const collapseBtn = this.shadowRoot.getElementById("collapse-btn");
-    if (collapseBtn) collapseBtn.classList.toggle("open", !this._collapsed);
-    const imageBox = this.shadowRoot.querySelector(".img-box");
-    if (imageBox) {
-      imageBox.setAttribute("aria-expanded", this._collapsed ? "false" : "true");
-      imageBox.setAttribute("aria-label", getTranslation(this._hass, this._collapsed ? "a11y_expand" : "a11y_collapse"));
-    }
-    this.controls.classList.toggle("collapsed", this._collapsed);
+    this._syncCollapseUI();
   }
 
   _iconForBadgeDomain(entityId) {
@@ -4200,8 +4287,8 @@ connectedCallback() {
     this._ensureEditorState();
     if (!this._config) return;
     const alreadyRendered = !!this.shadowRoot.innerHTML;
-    const domVersion = this.shadowRoot.querySelector("[data-rc-version]")?.dataset?.rcVersion;
-    if (alreadyRendered && domVersion === VERSION) { this.updVal(); if (JSON.stringify(this._config?.controls || []) !== this._lastRenderedControlsSig) this.renBtn(); this._applyNavSelectorOptions(); this._ensureNavOptions(); this._ensureAreaOptions(); this._updateAreaSetupUI(); this._updateSensorsSectionUI(); this._updateSparklineRefreshUI(); this._updateImageSectionUI(); this._updateBadgesUI(); this._updateTypographyUI(); this._updateCardBehaviorUI(); this._updateActionsSectionUI(); this._updateHeaderSectionUI(); this._updateTabUI(); return; }
+    const domRevision = this.shadowRoot.querySelector("[data-rc-dom-revision]")?.dataset?.rcDomRevision;
+    if (alreadyRendered && domRevision === EDITOR_DOM_REVISION) { this.updVal(); if (JSON.stringify(this._config?.controls || []) !== this._lastRenderedControlsSig) this.renBtn(); this._applyNavSelectorOptions(); this._ensureNavOptions(); this._ensureAreaOptions(); this._updateAreaSetupUI(); this._updateSensorsSectionUI(); this._updateSparklineRefreshUI(); this._updateImageSectionUI(); this._updateBadgesUI(); this._updateTypographyUI(); this._updateCardBehaviorUI(); this._updateActionsSectionUI(); this._updateHeaderSectionUI(); this._updateTabUI(); return; }
     
     this.shadowRoot.replaceChildren();
     const h = this._hass;
@@ -4335,7 +4422,7 @@ connectedCallback() {
         .bg-preset { cursor: pointer; opacity: 0.7; text-decoration: underline; background: none; border: none; padding: 0; color: inherit; font: inherit; }
         .bg-preset:hover { opacity: 1; text-decoration: none; }
       </style>
-      <span data-rc-version="${VERSION}" style="display:none"></span>
+      <span data-rc-version="${VERSION}" data-rc-dom-revision="${EDITOR_DOM_REVISION}" style="display:none"></span>
       <div id="tab-bar" class="tab-bar">
         <button id="tab-config-btn" class="tab-btn">${getTranslation(h, "configuration")}</button>
         <button id="tab-buttons-btn" class="tab-btn">${getTranslation(h, "buttons")}</button>
@@ -8062,15 +8149,34 @@ const cm = box.querySelector(".cm");
 // REGISTRATION (SAFE & ROBUST)
 // =============================================================================
 
+const findElementsAcrossShadowRoots = (root, selector) => {
+  if (!root?.querySelectorAll) return [];
+  const matches = [];
+  const pendingRoots = [root];
+  const visitedRoots = new Set();
+  while (pendingRoots.length > 0) {
+    const currentRoot = pendingRoots.pop();
+    if (!currentRoot || visitedRoots.has(currentRoot)) continue;
+    visitedRoots.add(currentRoot);
+    currentRoot.querySelectorAll(selector).forEach((element) => matches.push(element));
+    currentRoot.querySelectorAll("*").forEach((element) => {
+      if (element.shadowRoot) pendingRoots.push(element.shadowRoot);
+    });
+  }
+  return matches;
+};
+
 const patchExistingEditor = (ExistingEditor, NewEditor) => {
-  const methods = ["render", "updVal", "updCp", "renBtn", "setConfig", "_fire", "_handleUpload", "_prepareImageUpload", "_decodeImageFile", "_canvasToBlob", "_setUploadStatus", "updPreview", "connectedCallback", "disconnectedCallback", "_ensureEditorState", "_emitConfigNow", "_flushPendingConfig", "_handlePrimarySave", "_updateBadgesUI", "_updateTypographyUI", "_updateCardBehaviorUI", "_updateHeaderSectionUI", "_updateTabUI", "_updateSensorsSectionUI", "_updateSparklineRefreshUI", "_updateImageSectionUI", "_setImagePosition", "_updateFocalPointUI", "_setupFocalPointControl", "_renderImagePresetPicker", "_syncManualSensorLabelInputs", "_updateWindowLabelsUI", "_updateSubChipsUI", "_areAllButtonsExpanded", "_toggleAllButtonsExpanded"];
-  methods.forEach((name) => {
-    if (typeof NewEditor.prototype[name] === "function") {
-      ExistingEditor.prototype[name] = NewEditor.prototype[name];
-    }
+  Object.getOwnPropertyNames(NewEditor.prototype).forEach((name) => {
+    if (name === "constructor") return;
+    const descriptor = Object.getOwnPropertyDescriptor(NewEditor.prototype, name);
+    if (descriptor) Object.defineProperty(ExistingEditor.prototype, name, descriptor);
   });
-  const hassDesc = Object.getOwnPropertyDescriptor(NewEditor.prototype, "hass");
-  if (hassDesc) Object.defineProperty(ExistingEditor.prototype, "hass", hassDesc);
+  if (typeof document === "undefined") return;
+  findElementsAcrossShadowRoots(document, "oneline-room-card-editor").forEach((editor) => {
+    if (!(editor instanceof ExistingEditor) || !editor._config) return;
+    editor.render();
+  });
 };
 
 const patchExistingCard = (ExistingCard, NewCard) => {

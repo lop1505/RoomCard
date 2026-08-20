@@ -4,7 +4,19 @@ import test from "node:test";
 import { createHass, importRoomCard, installDomEnvironment, wait } from "./support/dom-env.mjs";
 
 installDomEnvironment();
-const { parseImagePosition, validateImageUpload } = await importRoomCard(["parseImagePosition", "validateImageUpload"]);
+const {
+  parseImagePosition,
+  validateImageUpload,
+  patchExistingEditor,
+  OneLineRoomCardEditor,
+  EDITOR_DOM_REVISION
+} = await importRoomCard([
+  "parseImagePosition",
+  "validateImageUpload",
+  "patchExistingEditor",
+  "OneLineRoomCardEditor",
+  "EDITOR_DOM_REVISION"
+]);
 
 const createEditor = () => {
   const editor = document.createElement("oneline-room-card-editor");
@@ -43,6 +55,29 @@ test("the visual editor renders from a cold configuration", () => {
   assert.ok(editor.shadowRoot.getElementById("tab-buttons-btn"));
 
   editor.remove();
+});
+
+test("patching an existing editor rebuilds stale DOM across shadow roots", () => {
+  const host = document.createElement("div");
+  const hostRoot = host.attachShadow({ mode: "open" });
+  document.body.appendChild(host);
+  const editor = document.createElement("oneline-room-card-editor");
+  hostRoot.appendChild(editor);
+  editor.hass = createHass();
+  editor.setConfig({ image: "/local/room.jpg", controls: [] });
+  editor.shadowRoot.innerHTML = '<span data-rc-version="1.3.1"></span><div id="legacy-editor"></div>';
+
+  patchExistingEditor(OneLineRoomCardEditor, OneLineRoomCardEditor);
+
+  assert.equal(editor.shadowRoot.getElementById("legacy-editor"), null);
+  assert.equal(
+    editor.shadowRoot.querySelector("[data-rc-dom-revision]")?.dataset.rcDomRevision,
+    EDITOR_DOM_REVISION
+  );
+  assert.ok(editor.shadowRoot.getElementById("status-border-toggle"));
+  assert.ok(editor.shadowRoot.getElementById("sparkline-refresh"));
+  assert.ok(editor.shadowRoot.getElementById("focal-preview"));
+  host.remove();
 });
 
 test("live editor changes emit the expected config-changed event", async () => {
