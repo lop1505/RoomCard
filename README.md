@@ -9,12 +9,19 @@
 A clean, performant, and fully visually configurable room card for Home Assistant.
 Developed with a focus on stability, simple design, and maximum flexibility.
 
-![Preview](docs/images/preview.png)
-![Preview](docs/images/preview_dark.png)
+## Screenshots
 
-**Collapsed**
+**Full-width room controls**
 
-![Preview](docs/images/preview_collapsed.png)
+![RoomCard with full-width controls for climate, lights, and covers](docs/images/roomcard-full-width.png)
+
+**Compact grid layout**
+
+![Two compact RoomCards in a responsive grid](docs/images/roomcard-grid.png)
+
+**Collapsed view**
+
+![Collapsed RoomCard](docs/images/roomcard-collapsed.png)
 
 ---
 
@@ -139,7 +146,7 @@ Open the visual editor and go to **Configuration → Header → Image → Built-
 
 Available preset IDs: `living-room`, `kitchen`, `bedroom`, `bathroom`, `dining-room`, `home-office`, `childrens-room`, `hallway`, `guest-room`, `garage`, `garden-patio`, `balcony`, `basement`, `laundry-room`, `attic`, and `workshop`.
 
-![Built-in room image presets](docs/images/preview_room_presets.jpg)
+![Built-in room image presets](docs/images/room-presets.jpg)
 
 The generation and usage record for the bundled images is documented in [docs/room-image-provenance.md](docs/room-image-provenance.md).
 
