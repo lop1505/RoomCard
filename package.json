@@ -12,5 +12,8 @@
   },
   "engines": {
     "node": ">=20"
+  },
+  "devDependencies": {
+    "happy-dom": "20.11.6"
   }
 }
