@@ -31,8 +31,14 @@ jobs:
       - name: Verify committed distribution
         run: git diff --exit-code -- dist/room-card.js
 
-      - name: Run checks
-        run: npm run check
+      - name: Check JavaScript syntax
+        run: npm run check:syntax
+
+      - name: Verify release metadata
+        run: npm run check:dist
+
+      - name: Run automated regression tests
+        run: npm test
 
       - name: HACS Action
         uses: hacs/action@1ebf01c408f29afcb6406bd431bc98fd8cbb15aa # main, reviewed 2026-08-20
