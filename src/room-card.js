@@ -8100,9 +8100,11 @@ if (!existingCard) {
 }
 
 window.customCards = window.customCards || [];
-window.customCards.push({
-  type: "oneline-room-card",
-  name: "OneLine Room Card",
-  preview: true,
-  description: "Minimalist Room Card for Home Assistant"
-});
+if (!window.customCards.some((card) => card?.type === "oneline-room-card")) {
+  window.customCards.push({
+    type: "oneline-room-card",
+    name: "OneLine Room Card",
+    preview: true,
+    description: "Minimalist Room Card for Home Assistant"
+  });
+}

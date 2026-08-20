@@ -339,7 +339,7 @@ See [CHANGELOG.md](CHANGELOG.md) for the full release history.
 
 ## 🛠️ Development
 
-The canonical source lives in `src/room-card.js`; `dist/room-card.js` is the generated HACS artifact. See [CONTRIBUTING.md](CONTRIBUTING.md) for the repository layout and the build, test, and release checks.
+The canonical source lives in `src/room-card.js`; `dist/room-card.js` is the generated HACS artifact. See [CONTRIBUTING.md](CONTRIBUTING.md) for the repository layout and the build, test, and release checks. Structural work follows the [test-gated modularization plan](docs/modularization-plan.md) and [manual Home Assistant smoke-test matrix](docs/manual-smoke-test.md).
 
 ---
 
