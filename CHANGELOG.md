@@ -4,6 +4,11 @@ All notable changes to OneLine Room Card are documented here.
 
 ## [Unreleased]
 
+* Runtime: Split full media-player controls into separate transport and volume rows, add Previous, respect `supported_features`, and keep artwork square on compact cards. Closes [#102](https://github.com/lop1505/RoomCard/issues/102).
+* Accessibility: Add keyboard activation, ARIA state and labels, visible focus, semantic inline controls, and modal focus management for the alert dialog. Closes [#97](https://github.com/lop1505/RoomCard/issues/97).
+* Runtime & Editor: Add a draggable and keyboard-adjustable header-image focal point through `image_position`, with safe validation and centered defaults. Closes [#103](https://github.com/lop1505/RoomCard/issues/103).
+* Editor: Validate JPEG/PNG/WebP uploads up to 20 MB, decode before upload, downscale images larger than 2560 px, preserve suitable originals, localize errors, and prevent duplicate submissions. Closes [#104](https://github.com/lop1505/RoomCard/issues/104).
+
 ---
 
 ## [1.3.1]

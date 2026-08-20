@@ -10,6 +10,30 @@ const MEDIA_PLAYER_FEATURES = Object.freeze({
   PLAY: 16384
 });
 
+const IMAGE_UPLOAD_LIMITS = Object.freeze({
+  maxSourceBytes: 20 * 1024 * 1024,
+  maxDimension: 2560,
+  quality: 0.86,
+  supportedTypes: ["image/jpeg", "image/png", "image/webp"]
+});
+
+const parseImagePosition = (value) => {
+  const match = typeof value === "string"
+    ? value.trim().match(/^(-?\d+(?:\.\d+)?)%\s+(-?\d+(?:\.\d+)?)%$/)
+    : null;
+  if (!match) return { x: 50, y: 50, value: "50% 50%", isDefault: true };
+  const x = Math.max(0, Math.min(100, Number(match[1])));
+  const y = Math.max(0, Math.min(100, Number(match[2])));
+  return { x, y, value: `${x}% ${y}%`, isDefault: x === 50 && y === 50 };
+};
+
+const validateImageUpload = (file) => {
+  if (!file || !IMAGE_UPLOAD_LIMITS.supportedTypes.includes(String(file.type || "").toLowerCase())) return "upload_unsupported";
+  if (!Number.isFinite(file.size) || file.size <= 0) return "upload_decode_error";
+  if (file.size > IMAGE_UPLOAD_LIMITS.maxSourceBytes) return "upload_too_large";
+  return "";
+};
+
 const ROOM_IMAGE_PRESETS = Object.freeze([
   { id: "living-room", file: "living-room.jpg", labelKey: "image_preset_living_room" },
   { id: "kitchen", file: "kitchen.jpg", labelKey: "image_preset_kitchen" },
@@ -311,7 +335,9 @@ const TRANSLATIONS = {
     act_more: "Details (Default)", act_toggle: "Toggle", act_navigate: "Navigate", act_call_service: "Action (service)", act_none: "None",
     service: "Service (domain.service)", service_data: "Service Data (JSON)", target_entity: "Target entity",
     live_preview: "Live preview",
-    upload_btn: "Upload Image", uploading: "Uploading...", upload_success: "Done!",
+    upload_btn: "Upload Image", uploading: "Uploading...", upload_success: "Image uploaded", upload_optimized: "Image optimized and uploaded",
+    upload_unsupported: "Choose a JPEG, PNG, or WebP image.", upload_too_large: "The source image exceeds the 20 MB limit.", upload_decode_error: "The image could not be decoded.", upload_failed: "Upload failed ({status}).",
+    image_focal_point: "Image focal point", image_focal_help: "Click or drag the marker to keep the important area visible.", image_center: "Center", image_horizontal: "Horizontal position", image_vertical: "Vertical position",
     show_name: "Show Title", header_badges: "Badge", badge_add: "Add Info Entry", badge_label: "Label (optional)", badge_background: "Background (rgba)", standard_badge_background: "Standard Badge Background (rgba)", badge_auto_climate_btn: "Automatically add climate control button",
     visibility: "Visibility", visibility_cond: "Conditional Visibility", vis_entity: "Condition Entity", vis_state: "Show if state is", vis_invert: "Invert Logic (Hide if state corresponds)",
     migration_title: "Action Required",
@@ -405,7 +431,9 @@ const TRANSLATIONS = {
     act_more: "Details (Standard)", act_toggle: "Umschalten", act_navigate: "Navigieren", act_call_service: "Aktion (service)", act_none: "Nichts",
     service: "Service (domain.service)", service_data: "Service Daten (JSON)", target_entity: "Ziel-Entität",
     live_preview: "Live-Vorschau",
-    upload_btn: "Bild hochladen", uploading: "Wird hochgeladen...", upload_success: "Fertig!",
+    upload_btn: "Bild hochladen", uploading: "Wird hochgeladen...", upload_success: "Bild hochgeladen", upload_optimized: "Bild optimiert und hochgeladen",
+    upload_unsupported: "Bitte ein JPEG-, PNG- oder WebP-Bild wählen.", upload_too_large: "Das Ausgangsbild überschreitet das Limit von 20 MB.", upload_decode_error: "Das Bild konnte nicht gelesen werden.", upload_failed: "Upload fehlgeschlagen ({status}).",
+    image_focal_point: "Bildfokus", image_focal_help: "Klicke oder ziehe die Markierung auf den wichtigen Bildbereich.", image_center: "Zentrieren", image_horizontal: "Horizontale Position", image_vertical: "Vertikale Position",
     show_name: "Titel anzeigen", header_badges: "Badge", badge_add: "Info-Eintrag hinzufügen", badge_label: "Bezeichnung (optional)", badge_background: "Hintergrund (rgba)", standard_badge_background: "Standard Badge Hintergrund (rgba)", badge_auto_climate_btn: "Klima-Steuerungs-Button automatisch hinzufügen",
     visibility: "Sichtbarkeit", visibility_cond: "Bedingte Sichtbarkeit", vis_entity: "Bedingungs-Entität", vis_state: "Anzeigen falls Status gleich", vis_invert: "Logik umkehren (Ausblenden falls entsprechend)",
     migration_title: "Handlung erforderlich",
@@ -503,7 +531,9 @@ const TRANSLATIONS = {
     act_more: "Détails (Défaut)", act_toggle: "Basculer", act_navigate: "Navigation", act_call_service: "Action (service)", act_none: "Rien",
     service: "Service (domain.service)", service_data: "Données du service (JSON)", target_entity: "Entité cible",
     live_preview: "Aperçu en direct",
-    upload_btn: "Télécharger une image", uploading: "Téléchargement...", upload_success: "Terminé!",
+    upload_btn: "Télécharger une image", uploading: "Téléchargement...", upload_success: "Image importée", upload_optimized: "Image optimisée et importée",
+    upload_unsupported: "Choisissez une image JPEG, PNG ou WebP.", upload_too_large: "L'image source dépasse la limite de 20 Mo.", upload_decode_error: "L'image n'a pas pu être décodée.", upload_failed: "Échec de l'import ({status}).",
+    image_focal_point: "Point focal de l'image", image_focal_help: "Cliquez ou déplacez le repère vers la zone importante.", image_center: "Centrer", image_horizontal: "Position horizontale", image_vertical: "Position verticale",
     show_name: "Afficher le titre", header_badges: "Infos d'en-tête supplémentaires", badge_add: "Ajouter une entrée", badge_label: "Libellé (optionnel)", badge_background: "Arrière-plan (rgba)", standard_badge_background: "Fond du badge climat principal (rgba)",
     migration_title: "Action requise",
     migration_text: "Carte renommée en <b>oneline-room-card</b> pour éviter les conflits.<br>Veuillez changer <code>type: custom:room-card</code> en <code>type: custom:oneline-room-card</code>.",
@@ -1653,6 +1683,7 @@ class OneLineRoomCard extends HTMLElement {
 
     const bgEl = this.shadowRoot.getElementById("bg");
     bgEl.src = resolveRoomImageUrl(c) || "/static/images/card_media/cover.png";
+    bgEl.style.objectPosition = parseImagePosition(c.image_position).value;
     if (c.image_entity && h.states[c.image_entity]) {
       const isOff = !isEntityActive(h.states[c.image_entity], c.image_entity);
       bgEl.classList.toggle("grayscale", isOff);
@@ -3324,6 +3355,7 @@ class OneLineRoomCardEditor extends HTMLElement {
     this._quickAddEntity = "";
     this._quickAddSelectReady = false;
     this._lastInteractedControlId = "";
+    this._uploading = false;
     this._boundHandlePrimarySave = (ev) => this._handlePrimarySave(ev);
   }
 
@@ -3489,31 +3521,114 @@ connectedCallback() {
     btn.setAttribute("title", label);
   }
 
-  async _handleUpload(e) {
-    const file = e.target.files[0];
-    if (!file || !this._hass) return;
-    const btn = this.shadowRoot.getElementById("upload-btn");
-    if (btn) btn.innerText = getTranslation(this._hass, "uploading");
+  _setUploadStatus(key = "", { error = false, status = "" } = {}) {
+    const button = this.shadowRoot?.getElementById("upload-btn");
+    const statusNode = this.shadowRoot?.getElementById("upload-status");
+    const message = key ? getTranslation(this._hass, key).replace("{status}", status || "unknown") : "";
+    if (button) {
+      button.label = this._uploading ? getTranslation(this._hass, "uploading") : getTranslation(this._hass, "upload_btn");
+      button.disabled = this._uploading;
+    }
+    if (statusNode && key !== null) {
+      statusNode.textContent = message;
+      statusNode.classList.toggle("error", error);
+    }
+  }
+
+  async _decodeImageFile(file) {
+    if (typeof createImageBitmap === "function") {
+      try {
+        const bitmap = await createImageBitmap(file);
+        return { source: bitmap, width: bitmap.width, height: bitmap.height, close: () => bitmap.close?.() };
+      } catch (_err) {
+        // Fall back to an object URL for browsers without full ImageBitmap support.
+      }
+    }
+    const objectUrl = URL.createObjectURL(file);
     try {
+      const image = new Image();
+      image.decoding = "async";
+      await new Promise((resolve, reject) => {
+        image.onload = resolve;
+        image.onerror = () => reject(new Error("decode"));
+        image.src = objectUrl;
+      });
+      return { source: image, width: image.naturalWidth, height: image.naturalHeight, close: () => URL.revokeObjectURL(objectUrl) };
+    } catch (error) {
+      URL.revokeObjectURL(objectUrl);
+      throw error;
+    }
+  }
+
+  _canvasToBlob(canvas, type, quality) {
+    return new Promise((resolve, reject) => {
+      canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error("encode")), type, quality);
+    });
+  }
+
+  async _prepareImageUpload(file) {
+    const validationError = validateImageUpload(file);
+    if (validationError) throw Object.assign(new Error(validationError), { translationKey: validationError });
+    let decoded;
+    try {
+      decoded = await this._decodeImageFile(file);
+      if (!decoded.width || !decoded.height) throw new Error("decode");
+      const largest = Math.max(decoded.width, decoded.height);
+      if (largest <= IMAGE_UPLOAD_LIMITS.maxDimension) return { file, optimized: false };
+      const scale = IMAGE_UPLOAD_LIMITS.maxDimension / largest;
+      const width = Math.max(1, Math.round(decoded.width * scale));
+      const height = Math.max(1, Math.round(decoded.height * scale));
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const context = canvas.getContext("2d", { alpha: true });
+      if (!context) throw new Error("canvas");
+      context.drawImage(decoded.source, 0, 0, width, height);
+      const outputType = file.type === "image/png" ? "image/png" : file.type === "image/webp" ? "image/webp" : "image/jpeg";
+      const blob = await this._canvasToBlob(canvas, outputType, IMAGE_UPLOAD_LIMITS.quality);
+      const extension = outputType.split("/")[1].replace("jpeg", "jpg");
+      const baseName = String(file.name || "room-image").replace(/\.[^.]+$/, "");
+      return { file: new File([blob], `${baseName}.${extension}`, { type: outputType }), optimized: true };
+    } catch (error) {
+      if (error?.translationKey) throw error;
+      throw Object.assign(error instanceof Error ? error : new Error("decode"), { translationKey: "upload_decode_error" });
+    } finally {
+      decoded?.close?.();
+    }
+  }
+
+  async _handleUpload(e) {
+    const file = e.target.files?.[0];
+    if (!file || !this._hass || this._uploading) return;
+    const fileInput = this.shadowRoot.getElementById("file-upload");
+    this._uploading = true;
+    if (fileInput) fileInput.disabled = true;
+    this._setUploadStatus();
+    try {
+      const prepared = await this._prepareImageUpload(file);
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("file", prepared.file);
       const response = await this._hass.fetchWithAuth("/api/image/upload", {
         method: "POST",
         body: formData,
       });
-      if (!response.ok) throw new Error("Upload failed");
+      if (!response.ok) throw Object.assign(new Error("upload"), { translationKey: "upload_failed", status: String(response.status || "HTTP") });
       const data = await response.json();
+      if (!data?.id) throw Object.assign(new Error("upload"), { translationKey: "upload_failed", status: "invalid response" });
       const imgUrl = `/api/image/serve/${data.id}/original`;
       const next = { ...this._config, image: imgUrl };
       delete next.image_preset;
       this._fire(next);
       this._renderImagePresetPicker();
       this.updPreview();
-      if (btn) btn.innerText = getTranslation(this._hass, "upload_success");
-      setTimeout(() => { if (btn) btn.innerText = getTranslation(this._hass, "upload_btn"); }, 2000);
+      this._setUploadStatus(prepared.optimized ? "upload_optimized" : "upload_success");
     } catch (err) {
       console.error("Upload Error:", err);
-      if (btn) btn.innerText = "Error!";
+      this._setUploadStatus(err?.translationKey || "upload_failed", { error: true, status: err?.status || "unknown" });
+    } finally {
+      this._uploading = false;
+      if (fileInput) { fileInput.disabled = false; fileInput.value = ""; }
+      this._setUploadStatus(null);
     }
   }
 
@@ -3982,8 +4097,16 @@ connectedCallback() {
         .summary-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .body { margin-top: 8px; }
         oneline-room-card-textfield, ha-selector, ha-entity-picker, ha-icon-picker { width: 100%; display: block; margin-bottom: 8px; }
-        .preview { width: 100%; height: 120px; object-fit: cover; border-radius: 8px; margin-bottom: 8px; background: #444; display: none; }
+        .focal-preview { position: relative; width: 100%; height: 120px; border-radius: 8px; margin-bottom: 8px; background: #444; overflow: hidden; display: none; cursor: crosshair; touch-action: none; }
+        .focal-preview.show { display: block; }
+        .preview { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
         .preview.show { display: block; }
+        .focal-marker { position: absolute; width: 18px; height: 18px; border: 2px solid white; border-radius: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 0 2px rgba(0,0,0,0.65); pointer-events: none; }
+        .focal-controls { display: grid; grid-template-columns: 1fr auto; gap: 6px 10px; align-items: center; margin-bottom: 10px; }
+        .focal-controls label { grid-column: 1 / -1; font-size: 11px; opacity: 0.75; }
+        .focal-controls input { width: 100%; accent-color: var(--primary-color); }
+        .focal-help, .upload-status { font-size: 11px; opacity: 0.72; margin: -2px 0 8px; }
+        .upload-status.error { color: var(--error-color, #db4437); opacity: 1; }
         .image-preset-heading { font-size: 12px; font-weight: 600; margin: 10px 0 2px; }
         .image-preset-help { font-size: 11px; opacity: 0.7; margin-bottom: 8px; }
         .image-presets { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 8px; margin-bottom: 12px; }
@@ -4190,7 +4313,18 @@ connectedCallback() {
             <ha-icon id="image-chev" class="image-chev" icon="mdi:chevron-right"></ha-icon>
           </div>
           <div id="image-content" class="image-content" hidden>
-            <img id="prev-img" class="preview">
+            <div id="focal-preview" class="focal-preview" role="img" aria-label="${getTranslation(h, "image_focal_point")}">
+              <img id="prev-img" class="preview" alt="">
+              <span id="focal-marker" class="focal-marker"></span>
+            </div>
+            <div class="focal-help">${getTranslation(h, "image_focal_help")}</div>
+            <div class="focal-controls">
+              <label for="focal-x">${getTranslation(h, "image_horizontal")}</label>
+              <input id="focal-x" type="range" min="0" max="100" step="1"><span id="focal-x-value">50%</span>
+              <label for="focal-y">${getTranslation(h, "image_vertical")}</label>
+              <input id="focal-y" type="range" min="0" max="100" step="1"><span id="focal-y-value">50%</span>
+              <mwc-button id="focal-center" label="${getTranslation(h, "image_center")}"></mwc-button>
+            </div>
             <ha-formfield label="${getTranslation(h, "show_image")}" style="display:flex;align-items:center;margin-bottom:8px">
               <ha-switch id="show-image-toggle"></ha-switch>
             </ha-formfield>
@@ -4206,6 +4340,7 @@ connectedCallback() {
                 <ha-icon icon="mdi:upload" slot="icon"></ha-icon>
               </mwc-button>
             </div>
+            <div id="upload-status" class="upload-status" role="status" aria-live="polite"></div>
           </div>
         </div>
         <div id="typo-sec" class="manual-sec" style="margin-top:12px">
@@ -4487,6 +4622,7 @@ connectedCallback() {
       uploadBtn.addEventListener("click", () => fileInput.click());
       fileInput.addEventListener("change", (e) => this._handleUpload(e));
     }
+    this._setupFocalPointControl();
     const areaSetupHead = this.shadowRoot.getElementById("area-setup-head");
     if (areaSetupHead) {
       areaSetupHead.addEventListener("click", () => {
@@ -5796,7 +5932,67 @@ if (tmplSelect) {
     title.textContent = getTranslation(this._hass, "image");
     sec.classList.toggle("open", this._imageSectionOpen);
     content.hidden = !this._imageSectionOpen;
-    if (this._imageSectionOpen) this._renderImagePresetPicker();
+    if (this._imageSectionOpen) {
+      this._renderImagePresetPicker();
+      this._updateFocalPointUI();
+    }
+  }
+
+  _setImagePosition(x, y) {
+    const position = parseImagePosition(`${x}% ${y}%`);
+    const next = { ...this._config };
+    if (position.isDefault) delete next.image_position;
+    else next.image_position = position.value;
+    this._fire(next);
+    this._updateFocalPointUI();
+    this.updPreview();
+  }
+
+  _updateFocalPointUI() {
+    const position = parseImagePosition(this._config?.image_position);
+    const marker = this.shadowRoot?.getElementById("focal-marker");
+    const xInput = this.shadowRoot?.getElementById("focal-x");
+    const yInput = this.shadowRoot?.getElementById("focal-y");
+    const xValue = this.shadowRoot?.getElementById("focal-x-value");
+    const yValue = this.shadowRoot?.getElementById("focal-y-value");
+    if (marker) { marker.style.left = `${position.x}%`; marker.style.top = `${position.y}%`; }
+    if (xInput) xInput.value = String(position.x);
+    if (yInput) yInput.value = String(position.y);
+    if (xValue) xValue.textContent = `${Math.round(position.x)}%`;
+    if (yValue) yValue.textContent = `${Math.round(position.y)}%`;
+  }
+
+  _setupFocalPointControl() {
+    const preview = this.shadowRoot?.getElementById("focal-preview");
+    const xInput = this.shadowRoot?.getElementById("focal-x");
+    const yInput = this.shadowRoot?.getElementById("focal-y");
+    const center = this.shadowRoot?.getElementById("focal-center");
+    if (!preview || !xInput || !yInput || !center) return;
+    let dragging = false;
+    const updateFromPointer = (event) => {
+      const rect = preview.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+      const x = Math.round(Math.max(0, Math.min(100, ((event.clientX - rect.left) / rect.width) * 100)));
+      const y = Math.round(Math.max(0, Math.min(100, ((event.clientY - rect.top) / rect.height) * 100)));
+      this._setImagePosition(x, y);
+    };
+    preview.addEventListener("pointerdown", (event) => {
+      dragging = true;
+      preview.setPointerCapture?.(event.pointerId);
+      updateFromPointer(event);
+    });
+    preview.addEventListener("pointermove", (event) => { if (dragging) updateFromPointer(event); });
+    const stopDragging = (event) => {
+      dragging = false;
+      preview.releasePointerCapture?.(event.pointerId);
+    };
+    preview.addEventListener("pointerup", stopDragging);
+    preview.addEventListener("pointercancel", stopDragging);
+    const updateFromInputs = () => this._setImagePosition(Number(xInput.value), Number(yInput.value));
+    xInput.addEventListener("input", updateFromInputs);
+    yInput.addEventListener("input", updateFromInputs);
+    center.addEventListener("click", () => this._setImagePosition(50, 50));
+    this._updateFocalPointUI();
   }
 
   _renderImagePresetPicker() {
@@ -6251,14 +6447,20 @@ if (tmplSelect) {
   updPreview() {
     if (!this._config) return;
     const img = this.shadowRoot.getElementById("prev-img");
+    const preview = this.shadowRoot.getElementById("focal-preview");
     const imageUrl = resolveRoomImageUrl(this._config);
+    const position = parseImagePosition(this._config.image_position);
+    img.style.objectPosition = position.value;
     if (imageUrl) {
       img.src = imageUrl;
       img.classList.add("show");
+      preview?.classList.add("show");
     } else {
       img.removeAttribute("src");
       img.classList.remove("show");
+      preview?.classList.remove("show");
     }
+    this._updateFocalPointUI();
   }
 
   _saveAllScrollPositions() {
@@ -7631,7 +7833,7 @@ const cm = box.querySelector(".cm");
 // =============================================================================
 
 const patchExistingEditor = (ExistingEditor, NewEditor) => {
-  const methods = ["render", "updVal", "updCp", "renBtn", "setConfig", "_fire", "_handleUpload", "updPreview", "connectedCallback", "disconnectedCallback", "_ensureEditorState", "_emitConfigNow", "_flushPendingConfig", "_handlePrimarySave", "_updateBadgesUI", "_updateTypographyUI", "_updateCardBehaviorUI", "_updateHeaderSectionUI", "_updateTabUI", "_updateSensorsSectionUI", "_updateImageSectionUI", "_renderImagePresetPicker", "_syncManualSensorLabelInputs", "_updateWindowLabelsUI", "_updateSubChipsUI", "_areAllButtonsExpanded", "_toggleAllButtonsExpanded"];
+  const methods = ["render", "updVal", "updCp", "renBtn", "setConfig", "_fire", "_handleUpload", "_prepareImageUpload", "_decodeImageFile", "_canvasToBlob", "_setUploadStatus", "updPreview", "connectedCallback", "disconnectedCallback", "_ensureEditorState", "_emitConfigNow", "_flushPendingConfig", "_handlePrimarySave", "_updateBadgesUI", "_updateTypographyUI", "_updateCardBehaviorUI", "_updateHeaderSectionUI", "_updateTabUI", "_updateSensorsSectionUI", "_updateImageSectionUI", "_setImagePosition", "_updateFocalPointUI", "_setupFocalPointControl", "_renderImagePresetPicker", "_syncManualSensorLabelInputs", "_updateWindowLabelsUI", "_updateSubChipsUI", "_areAllButtonsExpanded", "_toggleAllButtonsExpanded"];
   methods.forEach((name) => {
     if (typeof NewEditor.prototype[name] === "function") {
       ExistingEditor.prototype[name] = NewEditor.prototype[name];
