@@ -1546,9 +1546,13 @@ class OneLineRoomCard extends HTMLElement {
 
   _getTemplateDependencyEntityIds() {
     const ids = new Set();
+    const add = (entityId) => {
+      if (typeof entityId === "string" && entityId.trim()) ids.add(entityId.trim());
+    };
     for (const ctrl of (Array.isArray(this.config?.controls) ? this.config.controls : [])) {
       if (ctrl?.type !== "template") continue;
-      getTemplateEntityDependencies(ctrl).forEach((entityId) => ids.add(entityId));
+      getTemplateEntityDependencies(ctrl).forEach(add);
+      (Array.isArray(ctrl.sub_chips) ? ctrl.sub_chips : []).forEach((chip) => add(chip?.entity));
     }
     return ids;
   }

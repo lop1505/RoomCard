@@ -126,16 +126,16 @@ test("template controls refresh sub-chips even when template output is unchanged
     controls: [{
       type: "template",
       content: "Static",
-      sub_chips: [{ entity: "sensor.sub_chip", label: "Value {state}" }]
+      sub_chips: [{ entity: "sensor.sub_chip", attribute: "custom_status", label: "Value {state}" }]
     }]
   };
   const card = createRenderedCard(config, createHass({
-    states: { "sensor.sub_chip": { state: "one", attributes: {} } }
+    states: { "sensor.sub_chip": { state: "unchanged", attributes: { custom_status: "one" } } }
   }));
   assert.equal(card.shadowRoot.querySelector(".btn-chip span").textContent, "Value one");
 
   card.hass = createHass({
-    states: { "sensor.sub_chip": { state: "two", attributes: {} } }
+    states: { "sensor.sub_chip": { state: "unchanged", attributes: { custom_status: "two" } } }
   });
   assert.equal(card.shadowRoot.querySelector(".btn-chip span").textContent, "Value two");
   card.remove();
