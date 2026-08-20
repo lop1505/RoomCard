@@ -1148,7 +1148,7 @@ class OneLineRoomCard extends HTMLElement {
       const stroke = getComputedStyle(btn).getPropertyValue("--icon-color") || "currentColor";
       if (!data || data.length === 0) {
         wrapper.style.display = "none";
-        const svg = wrapper.querySelector("svg"); if (svg) svg.innerHTML = "";
+        const svg = wrapper.querySelector("svg"); if (svg) svg.replaceChildren();
       } else {
         wrapper.style.display = "block";
         this._drawSparkline(wrapper, data, stroke.trim() || "currentColor");
@@ -1160,7 +1160,7 @@ class OneLineRoomCard extends HTMLElement {
     const svg = wrapper.querySelector("svg");
     if (!svg) return;
     if (!normalizedPoints || normalizedPoints.length === 0) {
-      svg.innerHTML = "";
+      svg.replaceChildren();
       return;
     }
     const points = normalizedPoints.map(p => ({
@@ -1176,10 +1176,14 @@ class OneLineRoomCard extends HTMLElement {
         : Math.max(2, Math.min(20, 20 - ((p.y - minVal) / range) * 18));
       return `${p.x.toFixed(1)},${y.toFixed(1)}`;
     }).join(" ");
-    svg.innerHTML = `
-      <line x1="0" y1="20" x2="100" y2="20" stroke="${stroke}" stroke-opacity="0.2" stroke-width="1" vector-effect="non-scaling-stroke" />
-      <polyline points="${scaled}" fill="none" stroke="${stroke}" stroke-opacity="0.95" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-    `;
+    const svgNs = "http://www.w3.org/2000/svg";
+    const baseline = document.createElementNS(svgNs, "line");
+    Object.entries({ x1: "0", y1: "20", x2: "100", y2: "20", stroke, "stroke-opacity": "0.2", "stroke-width": "1", "vector-effect": "non-scaling-stroke" })
+      .forEach(([name, value]) => baseline.setAttribute(name, String(value)));
+    const polyline = document.createElementNS(svgNs, "polyline");
+    Object.entries({ points: scaled, fill: "none", stroke, "stroke-opacity": "0.95", "stroke-width": "2", "stroke-linecap": "round", "stroke-linejoin": "round" })
+      .forEach(([name, value]) => polyline.setAttribute(name, String(value)));
+    svg.replaceChildren(baseline, polyline);
   }
 
   _renderBtnSparkline(btn, ctrl, color) {
@@ -1197,7 +1201,10 @@ class OneLineRoomCard extends HTMLElement {
     if (!wrapper) {
       wrapper = document.createElement("div");
       wrapper.className = "btn-sparkline";
-      wrapper.innerHTML = `<svg viewBox="0 0 100 22" preserveAspectRatio="none"></svg>`;
+      const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      svg.setAttribute("viewBox", "0 0 100 22");
+      svg.setAttribute("preserveAspectRatio", "none");
+      wrapper.appendChild(svg);
       btn.appendChild(wrapper);
     }
     btn.classList.add("has-sparkline");
@@ -1233,6 +1240,8 @@ class OneLineRoomCard extends HTMLElement {
       { value: "navigate", label: getTranslation(this._hass, "act_navigate") || "Navigate" },
       { value: "none", label: getTranslation(this._hass, "act_none") || "None" }
     ];
+    // Static runtime scaffold: interpolations below are package-owned labels/options,
+    // never entity states, attributes, template output, or user-provided text.
     this.shadowRoot.innerHTML = `
       <style>
         ha-card { position: relative; overflow: hidden; border-radius: 16px; background: none; border: none; cursor: default; }
@@ -1834,7 +1843,16 @@ class OneLineRoomCard extends HTMLElement {
     if (infoPos === "header") this._applyHeaderOffset(infoEl, infoOffset, textEl);
 
     const ch = this.shadowRoot.getElementById("chips");
-    ch.innerHTML = "";
+    ch.replaceChildren();
+    const createHeaderChip = (className, iconName, text, tagName = "div") => {
+      const chip = document.createElement(tagName);
+      chip.className = className;
+      const icon = document.createElement("ha-icon");
+      icon.setAttribute("icon", String(iconName));
+      icon.style.setProperty("--mdc-icon-size", "14px");
+      chip.append(icon, document.createTextNode(` ${text}`));
+      return chip;
+    };
     let al = null;
     (Array.isArray(effectiveBatterySensors) ? effectiveBatterySensors : []).forEach(s => {
       const st = h.states[s]; if (!st) return;
@@ -1846,7 +1864,7 @@ class OneLineRoomCard extends HTMLElement {
     });
 
     const batteryWarn = !!al;
-    if (batteryWarn) ch.innerHTML += `<div class="chip alert"><ha-icon icon="mdi:battery-alert" style="--mdc-icon-size:14px"></ha-icon> ${al}</div>`;
+    if (batteryWarn) ch.appendChild(createHeaderChip("chip alert", "mdi:battery-alert", al));
 
     const humidNum = hm != null ? parseFloat(hm) : NaN;
     const thresholdRaw = c.humidity_warning_threshold ?? 60;
@@ -1854,7 +1872,7 @@ class OneLineRoomCard extends HTMLElement {
     const humidityWarn = Number.isFinite(humidNum) && humidNum > humidThreshold;
     if (humidityWarn) {
       const txt = getTranslation(h, "high_humidity");
-      ch.innerHTML += `<div class="chip humidity"><ha-icon icon="mdi:water-alert" style="--mdc-icon-size:14px"></ha-icon> ${txt}</div>`;
+      ch.appendChild(createHeaderChip("chip humidity", "mdi:water-alert", txt));
     }
     if (c.presence_sensor && h.states[c.presence_sensor]) {
       const pState = h.states[c.presence_sensor];
@@ -1905,17 +1923,15 @@ class OneLineRoomCard extends HTMLElement {
     });
     const alertChipMode = c.alert_chip_mode || "expanded";
     if (alertChipMode === "collapsed" && activeAlerts.length > 0) {
-      const chip = document.createElement("button");
+      const chip = createHeaderChip("chip alert", "mdi:alert", activeAlerts.length, "button");
       chip.type = "button";
-      chip.className = "chip alert";
-      chip.innerHTML = `<ha-icon icon="mdi:alert" style="--mdc-icon-size:14px"></ha-icon> ${activeAlerts.length}`;
       chip.setAttribute("aria-label", `${getTranslation(h, "active_alerts")}: ${activeAlerts.length}`);
       chip.style.cursor = "pointer";
       chip.addEventListener("click", () => this._showAlertDialog(activeAlerts));
       ch.appendChild(chip);
     } else if (alertChipMode === "expanded" && activeAlerts.length > 0) {
       activeAlerts.forEach(alert => {
-        ch.innerHTML += `<div class="chip alert"><ha-icon icon="${alert.icon}" style="--mdc-icon-size:14px"></ha-icon> ${alert.friendly_name}</div>`;
+        ch.appendChild(createHeaderChip("chip alert", alert.icon, alert.friendly_name));
       });
     }
 
@@ -2347,8 +2363,6 @@ class OneLineRoomCard extends HTMLElement {
       ? (tpl?.content || ctrl.name || "")
       : (ctrl.name !== undefined ? ctrl.name : "Dev");
     const unavailableText = getTranslation(h, "device_unavailable");
-    let badge = "";
-    if (isUnavail) badge = `<ha-icon class="warn warn-offline" icon="mdi:lan-disconnect" title="${unavailableText}"></ha-icon>`;
 
     // --- NEW: USE DYNAMIC UNIT IN TEMPLATE ---
     const climateHasSlider = typ === "climate" && (ctrl.control_mode === "slider" || ctrl.control_mode === "full");
@@ -2389,16 +2403,8 @@ class OneLineRoomCard extends HTMLElement {
     const showLabel = ctrl.show_label !== false;
     const showLastChanged = ctrl.show_last_changed === true && !isTemplate && !!st?.last_changed;
     const elapsedText = showLastChanged ? formatLastChanged(st.last_changed, h) : "";
-    const stateHtml = (() => {
-      if (showState && showLastChanged) return `<span class="btn-state">${stateText} · ${elapsedText}</span>`;
-      if (showState) return `<span class="btn-state">${stateText}</span>`;
-      if (showLastChanged) return `<span class="btn-state">${elapsedText}</span>`;
-      return "";
-    })();
-    const labelHtml = showLabel ? `<span class="btn-name">${nameTxt}</span>` : "";
     const showIcon = ctrl.show_icon !== false;
     const stateFirst = ctrl.state_first === true;
-    const textHtml = stateFirst ? `${stateHtml}${labelHtml}` : `${labelHtml}${stateHtml}`;
 
     const per = ctrl.label_position;
     const globalPos = this.config?.global_label_position;
@@ -2428,16 +2434,11 @@ class OneLineRoomCard extends HTMLElement {
       if (!raw) return "20px";
       return /^\d+(\.\d+)?$/.test(raw) ? raw + "px" : raw;
     })();
-    const iconHtml = showIcon
-      ? `<div class="icon-box">
-        <ha-icon icon="${resolvedIcon}" style="--mdc-icon-size:${iconSizePx}"></ha-icon>
-      </div>`
-      : "";
-
     const chipsPos = ctrl.chips_position === "top" ? "top" : "bottom";
-    let chipsHtml = "";
+    let chipsEl = null;
     if (Array.isArray(ctrl.sub_chips) && ctrl.sub_chips.length > 0) {
-      chipsHtml = `<div class="btn-chips${chipsPos === "top" ? " chips-top" : ""}">`;
+      chipsEl = document.createElement("div");
+      chipsEl.className = `btn-chips${chipsPos === "top" ? " chips-top" : ""}`;
       for (const chip of ctrl.sub_chips) {
         if (!chip.entity || !h?.states?.[chip.entity]) continue;
         const chipSt = h.states[chip.entity];
@@ -2456,16 +2457,67 @@ class OneLineRoomCard extends HTMLElement {
         } else if (!chip.label && displayVal) {
           label = displayVal;
         }
-        const txtHtml = label ? `<span style="margin-left: ${chip.icon ? '4px' : '0'};">${label}</span>` : "";
-        const icnHtml = chip.icon ? `<ha-icon icon="${chip.icon}"></ha-icon>` : "";
-        chipsHtml += `<div class="btn-chip">${icnHtml}${txtHtml}</div>`;
+        const chipEl = document.createElement("div");
+        chipEl.className = "btn-chip";
+        if (chip.icon) {
+          const chipIcon = document.createElement("ha-icon");
+          chipIcon.setAttribute("icon", String(chip.icon));
+          chipEl.appendChild(chipIcon);
+        }
+        if (label) {
+          const chipText = document.createElement("span");
+          chipText.style.marginLeft = chip.icon ? "4px" : "0";
+          chipText.textContent = label;
+          chipEl.appendChild(chipText);
+        }
+        chipsEl.appendChild(chipEl);
       }
-      chipsHtml += `</div>`;
+      if (chipsEl.childElementCount === 0) chipsEl = null;
     }
 
-    btn.innerHTML = chipsPos === "top"
-      ? `${iconHtml}<div class="btn-txt">${chipsHtml}${textHtml}</div>${badge}`
-      : `${iconHtml}<div class="btn-txt">${textHtml}${chipsHtml}</div>${badge}`;
+    btn.replaceChildren();
+    if (showIcon) {
+      const iconBox = document.createElement("div");
+      iconBox.className = "icon-box";
+      const icon = document.createElement("ha-icon");
+      icon.setAttribute("icon", String(resolvedIcon));
+      icon.style.setProperty("--mdc-icon-size", iconSizePx);
+      iconBox.appendChild(icon);
+      btn.appendChild(iconBox);
+    }
+    const textEl = document.createElement("div");
+    textEl.className = "btn-txt";
+    if (chipsPos === "top" && chipsEl) textEl.appendChild(chipsEl);
+    const labelEl = showLabel ? document.createElement("span") : null;
+    if (labelEl) {
+      labelEl.className = "btn-name";
+      // Explicit compatibility boundary: only trusted template configuration may opt in to HTML.
+      if (isTemplate && ctrl.trusted_html === true) labelEl.innerHTML = String(nameTxt);
+      else labelEl.textContent = String(nameTxt);
+    }
+    const stateEl = (showState || showLastChanged) ? document.createElement("span") : null;
+    if (stateEl) {
+      stateEl.className = "btn-state";
+      stateEl.textContent = showState && showLastChanged
+        ? `${stateText} · ${elapsedText}`
+        : (showState ? String(stateText) : elapsedText);
+    }
+    if (stateFirst) {
+      if (stateEl) textEl.appendChild(stateEl);
+      if (labelEl) textEl.appendChild(labelEl);
+    } else {
+      if (labelEl) textEl.appendChild(labelEl);
+      if (stateEl) textEl.appendChild(stateEl);
+    }
+    if (chipsPos === "bottom" && chipsEl) textEl.appendChild(chipsEl);
+    btn.appendChild(textEl);
+    if (isUnavail) {
+      const warning = document.createElement("ha-icon");
+      warning.className = "warn warn-offline";
+      warning.setAttribute("icon", "mdi:lan-disconnect");
+      warning.title = unavailableText;
+      btn.appendChild(warning);
+    }
 
     btn.classList.toggle("state-unavailable", isUnavail);
     if (!isTemplate) {
@@ -2572,7 +2624,9 @@ class OneLineRoomCard extends HTMLElement {
           button.type = "button";
           button.className = className;
           button.setAttribute("aria-label", label);
-          button.innerHTML = `<ha-icon icon="${icon}"></ha-icon>`;
+          const buttonIcon = document.createElement("ha-icon");
+          buttonIcon.setAttribute("icon", icon);
+          button.appendChild(buttonIcon);
           button.addEventListener("pointerdown", e => e.stopPropagation());
           button.addEventListener("click", e => {
             e.stopPropagation();
@@ -2606,7 +2660,9 @@ class OneLineRoomCard extends HTMLElement {
         muteBtn.className = `media-ctrl-btn${currentMuted ? " muted" : ""}`;
         muteBtn.setAttribute("aria-label", getTranslation(h, "a11y_mute"));
         muteBtn.setAttribute("aria-pressed", currentMuted ? "true" : "false");
-        muteBtn.innerHTML = `<ha-icon icon="${currentMuted ? "mdi:volume-off" : "mdi:volume-high"}"></ha-icon>`;
+        const muteIcon = document.createElement("ha-icon");
+        muteIcon.setAttribute("icon", currentMuted ? "mdi:volume-off" : "mdi:volume-high");
+        muteBtn.appendChild(muteIcon);
         muteBtn.addEventListener("pointerdown", e => e.stopPropagation());
         muteBtn.addEventListener("click", e => {
           e.stopPropagation();
@@ -2670,7 +2726,7 @@ class OneLineRoomCard extends HTMLElement {
         if (volumeRow.childElementCount > 0) rightDiv.appendChild(volumeRow);
         layout.appendChild(rightDiv);
         // Replace topDiv content with the full layout
-        topDiv.innerHTML = "";
+        topDiv.replaceChildren();
         topDiv.appendChild(layout);
       } else if (isInlineSlider) {
         const wrap = document.createElement("div");
@@ -2753,7 +2809,9 @@ class OneLineRoomCard extends HTMLElement {
           b.type = "button";
           b.className = "cover-action-btn";
           b.setAttribute("aria-label", (service || custom || action).replaceAll("_", " ").replace(".", " "));
-          b.innerHTML = `<ha-icon icon="${icon}"></ha-icon>`;
+          const actionIcon = document.createElement("ha-icon");
+          actionIcon.setAttribute("icon", icon);
+          b.appendChild(actionIcon);
           b.addEventListener("pointerdown", e => e.stopPropagation());
           b.addEventListener("click", e => {
             e.stopPropagation();
@@ -2887,7 +2945,14 @@ class OneLineRoomCard extends HTMLElement {
             pb.type = "button";
             pb.className = "preset-btn";
             const ic = iconForMode[String(mode).toLowerCase()];
-            pb.innerHTML = ic ? `<ha-icon icon="${ic}" style="--mdc-icon-size:14px"></ha-icon> ${mode}` : mode;
+            if (ic) {
+              const icon = document.createElement("ha-icon");
+              icon.setAttribute("icon", ic);
+              icon.style.setProperty("--mdc-icon-size", "14px");
+              pb.append(icon, document.createTextNode(` ${mode}`));
+            } else {
+              pb.textContent = String(mode);
+            }
             pb.setAttribute("aria-label", `${getTranslation(h, "a11y_select_option").replace("{name}", nameTxt)}: ${mode}`);
             if (String(mode).toLowerCase() === current) pb.classList.add("active");
             pb.addEventListener("pointerdown", e => e.stopPropagation());
@@ -2914,7 +2979,10 @@ class OneLineRoomCard extends HTMLElement {
             const pb = document.createElement("button");
             pb.type = "button";
             pb.className = "preset-btn";
-            pb.innerHTML = `<ha-icon icon="mdi:fan" style="--mdc-icon-size:14px"></ha-icon> ${mode}`;
+            const icon = document.createElement("ha-icon");
+            icon.setAttribute("icon", "mdi:fan");
+            icon.style.setProperty("--mdc-icon-size", "14px");
+            pb.append(icon, document.createTextNode(` ${mode}`));
             pb.setAttribute("aria-label", `${getTranslation(h, "a11y_select_option").replace("{name}", nameTxt)}: ${mode}`);
             if (String(mode).toLowerCase() === current) pb.classList.add("active");
             pb.addEventListener("pointerdown", e => e.stopPropagation());
@@ -3429,7 +3497,7 @@ connectedCallback() {
         if (e.hass !== hass) e.hass = hass;
       });
       if (this._config && (!this.shadowRoot.getElementById("show-name-toggle") || !this.shadowRoot.getElementById("typo-sec"))) {
-        this.shadowRoot.innerHTML = "";
+        this.shadowRoot.replaceChildren();
         this.render();
         return;
       }
@@ -4032,8 +4100,10 @@ connectedCallback() {
     const domVersion = this.shadowRoot.querySelector("[data-rc-version]")?.dataset?.rcVersion;
     if (alreadyRendered && domVersion === VERSION) { this.updVal(); if (JSON.stringify(this._config?.controls || []) !== this._lastRenderedControlsSig) this.renBtn(); this._applyNavSelectorOptions(); this._ensureNavOptions(); this._ensureAreaOptions(); this._updateAreaSetupUI(); this._updateSensorsSectionUI(); this._updateSparklineRefreshUI(); this._updateImageSectionUI(); this._updateBadgesUI(); this._updateTypographyUI(); this._updateCardBehaviorUI(); this._updateActionsSectionUI(); this._updateHeaderSectionUI(); this._updateTabUI(); return; }
     
-    this.shadowRoot.innerHTML = "";
+    this.shadowRoot.replaceChildren();
     const h = this._hass;
+    // Static editor scaffold: interpolations are package translations and normalized
+    // editor state. Configuration/entity text is assigned later through DOM properties.
     this.shadowRoot.innerHTML = `
       <style>
         .sec { padding: 12px 0; border-bottom: 1px solid var(--divider-color); }
@@ -5001,7 +5071,7 @@ connectedCallback() {
     const renderWindowStateColors = () => {
       const list = this.shadowRoot.getElementById("window-state-colors-list");
       if (!list) return;
-      list.innerHTML = "";
+      list.replaceChildren();
       const colorMap = (this._config?.window_state_colors && typeof this._config.window_state_colors === "object")
         ? this._config.window_state_colors : {};
       Object.entries(colorMap).forEach(([state, color]) => {
@@ -5081,7 +5151,7 @@ connectedCallback() {
     const renderAlertSensors = (sourceInput) => {
       const list = this.shadowRoot.getElementById("alert-sensors-list");
       if (!list) return;
-      list.innerHTML = "";
+      list.replaceChildren();
       const source = Array.isArray(sourceInput)
         ? sourceInput
         : (Array.isArray(this._config?.alert_sensors) ? this._config.alert_sensors : []);
@@ -6575,9 +6645,10 @@ if (tmplSelect) {
       box.open = this._collapsedState[key] !== true;
       box.addEventListener("toggle", () => { this._collapsedState[key] = !box.open; this._updateBulkToggleButton(); });
       const summaryText = ctrl.name || ctrl.entity || (isTemplate ? (ctrl.content || "Template") : "Button");
+      // Static per-control editor scaffold. summaryText is assigned with textContent below.
       box.innerHTML = `
         <summary class="head">
-          <span class="head-left"><ha-icon class="chev" icon="mdi:chevron-right"></ha-icon><span class="summary-text">#${i + 1} — ${summaryText}</span></span>
+          <span class="head-left"><ha-icon class="chev" icon="mdi:chevron-right"></ha-icon><span class="summary-text"></span></span>
           <div><ha-icon class="mv u" icon="mdi:arrow-up"></ha-icon><ha-icon class="mv d" icon="mdi:arrow-down"></ha-icon><ha-icon class="del" icon="mdi:delete" style="color:#d32f2f"></ha-icon></div>
         </summary>
         <div class="body">
@@ -6690,6 +6761,7 @@ if (tmplSelect) {
           <ha-card-conditions-editor class="vis-cond-editor"></ha-card-conditions-editor>
         </div>
         </div>`;
+      box.querySelector(".summary-text").textContent = `#${i + 1} — ${summaryText}`;
 
       const head = box.querySelector(".head");
       if (head) {

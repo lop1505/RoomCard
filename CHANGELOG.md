@@ -11,6 +11,7 @@ All notable changes to OneLine Room Card are documented here.
 * Editor: Expose the card-level `sparkline_refresh` interval with localized validation and a 60–3600 second range. Closes [#101](https://github.com/lop1505/RoomCard/issues/101).
 * Runtime: Make every sensor-chip icon inherit the resolved chip text color, including solid-background and alert variants. Closes [#105](https://github.com/lop1505/RoomCard/issues/105).
 * Runtime & Editor: Add `show_status_border` (default `true`) so warning outlines and glow can be disabled without hiding active sensor chips. Closes [#106](https://github.com/lop1505/RoomCard/issues/106).
+* Security: Render entity-derived labels, states, alert chips, modes, and sub-chips through DOM text APIs. Template content is text-only by default with an explicit `trusted_html: true` compatibility opt-in, and the JavaScript-template trust boundary is documented. Closes [#95](https://github.com/lop1505/RoomCard/issues/95).
 
 ---
 
