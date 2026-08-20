@@ -17,7 +17,7 @@ globalThis.customElements = {
   whenDefined: () => Promise.resolve()
 };
 
-const sourceUrl = new URL("../room-card.js", import.meta.url);
+const sourceUrl = new URL("../dist/room-card.js", import.meta.url);
 const source = await readFile(sourceUrl, "utf8");
 const moduleUrl = `data:text/javascript;base64,${Buffer.from(source).toString("base64")}`;
 await import(moduleUrl);
