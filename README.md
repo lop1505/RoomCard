@@ -18,16 +18,13 @@ Developed with a focus on stability, simple design, and maximum flexibility.
 
 ---
 
-## 🆕 What's new in 1.3.0
+## 🆕 What's new in 1.3.1
 
-* 🔢 Sensor states, header badges and climate values now respect Home Assistant's locale, units and configured display precision
-* 🌡️ Optional per-card temperature override (`temp_unit: "°C"` or `"°F"`) with correct value conversion
-* 🎨 Header text shadows and sensor-chip shadows can be disabled independently in the visual editor
-* 🚶 Presence-chip color and solid background are configurable, including automatic readable text contrast
-* 🧰 The visual editor remains usable when Home Assistant has not preloaded its internal text-field components
-* 📝 Template controls are documented with their actual JavaScript `${…}` syntax and available helpers
+* 🏠 Choose from 16 bundled room-image presets in **Configuration → Header → Image → Built-in room image**
+* 🖼️ Custom image URLs and Home Assistant uploads remain supported and take precedence over presets
+* 🔄 Display-precision, unit, device-class and locale-number-format changes now refresh immediately without waiting for the entity state to change
 
-All 1.3.0 options are available in the visual editor and remain backwards compatible with existing cards.
+All 1.3.1 options are available in the visual editor and remain backwards compatible with existing cards.
 
 ---
 
@@ -36,6 +33,7 @@ All 1.3.0 options are available in the visual editor and remain backwards compat
 **Editor**
 * 🖱️ Full visual editor — no YAML required, with live preview
 * 🖼️ Built-in image uploader — upload room backgrounds directly in the editor
+* 🏠 Built-in room-image presets — choose from 16 bundled room backgrounds without hosting your own image
 * 🧭 Quick Add — add buttons from existing entity types in one click, including `select` / `input_select`
 * 🏠 Area-Based Auto-Setup — pick a Home Assistant area and one click auto-populates climate, controls (light/switch/cover/fan/media_player/lock), temperature/humidity/window/battery sensors
 * 🖱️ Drag & drop reordering, bulk expand/collapse, collapsible button entries
@@ -97,9 +95,11 @@ All 1.3.0 options are available in the visual editor and remain backwards compat
 Or manually: HACS → Frontend → ⋮ → Custom repositories → paste URL → Category: Lovelace.
 
 ### Manual
-1. Download `room-card.js` from the [latest release](https://github.com/lop1505/RoomCard/releases)
-2. Copy to `/config/www/`
-3. Add resource: URL `/local/room-card.js` · Type: JavaScript Module
+1. Download the [latest release](https://github.com/lop1505/RoomCard/releases) and open its `dist` directory.
+2. Copy `dist/room-card.js` **and** `dist/rooms/` to `/config/www/room-card/`.
+3. Add resource: URL `/local/room-card/room-card.js` · Type: JavaScript Module.
+
+HACS installs the card and bundled room images together automatically. Existing manual installations that keep `room-card.js` directly in `/config/www/` can retain `/local/room-card.js`; copy `dist/rooms/` to `/config/www/rooms/` so the relative preset URLs remain available.
 
 ---
 
@@ -116,6 +116,7 @@ covers all settings — no YAML required.
 | `name` | — | Room name |
 | `entity` | — | Main entity (drives header icon color) |
 | `image` | — | Header background image URL |
+| `image_preset` | — | Bundled room image ID, e.g. `living-room`, `kitchen` or `bathroom`. A custom `image` URL takes precedence when both are present |
 | `show_image` | `true` | Show the header background image. `false` hides the `<img>` and dark gradient and lets the header collapse to content height while name / icon / badges / chips remain visible |
 | `image_entity` | — | Light / switch / input_boolean / group entity. When this entity is off, the header image fades to grayscale |
 | `header_height` | `120` | Header image height in px (`0` = hidden, ignored when `show_image: false`) |
@@ -131,6 +132,18 @@ covers all settings — no YAML required.
 | `global_button_background` | — | Default button background (e.g. `rgba(0,0,0,0)`) |
 | `show_card_last_activity` | `false` | Show a header badge with elapsed time since the most recently changed button entity (e.g. `5 min`, `2h 15min`). Auto-refreshes every 60 s. |
 | `sparkline_refresh` | `300` | Auto-refresh cadence for all sparkline buttons in seconds (60–3600) |
+
+#### Built-in room images
+
+Open the visual editor and go to **Configuration → Header → Image → Built-in room image**. Select a thumbnail to use it immediately. Choose **Own image** to return to the existing URL field or uploader.
+
+Available preset IDs: `living-room`, `kitchen`, `bedroom`, `bathroom`, `dining-room`, `home-office`, `childrens-room`, `hallway`, `guest-room`, `garage`, `garden-patio`, `balcony`, `basement`, `laundry-room`, `attic`, and `workshop`.
+
+```yaml
+type: custom:oneline-room-card
+name: Living room
+image_preset: living-room
+```
 
 #### Sensors & chips
 | Option | Default | Description |
