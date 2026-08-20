@@ -4,6 +4,10 @@ All notable changes to OneLine Room Card are documented here.
 
 ## [Unreleased]
 
+---
+
+## [1.4.0]
+
 * Reliability & Accessibility: Refresh templates for arbitrary dependency-attribute changes, keep template sub-chips live, preserve media-control focus, remove collapsed controls from the tab order, expose a separate collapse button when the header has another action, and rebuild already-open editors after bundle upgrades.
 * Runtime: Split full media-player controls into separate transport and volume rows, add Previous, respect `supported_features`, and keep artwork square on compact cards. Closes [#102](https://github.com/lop1505/RoomCard/issues/102).
 * Accessibility: Add keyboard activation, ARIA state and labels, visible focus, semantic inline controls, and modal focus management for the alert dialog. Closes [#97](https://github.com/lop1505/RoomCard/issues/97).

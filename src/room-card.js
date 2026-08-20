@@ -1,4 +1,4 @@
-const VERSION = "1.3.1";
+const VERSION = "1.4.0";
 const EDITOR_DOM_REVISION = "2";
 const LOG_FLAG = `customCards_RoomCard_Logged_${VERSION}`;
 

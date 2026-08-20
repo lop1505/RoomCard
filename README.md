@@ -9,29 +9,34 @@
 A clean, performant, and fully visually configurable room card for Home Assistant.
 Developed with a focus on stability, simple design, and maximum flexibility.
 
-## Screenshots
+## 📸 Screenshots
 
-**Full-width room controls**
+**🎛️ Full-width room controls**
 
 ![RoomCard with full-width controls for climate, lights, and covers](docs/images/roomcard-full-width.png)
 
-**Compact grid layout**
+**📱 Compact grid layout**
 
 ![Two compact RoomCards in a responsive grid](docs/images/roomcard-grid.png)
 
-**Collapsed view**
+**🗂️ Collapsed view**
 
 ![Collapsed RoomCard](docs/images/roomcard-collapsed.png)
 
 ---
 
-## 🆕 What's new in 1.3.1
+## 🆕 What's new in 1.4.0
 
-* 🏠 Choose from 16 bundled room-image presets in **Configuration → Header → Image → Built-in room image**
-* 🖼️ Custom image URLs and Home Assistant uploads remain supported and take precedence over presets
-* 🔄 Display-precision, unit, device-class and locale-number-format changes now refresh immediately without waiting for the entity state to change
+* 🖼️ Position header images with a visual focal-point editor and upload validated, automatically optimized JPEG, PNG, or WebP files
+* ▶️ Use improved media controls with separate transport and volume rows, Previous support, square artwork, and stable keyboard focus
+* 📈 Configure the card-level sparkline refresh interval; shared history requests and visibility-aware polling reduce background work
+* 🚨 Disable warning borders independently while keeping active sensor chips visible
+* ♿ Navigate cards, collapsed controls, dialogs, and inline actions with improved keyboard and screen-reader support
+* ⚡ Keep template controls and sub-chips current when arbitrary referenced attributes change
+* 🛡️ Render state-derived content safely by default, with trusted template HTML available only through explicit opt-in
+* 🧪 Rely on expanded runtime/editor regression coverage and stricter release/HACS validation
 
-All 1.3.1 options are available in the visual editor and remain backwards compatible with existing cards.
+All 1.4.0 options remain backwards compatible with existing cards.
 
 ---
 
