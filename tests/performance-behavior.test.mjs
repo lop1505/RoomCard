@@ -70,6 +70,77 @@ test("template dependencies are inferred or declared and avoid unrelated reevalu
   delete window.__templateEvalCount;
 });
 
+test("template dependencies react to arbitrary attribute changes", () => {
+  const config = {
+    controls: [
+      {
+        type: "template",
+        content: '${attr("weather.home", "forecast")?.[0]?.condition}'
+      },
+      {
+        type: "template",
+        weather_entity: "weather.remote",
+        content: '${attr(ctrl.weather_entity, "forecast")?.[0]?.condition}',
+        template_entities: ["weather.remote"]
+      }
+    ]
+  };
+  const card = createRenderedCard(config, createHass({
+    states: {
+      "weather.home": {
+        state: "sunny",
+        attributes: { forecast: [{ condition: "sunny" }] }
+      },
+      "weather.remote": {
+        state: "cloudy",
+        attributes: { forecast: [{ condition: "cloudy" }] }
+      }
+    }
+  }));
+  assert.deepEqual(
+    Array.from(card.shadowRoot.querySelectorAll(".btn-name"), (element) => element.textContent),
+    ["sunny", "cloudy"]
+  );
+
+  card.hass = createHass({
+    states: {
+      "weather.home": {
+        state: "sunny",
+        attributes: { forecast: [{ condition: "rainy" }] }
+      },
+      "weather.remote": {
+        state: "cloudy",
+        attributes: { forecast: [{ condition: "snowy" }] }
+      }
+    }
+  });
+  assert.deepEqual(
+    Array.from(card.shadowRoot.querySelectorAll(".btn-name"), (element) => element.textContent),
+    ["rainy", "snowy"]
+  );
+  card.remove();
+});
+
+test("template controls refresh sub-chips even when template output is unchanged", () => {
+  const config = {
+    controls: [{
+      type: "template",
+      content: "Static",
+      sub_chips: [{ entity: "sensor.sub_chip", label: "Value {state}" }]
+    }]
+  };
+  const card = createRenderedCard(config, createHass({
+    states: { "sensor.sub_chip": { state: "one", attributes: {} } }
+  }));
+  assert.equal(card.shadowRoot.querySelector(".btn-chip span").textContent, "Value one");
+
+  card.hass = createHass({
+    states: { "sensor.sub_chip": { state: "two", attributes: {} } }
+  });
+  assert.equal(card.shadowRoot.querySelector(".btn-chip span").textContent, "Value two");
+  card.remove();
+});
+
 test("multiple cards share concurrent sparkline history requests", async () => {
   SHARED_SPARKLINE_CACHE.clear();
   SHARED_SPARKLINE_PENDING.clear();

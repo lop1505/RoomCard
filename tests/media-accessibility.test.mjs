@@ -97,6 +97,82 @@ test("full media controls split transport and volume, including previous track",
   card.remove();
 });
 
+test("media controls preserve keyboard focus across state-driven rerenders", () => {
+  const entity = "media_player.focus_test";
+  const createMediaHass = (state) => createHass({
+    states: {
+      [entity]: {
+        state,
+        attributes: {
+          friendly_name: "Focus test",
+          volume_level: 0.4,
+          supported_features: 16445
+        }
+      }
+    }
+  });
+  const card = createRenderedCard({ controls: [{ entity, control_mode: "full" }] }, createMediaHass("playing"));
+  const previous = card.shadowRoot.querySelector(".media-previous");
+  previous.focus();
+  assert.equal(card.shadowRoot.activeElement, previous);
+
+  card.hass = createMediaHass("paused");
+  const replacement = card.shadowRoot.querySelector(".media-previous");
+  assert.notEqual(replacement, previous);
+  assert.equal(card.shadowRoot.activeElement, replacement);
+  card.remove();
+});
+
+test("collapsed controls are inert and return to the tab order when expanded", () => {
+  const card = createRenderedCard({
+    name: "Collapsible test",
+    collapsible: true,
+    default_state: "collapsed",
+    remember_state: false,
+    controls: [{ entity: "light.ceiling" }]
+  }, createHass({
+    states: { "light.ceiling": { state: "on", attributes: {} } }
+  }));
+  const controls = card.shadowRoot.getElementById("ctrls");
+  const collapseButton = card.shadowRoot.getElementById("collapse-btn");
+  assert.equal(collapseButton.tagName, "BUTTON");
+  assert.equal(collapseButton.tabIndex, 0);
+  assert.equal(controls.hasAttribute("inert"), true);
+  assert.equal(controls.getAttribute("aria-hidden"), "true");
+
+  collapseButton.click();
+  assert.equal(controls.hasAttribute("inert"), false);
+  assert.equal(controls.hasAttribute("aria-hidden"), false);
+  assert.equal(collapseButton.getAttribute("aria-expanded"), "true");
+  card.remove();
+});
+
+test("an explicit header action has matching semantics and a separate collapse button", () => {
+  const card = createRenderedCard({
+    name: "Navigate to room",
+    collapsible: true,
+    default_state: "expanded",
+    remember_state: false,
+    tap_action: { action: "navigate", navigation_path: "/lovelace/room" },
+    controls: []
+  }, createHass());
+  const header = card.shadowRoot.querySelector(".img-box");
+  const collapseButton = card.shadowRoot.getElementById("collapse-btn");
+  const actions = [];
+  card.addEventListener("hass-action", (event) => actions.push(event.detail));
+
+  assert.equal(header.getAttribute("aria-label"), "Navigate to room");
+  assert.equal(header.hasAttribute("aria-expanded"), false);
+  assert.match(collapseButton.getAttribute("aria-label"), /Collapse/i);
+  header.dispatchEvent(new PointerEvent("pointerup", { bubbles: true }));
+  assert.equal(actions.length, 1);
+  assert.equal(actions[0].config.tap_action.action, "navigate");
+  collapseButton.click();
+  assert.equal(actions.length, 1);
+  assert.equal(card.shadowRoot.getElementById("ctrls").hasAttribute("inert"), true);
+  card.remove();
+});
+
 test("media controls hide actions not advertised by supported_features", () => {
   const hass = createHass({
     states: {
