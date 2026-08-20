@@ -1,29 +1,40 @@
-name: HACS Action
+name: Validate
 on:
   push:
     branches:
       - main
+    tags:
+      - "v*"
   pull_request:
     branches:
       - main
   schedule:
     - cron: "0 0 * * *"
 
+permissions:
+  contents: read
+
 jobs:
-  hacs:
-    name: HACS Action
+  validate:
+    name: Build, test, and validate HACS
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
 
-      - name: Check JavaScript syntax
-        run: node --check dist/room-card.js
+      - name: Install development metadata
+        run: npm ci --ignore-scripts
 
-      - name: Test render snapshot invalidation
-        run: node scripts/test-render-signatures.mjs
+      - name: Build distribution
+        run: npm run build
+
+      - name: Verify committed distribution
+        run: git diff --exit-code -- dist/room-card.js
+
+      - name: Run checks
+        run: npm run check
 
       - name: HACS Action
-        uses: hacs/action@main
+        uses: hacs/action@1ebf01c408f29afcb6406bd431bc98fd8cbb15aa # main, reviewed 2026-08-20
         with:
           category: plugin
