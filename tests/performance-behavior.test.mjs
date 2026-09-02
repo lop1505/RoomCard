@@ -165,8 +165,8 @@ test("multiple cards share concurrent sparkline history requests", async () => {
 
   await wait(20);
   assert.equal(historyCalls, 1);
-  assert.equal(first._sparklineCache.get(`${entity}|24`).length, 2);
-  assert.equal(second._sparklineCache.get(`${entity}|24`).length, 2);
+  assert.equal(first._sparklineCache.get(`${entity}|24`).samples.length, 2);
+  assert.equal(second._sparklineCache.get(`${entity}|24`).samples.length, 2);
   first.remove();
   second.remove();
 });

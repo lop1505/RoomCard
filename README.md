@@ -223,6 +223,7 @@ window_solid_background: true
 | `show_hvac_modes` | `false` | Show HVAC mode chips for `climate` entities (uses `attributes.hvac_modes`, calls `climate.set_hvac_mode`) |
 | `show_fan_modes` | `false` | Show fan speed chips for `climate` entities (uses `attributes.fan_modes`, calls `climate.set_fan_mode`) |
 | `show_sparkline` | `false` | Show a small history line chart on `sensor` buttons |
+| `sparkline_detail` | `false` | Make an enabled sensor sparkline open a 6h/24h/7d detail dialog with current value and Min/Max/Average statistics |
 | `sparkline_hours` | `24` | Sparkline history range in hours (1–168) |
 | `show_color_favorites` | `false` | Show light color favorite swatches |
 | `color_favorites` | — | List of `#hex` or `r,g,b` colors |
@@ -290,7 +291,10 @@ controls:
 Sparkline history requests and a bounded cache are shared across RoomCard
 instances. Hidden browser tabs and off-screen cards pause polling; returning to
 a stale card triggers a refresh while preserving `sparkline_refresh` and
-`sparkline_hours` behavior.
+`sparkline_hours` behavior. Set `sparkline_detail: true` on a sensor control with
+`show_sparkline: true` to make its chart a keyboard-accessible button. The detail
+dialog reuses cached history and lets you switch between 6 hours, 24 hours, and
+7 days without changing the control's tap, hold, or double-tap actions.
 
 ## 🎨 Background Settings
 

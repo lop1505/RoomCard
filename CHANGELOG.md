@@ -8,6 +8,7 @@ All notable changes to OneLine Room Card are documented here.
 
 ## [1.4.0]
 
+* Runtime & Editor: Add opt-in `sparkline_detail` for sensor controls. Interactive sparklines now open an accessible 6h/24h/7d history dialog with the current Home Assistant-formatted value and Min/Max/Average statistics, while preserving parent control actions and shared request caching. Closes [#123](https://github.com/lop1505/RoomCard/issues/123).
 * Reliability & Accessibility: Refresh templates for arbitrary dependency-attribute changes, keep template sub-chips live, preserve media-control focus, remove collapsed controls from the tab order, expose a separate collapse button when the header has another action, and rebuild already-open editors after bundle upgrades.
 * Runtime: Split full media-player controls into separate transport and volume rows, add Previous, respect `supported_features`, and keep artwork square on compact cards. Closes [#102](https://github.com/lop1505/RoomCard/issues/102).
 * Accessibility: Add keyboard activation, ARIA state and labels, visible focus, semantic inline controls, and modal focus management for the alert dialog. Closes [#97](https://github.com/lop1505/RoomCard/issues/97).

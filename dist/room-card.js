@@ -1,5 +1,5 @@
 const VERSION = "1.4.0";
-const EDITOR_DOM_REVISION = "2";
+const EDITOR_DOM_REVISION = "3";
 const LOG_FLAG = `customCards_RoomCard_Logged_${VERSION}`;
 
 const MEDIA_PLAYER_FEATURES = Object.freeze({
@@ -329,7 +329,7 @@ const TRANSLATIONS = {
     row_type: "Row Type", type_entity: "Entity", type_template: "Template",
     tmpl_content: "Content (Template)", tmpl_icon: "Icon (Template)", tmpl_color: "Color (Template)", tmpl_state: "State (Template)", tmpl_preview: "Preview",
     tmpl_light: "Light", tmpl_switch: "Switch / Socket", tmpl_select: "Select", tmpl_climate: "Climate", tmpl_cover: "Cover / Shutter", tmpl_media: "Media Player",
-    show_state: "Show State", show_label: "Show Label", show_icon: "Show Icon", show_last_changed: "Last Changed", show_sparkline: "Show Sparkline", sparkline_hours: "History (hours)", sparkline_refresh: "Sparkline refresh (seconds)", sparkline_refresh_adjusted: "Enter 60–3600 seconds. The value was adjusted to {value}.", lc_just_now: "just now", state_first: "State First", text_layout: "Text Order", primary_text: "First line", primary_state: "State / value first", primary_name: "Name first",
+    show_state: "Show State", show_label: "Show Label", show_icon: "Show Icon", show_last_changed: "Last Changed", show_sparkline: "Show Sparkline", sparkline_detail: "Open history details", sparkline_hours: "History (hours)", sparkline_refresh: "Sparkline refresh (seconds)", sparkline_refresh_adjusted: "Enter 60–3600 seconds. The value was adjusted to {value}.", sparkline_detail_title: "History details", sparkline_loading: "Loading history…", sparkline_empty: "No history data available.", sparkline_error: "History could not be loaded.", sparkline_current: "Current", sparkline_min: "Min", sparkline_max: "Max", sparkline_average: "Average", lc_just_now: "just now", state_first: "State First", text_layout: "Text Order", primary_text: "First line", primary_state: "State / value first", primary_name: "Name first",
     height: "Height", width: "Width", align: "Align", visible: "Visible", left: "Left", center: "Center", right: "Right",
     tap_action: "Tap Action", hold_action: "Hold Action", double_tap_action: "Double Tap Action",
     actions: "Actions",
@@ -425,7 +425,7 @@ const TRANSLATIONS = {
     row_type: "Zeilentyp", type_entity: "Entität", type_template: "Template",
     tmpl_content: "Text (Template)", tmpl_icon: "Icon (Template)", tmpl_color: "Farbe (Template)", tmpl_status: "Status (Template)", tmpl_preview: "Vorschau",
     tmpl_light: "Licht", tmpl_switch: "Schalter / Steckdose", tmpl_select: "Auswahl", tmpl_climate: "Klima", tmpl_cover: "Rollladen / Abdeckung", tmpl_media: "Media Player",
-    show_state: "Status anzeigen", show_label: "Bezeichnung anzeigen", show_icon: "Icon anzeigen", show_last_changed: "Letzte Änderung", show_sparkline: "Sparkline anzeigen", sparkline_hours: "Verlauf (Stunden)", sparkline_refresh: "Sparkline-Aktualisierung (Sekunden)", sparkline_refresh_adjusted: "Bitte 60–3600 Sekunden eingeben. Der Wert wurde auf {value} angepasst.", lc_just_now: "gerade eben", state_first: "Wert zuerst", text_layout: "Text-Reihenfolge", primary_text: "Erste Zeile", primary_state: "Wert zuerst", primary_name: "Name zuerst",
+    show_state: "Status anzeigen", show_label: "Bezeichnung anzeigen", show_icon: "Icon anzeigen", show_last_changed: "Letzte Änderung", show_sparkline: "Sparkline anzeigen", sparkline_detail: "Verlaufsdetails öffnen", sparkline_hours: "Verlauf (Stunden)", sparkline_refresh: "Sparkline-Aktualisierung (Sekunden)", sparkline_refresh_adjusted: "Bitte 60–3600 Sekunden eingeben. Der Wert wurde auf {value} angepasst.", sparkline_detail_title: "Verlaufsdetails", sparkline_loading: "Verlauf wird geladen…", sparkline_empty: "Keine Verlaufsdaten verfügbar.", sparkline_error: "Verlauf konnte nicht geladen werden.", sparkline_current: "Aktuell", sparkline_min: "Min", sparkline_max: "Max", sparkline_average: "Durchschnitt", lc_just_now: "gerade eben", state_first: "Wert zuerst", text_layout: "Text-Reihenfolge", primary_text: "Erste Zeile", primary_state: "Wert zuerst", primary_name: "Name zuerst",
     height: "Höhe", width: "Breite", align: "Ausrichtung", visible: "Sichtbar", left: "Links", center: "Mitte", right: "Rechts",
     tap_action: "Antippen", hold_action: "Gedrückt halten", double_tap_action: "Doppelklick",
     actions: "Aktionen",
@@ -525,7 +525,7 @@ const TRANSLATIONS = {
     row_type: "Type de ligne", type_entity: "Entité", type_template: "Template",
     tmpl_content: "Contenu (Template)", tmpl_icon: "Icône (Template)", tmpl_color: "Couleur (Template)", tmpl_state: "État (Template)", tmpl_preview: "Aperçu",
     tmpl_light: "Lumière", tmpl_switch: "Interrupteur / Prise", tmpl_select: "Sélection", tmpl_climate: "Climatisation", tmpl_cover: "Volet / Store", tmpl_media: "Lecteur multimédia",
-    show_state: "Afficher l’état", show_label: "Afficher le libellé", show_icon: "Afficher l’icône", show_last_changed: "Dernier changement", show_sparkline: "Afficher la Sparkline", sparkline_hours: "Historique (heures)", sparkline_refresh: "Actualisation de la Sparkline (secondes)", sparkline_refresh_adjusted: "Saisissez 60 à 3600 secondes. La valeur a été ajustée à {value}.", lc_just_now: "à l’instant", state_first: "Valeur d’abord", text_layout: "Ordre du texte", primary_text: "Première ligne", primary_state: "Valeur d’abord", primary_name: "Nom d’abord",
+    show_state: "Afficher l’état", show_label: "Afficher le libellé", show_icon: "Afficher l’icône", show_last_changed: "Dernier changement", show_sparkline: "Afficher la Sparkline", sparkline_detail: "Ouvrir les détails de l’historique", sparkline_hours: "Historique (heures)", sparkline_refresh: "Actualisation de la Sparkline (secondes)", sparkline_refresh_adjusted: "Saisissez 60 à 3600 secondes. La valeur a été ajustée à {value}.", sparkline_detail_title: "Détails de l’historique", sparkline_loading: "Chargement de l’historique…", sparkline_empty: "Aucune donnée d’historique disponible.", sparkline_error: "Impossible de charger l’historique.", sparkline_current: "Actuel", sparkline_min: "Min", sparkline_max: "Max", sparkline_average: "Moyenne", lc_just_now: "à l’instant", state_first: "Valeur d’abord", text_layout: "Ordre du texte", primary_text: "Première ligne", primary_state: "Valeur d’abord", primary_name: "Nom d’abord",
     height: "Hauteur", width: "Largeur", align: "Alignement", visible: "Visible", left: "Gauche", center: "Centre", right: "Droite",
     tap_action: "Appui court", hold_action: "Appui long", double_tap_action: "Double appui",
     actions: "Actions",
@@ -999,6 +999,32 @@ const SHARED_SPARKLINE_PENDING = new Map();
 const SHARED_SPARKLINE_CACHE_LIMIT = 100;
 const SHARED_SPARKLINE_MAX_AGE_MS = 4 * 60 * 60 * 1000;
 
+const normalizeSparklineSamples = (samples) => {
+  const valid = (Array.isArray(samples) ? samples : [])
+    .filter((sample) => Number.isFinite(sample?.timestamp) && Number.isFinite(sample?.value))
+    .sort((a, b) => a.timestamp - b.timestamp);
+  if (valid.length === 0) return [];
+  if (valid.length === 1) return [{ x: 0, y: valid[0].value }, { x: 1, y: valid[0].value }];
+  const startTime = valid[0].timestamp;
+  const endTime = Math.max(valid[valid.length - 1].timestamp, startTime + 1);
+  return valid.map((sample) => ({
+    x: (sample.timestamp - startTime) / (endTime - startTime),
+    y: sample.value
+  }));
+};
+
+const getSparklineStats = (samples) => {
+  const values = (Array.isArray(samples) ? samples : [])
+    .map((sample) => sample?.value)
+    .filter(Number.isFinite);
+  if (values.length === 0) return null;
+  return {
+    min: Math.min(...values),
+    max: Math.max(...values),
+    average: values.reduce((sum, value) => sum + value, 0) / values.length
+  };
+};
+
 const pruneSharedSparklineCache = (now = Date.now()) => {
   for (const [key, entry] of SHARED_SPARKLINE_CACHE.entries()) {
     if (!entry || now - entry.lastAccess > SHARED_SPARKLINE_MAX_AGE_MS) SHARED_SPARKLINE_CACHE.delete(key);
@@ -1045,7 +1071,8 @@ class OneLineRoomCard extends HTMLElement {
     this._sparklineVisible = true;
     this._sparklineObserver = null;
     this._boundPageVisibilityChange = () => this._setupSparklineInterval();
-    this._closeAlertDialog = null;
+    this._closeDialog = null;
+    this._sparklineDialogRequest = 0;
   }
 
   connectedCallback() {
@@ -1058,8 +1085,9 @@ class OneLineRoomCard extends HTMLElement {
   }
 
   disconnectedCallback() {
-    this._closeAlertDialog?.();
-    this._closeAlertDialog = null;
+    this._closeDialog?.();
+    this._closeDialog = null;
+    this._sparklineDialogRequest += 1;
     this._activeTimers.forEach(clearTimeout);
     this._activeTimers.clear();
     if (this._lastChangedInterval) {
@@ -1169,7 +1197,7 @@ class OneLineRoomCard extends HTMLElement {
   }
 
   async _fetchSparklineData(entity, hours) {
-    if (!entity || !this._hass) return [];
+    if (!entity || !this._hass) return { samples: [], error: "unavailable" };
     const key = this._getSparklineCacheKey(entity, hours);
     if (this._sparklinePending.has(key)) return this._sparklinePending.get(key);
     const now = Date.now();
@@ -1196,7 +1224,7 @@ class OneLineRoomCard extends HTMLElement {
             no_attributes: true
           });
           const raw = result[entity] || (Array.isArray(result) && result.length > 0 ? result[0] : []);
-          const points = [];
+          const samples = [];
           for (const item of raw) {
             if (!item) continue;
             let state; let ts;
@@ -1212,19 +1240,14 @@ class OneLineRoomCard extends HTMLElement {
             if (!ts || state == null) continue;
             const value = parseFloat(String(state));
             if (Number.isNaN(value)) continue;
-            points.push({ ts: ts.getTime(), value });
+            const timestamp = ts.getTime();
+            if (!Number.isFinite(timestamp)) continue;
+            samples.push({ timestamp, value });
           }
-          if (points.length === 0) return [];
-          if (points.length === 1) {
-            const value = points[0].value;
-            return [{ x: 0, y: value }, { x: 1, y: value }];
-          }
-          const startTime = points[0].ts;
-          let endTime = points[points.length - 1].ts;
-          if (endTime === startTime) endTime = startTime + 1;
-          return points.map(p => ({ x: (p.ts - startTime) / (endTime - startTime), y: p.value }));
+          samples.sort((a, b) => a.timestamp - b.timestamp);
+          return { samples, error: null };
         } catch (err) {
-          return [];
+          return { samples: [], error: String(err?.message || err || "history_error") };
         }
       })();
       SHARED_SPARKLINE_PENDING.set(key, promise);
@@ -1255,7 +1278,7 @@ class OneLineRoomCard extends HTMLElement {
       const hours = clampNum(ctrl.sparkline_hours, 1, 168, 24);
       const key = this._getSparklineCacheKey(ctrl.entity, hours);
       requests.push(this._fetchSparklineData(ctrl.entity, hours));
-      if (!this._sparklineCache.has(key)) this._sparklineCache.set(key, []);
+      if (!this._sparklineCache.has(key)) this._sparklineCache.set(key, { samples: [], error: null });
     }
     await Promise.all(requests);
   }
@@ -1266,12 +1289,13 @@ class OneLineRoomCard extends HTMLElement {
       const btn = wrapper.closest(".btn");
       if (!btn) return;
       const stroke = getComputedStyle(btn).getPropertyValue("--icon-color") || "currentColor";
-      if (!data || data.length === 0) {
+      const points = normalizeSparklineSamples(data?.samples);
+      if (points.length === 0) {
         wrapper.style.display = "none";
         const svg = wrapper.querySelector("svg"); if (svg) svg.replaceChildren();
       } else {
         wrapper.style.display = "block";
-        this._drawSparkline(wrapper, data, stroke.trim() || "currentColor");
+        this._drawSparkline(wrapper, points, stroke.trim() || "currentColor");
       }
     });
   }
@@ -1318,9 +1342,26 @@ class OneLineRoomCard extends HTMLElement {
       btn.classList.remove("has-sparkline");
       return;
     }
+    const interactive = ctrl.sparkline_detail === true;
+    if (wrapper && ((interactive && wrapper.tagName !== "BUTTON") || (!interactive && wrapper.tagName === "BUTTON"))) {
+      wrapper.remove();
+      wrapper = null;
+    }
     if (!wrapper) {
-      wrapper = document.createElement("div");
+      wrapper = document.createElement(interactive ? "button" : "div");
       wrapper.className = "btn-sparkline";
+      if (interactive) {
+        wrapper.type = "button";
+        wrapper.addEventListener("pointerdown", (event) => event.stopPropagation());
+        wrapper.addEventListener("pointerup", (event) => event.stopPropagation());
+        wrapper.addEventListener("pointercancel", (event) => event.stopPropagation());
+        wrapper.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          this._showSparklineDialog(wrapper.dataset.sparklineEntity, Number(wrapper.dataset.sparklineHours), wrapper);
+        });
+        wrapper.addEventListener("keydown", (event) => event.stopPropagation());
+      }
       const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
       svg.setAttribute("viewBox", "0 0 100 22");
       svg.setAttribute("preserveAspectRatio", "none");
@@ -1331,16 +1372,156 @@ class OneLineRoomCard extends HTMLElement {
     wrapper.dataset.sparklineKey = key;
     wrapper.dataset.sparklineEntity = entityId || "";
     wrapper.dataset.sparklineHours = String(hours);
+    if (interactive) {
+      const stateObj = this._hass?.states?.[entityId];
+      const name = ctrl.name || stateObj?.attributes?.friendly_name || entityId;
+      wrapper.setAttribute("aria-label", `${getTranslation(this._hass, "sparkline_detail")}: ${name}`);
+    }
     const data = this._sparklineCache.has(key) ? this._sparklineCache.get(key) : undefined;
-    if (!data || data.length === 0) {
+    const points = normalizeSparklineSamples(data?.samples);
+    if (points.length === 0) {
       wrapper.style.display = "none";
     } else {
       wrapper.style.display = "block";
-      this._drawSparkline(wrapper, data, color || "currentColor");
+      this._drawSparkline(wrapper, points, color || "currentColor");
     }
     if (this._isSparklinePollingActive() && !this._sparklinePending.has(key) && !this._sparklineCache.has(key)) {
       this._fetchSparklineData(entityId, hours);
     }
+  }
+
+  _formatSparklineValue(entityId, value) {
+    const stateObj = this._hass?.states?.[entityId];
+    const numericState = Number(value).toFixed(6).replace(/\.?0+$/, "");
+    if (!stateObj) return numericState;
+    return formatEntityStateForDisplay(this._hass, { ...stateObj, state: numericState });
+  }
+
+  _showSparklineDialog(entityId, initialHours = 24, trigger) {
+    if (!entityId || !this._hass) return;
+    const stateObj = this._hass.states?.[entityId];
+    const name = stateObj?.attributes?.friendly_name || entityId;
+    const previouslyFocused = trigger || this.shadowRoot.activeElement || document.activeElement;
+    const container = document.createElement("div");
+    container.className = "sparkline-dialog-container";
+    const backdrop = document.createElement("div");
+    backdrop.className = "sparkline-dialog-backdrop";
+    backdrop.dataset.dialogBackdrop = "";
+    backdrop.setAttribute("aria-hidden", "true");
+    const panel = document.createElement("div");
+    panel.className = "sparkline-dialog";
+    panel.setAttribute("role", "dialog");
+    panel.setAttribute("aria-modal", "true");
+    panel.setAttribute("aria-labelledby", "sparkline-dialog-title");
+    const header = document.createElement("div");
+    header.className = "sparkline-dialog-header";
+    const heading = document.createElement("h2");
+    heading.id = "sparkline-dialog-title";
+    heading.textContent = `${name} · ${getTranslation(this._hass, "sparkline_detail_title")}`;
+    const closeButton = document.createElement("button");
+    closeButton.type = "button";
+    closeButton.className = "sparkline-dialog-close";
+    closeButton.setAttribute("aria-label", getTranslation(this._hass, "a11y_close"));
+    closeButton.textContent = "✕";
+    header.append(heading, closeButton);
+    const content = document.createElement("div");
+    content.className = "sparkline-dialog-content";
+    const current = document.createElement("div");
+    current.className = "sparkline-current";
+    current.textContent = `${getTranslation(this._hass, "sparkline_current")}: ${stateObj ? formatEntityStateForDisplay(this._hass, stateObj) : "—"}`;
+    const ranges = document.createElement("div");
+    ranges.className = "sparkline-ranges";
+    const rangeOptions = [{ hours: 6, label: "6h" }, { hours: 24, label: "24h" }, { hours: 168, label: "7d" }];
+    const rangeButtons = rangeOptions.map((option) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.dataset.hours = String(option.hours);
+      button.textContent = option.label;
+      ranges.appendChild(button);
+      return button;
+    });
+    const chart = document.createElement("div");
+    chart.className = "sparkline-detail-chart";
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", "0 0 100 22");
+    svg.setAttribute("preserveAspectRatio", "none");
+    svg.setAttribute("aria-hidden", "true");
+    chart.appendChild(svg);
+    const message = document.createElement("p");
+    message.className = "sparkline-dialog-message";
+    message.setAttribute("role", "status");
+    const stats = document.createElement("dl");
+    stats.className = "sparkline-stats";
+    const statNodes = {};
+    [["min", "sparkline_min"], ["max", "sparkline_max"], ["average", "sparkline_average"]].forEach(([key, labelKey]) => {
+      const item = document.createElement("div");
+      const label = document.createElement("dt");
+      label.textContent = getTranslation(this._hass, labelKey);
+      const value = document.createElement("dd");
+      value.dataset.stat = key;
+      item.append(label, value);
+      stats.appendChild(item);
+      statNodes[key] = value;
+    });
+    content.append(current, ranges, chart, message, stats);
+    panel.append(header, content);
+    container.append(backdrop, panel);
+    const style = document.createElement("style");
+    style.textContent = `
+      .sparkline-dialog-container { position:fixed; inset:0; z-index:10000; display:flex; align-items:center; justify-content:center; }
+      .sparkline-dialog-backdrop { position:absolute; inset:0; background:rgba(0,0,0,.5); cursor:pointer; }
+      .sparkline-dialog { position:relative; z-index:10001; width:90%; max-width:520px; max-height:80vh; overflow:auto; color:var(--primary-text-color); background:var(--ha-card-background, white); border-radius:14px; box-shadow:0 4px 18px rgba(0,0,0,.35); }
+      .sparkline-dialog-header { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:16px; border-bottom:1px solid var(--divider-color, rgba(0,0,0,.12)); }
+      .sparkline-dialog-header h2 { margin:0; font-size:18px; font-weight:600; }
+      .sparkline-dialog-close { width:32px; height:32px; border:0; border-radius:6px; color:inherit; background:transparent; font-size:24px; cursor:pointer; }
+      .sparkline-dialog-content { padding:16px; }
+      .sparkline-current { margin-bottom:12px; font-size:16px; font-weight:600; }
+      .sparkline-ranges { display:flex; gap:8px; margin-bottom:14px; }
+      .sparkline-ranges button { min-width:52px; padding:7px 12px; border:1px solid var(--divider-color, rgba(0,0,0,.2)); border-radius:999px; color:inherit; background:transparent; cursor:pointer; }
+      .sparkline-ranges button[aria-pressed="true"] { color:var(--text-primary-color, white); background:var(--primary-color, #03a9f4); border-color:var(--primary-color, #03a9f4); }
+      .sparkline-detail-chart { min-height:148px; display:flex; align-items:center; padding:12px; border-radius:12px; background:rgba(128,128,128,.08); }
+      .sparkline-detail-chart svg { width:100%; height:124px; overflow:visible; }
+      .sparkline-dialog-message { min-height:20px; margin:10px 0 0; color:var(--secondary-text-color); }
+      .sparkline-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:14px 0 0; }
+      .sparkline-stats div { padding:10px; border-radius:10px; background:rgba(128,128,128,.08); }
+      .sparkline-stats dt { font-size:12px; color:var(--secondary-text-color); }
+      .sparkline-stats dd { margin:4px 0 0; font-weight:600; }
+      .sparkline-dialog button:focus-visible { outline:2px solid var(--primary-color, #03a9f4); outline-offset:2px; }
+    `;
+    container.appendChild(style);
+    this._openDialog(container, panel, closeButton, previouslyFocused, () => { this._sparklineDialogRequest += 1; });
+
+    const loadRange = async (hours) => {
+      const requestId = ++this._sparklineDialogRequest;
+      panel.setAttribute("aria-busy", "true");
+      message.textContent = getTranslation(this._hass, "sparkline_loading");
+      chart.style.display = "none";
+      stats.style.display = "none";
+      rangeButtons.forEach((button) => button.setAttribute("aria-pressed", String(Number(button.dataset.hours) === hours)));
+      const data = await this._fetchSparklineData(entityId, hours);
+      if (requestId !== this._sparklineDialogRequest || !container.isConnected) return;
+      panel.removeAttribute("aria-busy");
+      const points = normalizeSparklineSamples(data?.samples);
+      if (data?.error) {
+        message.textContent = getTranslation(this._hass, "sparkline_error");
+        return;
+      }
+      if (points.length === 0) {
+        message.textContent = getTranslation(this._hass, "sparkline_empty");
+        return;
+      }
+      message.textContent = "";
+      chart.style.display = "flex";
+      stats.style.display = "grid";
+      this._drawSparkline(chart, points, "var(--primary-color, #03a9f4)");
+      const values = getSparklineStats(data.samples);
+      statNodes.min.textContent = this._formatSparklineValue(entityId, values.min);
+      statNodes.max.textContent = this._formatSparklineValue(entityId, values.max);
+      statNodes.average.textContent = this._formatSparklineValue(entityId, values.average);
+    };
+    rangeButtons.forEach((button) => button.addEventListener("click", () => loadRange(Number(button.dataset.hours))));
+    const supportedInitialHours = rangeOptions.some((option) => option.hours === Number(initialHours)) ? Number(initialHours) : 24;
+    loadRange(supportedInitialHours);
   }
 
   getCardSize() {
@@ -1393,7 +1574,9 @@ class OneLineRoomCard extends HTMLElement {
         .chip.custom { background: var(--chip-bg); color: var(--chip-color); }
         .controls { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px; }
         .btn.has-sparkline { height: auto; align-items: stretch; overflow: visible; flex-wrap: wrap; padding-bottom: 6px; }
-        .btn-sparkline { width: 100%; flex: 0 0 100%; order: 99; align-self: stretch; min-height: 28px; margin-top: 6px; display: flex; align-items: center; padding: 4px 6px; border-radius: 12px; background: rgba(255,255,255,0.06); box-sizing: border-box; }
+        .btn-sparkline { width: 100%; flex: 0 0 100%; order: 99; align-self: stretch; min-height: 28px; margin-top: 6px; display: flex; align-items: center; padding: 4px 6px; border: 0; border-radius: 12px; color: inherit; font: inherit; background: rgba(255,255,255,0.06); box-sizing: border-box; }
+        button.btn-sparkline { cursor: pointer; }
+        button.btn-sparkline:focus-visible { outline: 2px solid var(--primary-color, #03a9f4); outline-offset: 2px; }
         .btn-sparkline svg { width: 100%; height: 22px; display: block; overflow: visible; }
         .btn-sparkline polyline { fill: none; vector-effect: non-scaling-stroke; }
         .btn { position: relative; display: flex; align-items: center; gap: 10px; padding: 0 10px; border-radius: 12px; cursor: pointer; background: var(--rc-btn-bg, var(--btn-bg, var(--card-background-color, rgba(128,128,128,0.05)))); border: 1px solid transparent; flex-grow: 1; flex-shrink: 1; min-width: 0; overflow: hidden; box-sizing: border-box; transition: background 0.2s; user-select: none; -webkit-user-select: none; touch-action: manipulation; -webkit-tap-highlight-color: transparent; flex-basis: var(--btn-flex-basis, auto); height: var(--btn-height, 60px); justify-content: var(--btn-justify, center); }
@@ -1673,14 +1856,57 @@ class OneLineRoomCard extends HTMLElement {
     return activeStates.includes(current);
   }
 
+  _openDialog(container, panel, closeButton, previouslyFocused, onClose) {
+    this._closeDialog?.(false);
+    this.shadowRoot.appendChild(container);
+    let closing = false;
+    const closeDialog = (restoreFocus = true) => {
+      if (closing) return;
+      closing = true;
+      document.removeEventListener("keydown", handleKeydown);
+      container.remove();
+      onClose?.();
+      if (this._closeDialog === closeDialog) this._closeDialog = null;
+      if (restoreFocus && previouslyFocused?.isConnected && typeof previouslyFocused.focus === "function") {
+        const focusTimer = setTimeout(() => {
+          this._activeTimers.delete(focusTimer);
+          previouslyFocused.focus();
+        }, 0);
+        this._activeTimers.add(focusTimer);
+      }
+    };
+    const handleKeydown = (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeDialog();
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const focusable = Array.from(panel.querySelectorAll("button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])"));
+      if (focusable.length === 0) return;
+      const currentIndex = focusable.indexOf(this.shadowRoot.activeElement);
+      const nextIndex = event.shiftKey
+        ? (currentIndex <= 0 ? focusable.length - 1 : currentIndex - 1)
+        : (currentIndex < 0 || currentIndex === focusable.length - 1 ? 0 : currentIndex + 1);
+      event.preventDefault();
+      focusable[nextIndex].focus();
+    };
+    this._closeDialog = closeDialog;
+    closeButton.addEventListener("click", closeDialog);
+    container.querySelector("[data-dialog-backdrop]")?.addEventListener("click", closeDialog);
+    document.addEventListener("keydown", handleKeydown);
+    closeButton.focus();
+    return closeDialog;
+  }
+
   _showAlertDialog(alerts) {
-    this._closeAlertDialog?.();
     const previouslyFocused = this.shadowRoot.activeElement || document.activeElement;
     const container = document.createElement("div");
     container.className = "alert-dialog-container";
 
     const backdrop = document.createElement("div");
     backdrop.className = "alert-dialog-backdrop";
+    backdrop.dataset.dialogBackdrop = "";
     backdrop.setAttribute("aria-hidden", "true");
 
     const panel = document.createElement("div");
@@ -1746,49 +1972,7 @@ class OneLineRoomCard extends HTMLElement {
       .alert-entity-state { font-size: 12px; color: var(--secondary-text-color, #888); text-transform: capitalize; }
     `;
     container.appendChild(style);
-    this.shadowRoot.appendChild(container);
-
-    let closing = false;
-    const closeDialog = () => {
-      if (closing && !container.isConnected) return;
-      closing = true;
-      document.removeEventListener("keydown", handleKeydown);
-      container.remove();
-      if (this._closeAlertDialog === closeDialog) this._closeAlertDialog = null;
-      if (previouslyFocused?.isConnected && typeof previouslyFocused.focus === "function") {
-        const focusTimer = setTimeout(() => {
-          this._activeTimers.delete(focusTimer);
-          previouslyFocused.focus();
-        }, 0);
-        this._activeTimers.add(focusTimer);
-      }
-    };
-    this._closeAlertDialog = closeDialog;
-    const handleKeydown = (e) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        const closeTimer = setTimeout(() => {
-          this._activeTimers.delete(closeTimer);
-          closeDialog();
-        }, 0);
-        this._activeTimers.add(closeTimer);
-        return;
-      }
-      if (e.key === "Tab") {
-        const focusable = [closeButton, ...list.querySelectorAll("button")];
-        if (focusable.length === 0) return;
-        const current = this.shadowRoot.activeElement;
-        const currentIndex = focusable.indexOf(current);
-        const nextIndex = e.shiftKey
-          ? (currentIndex <= 0 ? focusable.length - 1 : currentIndex - 1)
-          : (currentIndex < 0 || currentIndex === focusable.length - 1 ? 0 : currentIndex + 1);
-        e.preventDefault();
-        focusable[nextIndex].focus();
-      }
-    };
-    closeButton.addEventListener("click", closeDialog);
-    backdrop.addEventListener("click", closeDialog);
-    document.addEventListener("keydown", handleKeydown);
+    const closeDialog = this._openDialog(container, panel, closeButton, previouslyFocused);
     list.querySelectorAll(".alert-entity-row").forEach(row => {
       row.addEventListener("click", () => {
         const entityId = row.dataset.entity;
@@ -1798,7 +1982,6 @@ class OneLineRoomCard extends HTMLElement {
         closeDialog();
       });
     });
-    closeButton.focus();
   }
 
   _getRenderMetaSignature(hass) {
@@ -6897,7 +7080,7 @@ if (tmplSelect) {
           <oneline-room-card-textfield class="ts" label="${getTranslation(h, "tmpl_state")}"></oneline-room-card-textfield>
           <div class="tmpl-preview"><span>${getTranslation(h, "tmpl_preview")}:</span> <ha-icon class="tp-ic"></ha-icon> <span class="tp-tx"></span></div>
         </details>
-        <div class="row" style="margin-top:8px; align-items:center"><ha-selector class="al" label="${getTranslation(h, "align")}"></ha-selector><ha-selector class="lp" label="${getTranslation(h, "label_position")}"></ha-selector><ha-selector class="tl" label="${getTranslation(h, "text_layout")}"></ha-selector><ha-formfield label="${getTranslation(h, "show_state")}"><ha-switch class="ss" checked></ha-switch></ha-formfield><ha-formfield label="${getTranslation(h, "show_label")}"><ha-switch class="sl" checked></ha-switch></ha-formfield><ha-formfield label="${getTranslation(h, "show_icon")}"><ha-switch class="si" checked></ha-switch></ha-formfield><ha-formfield label="${getTranslation(h, "show_last_changed")}"><ha-switch class="slc"></ha-switch></ha-formfield><ha-formfield label="${getTranslation(h, "show_sparkline")}"><ha-switch class="sps"></ha-switch></ha-formfield><oneline-room-card-textfield class="sh" label="${getTranslation(h, "sparkline_hours")}" type="number" placeholder="24" style="max-width:120px"></oneline-room-card-textfield><ha-formfield label="${getTranslation(h, "visible")}"><ha-switch class="hd" checked></ha-switch></ha-formfield></div>
+        <div class="row" style="margin-top:8px; align-items:center"><ha-selector class="al" label="${getTranslation(h, "align")}"></ha-selector><ha-selector class="lp" label="${getTranslation(h, "label_position")}"></ha-selector><ha-selector class="tl" label="${getTranslation(h, "text_layout")}"></ha-selector><ha-formfield label="${getTranslation(h, "show_state")}"><ha-switch class="ss" checked></ha-switch></ha-formfield><ha-formfield label="${getTranslation(h, "show_label")}"><ha-switch class="sl" checked></ha-switch></ha-formfield><ha-formfield label="${getTranslation(h, "show_icon")}"><ha-switch class="si" checked></ha-switch></ha-formfield><ha-formfield label="${getTranslation(h, "show_last_changed")}"><ha-switch class="slc"></ha-switch></ha-formfield><ha-formfield label="${getTranslation(h, "show_sparkline")}"><ha-switch class="sps"></ha-switch></ha-formfield><oneline-room-card-textfield class="sh" label="${getTranslation(h, "sparkline_hours")}" type="number" placeholder="24" style="max-width:120px"></oneline-room-card-textfield><ha-formfield class="spd-wrap" label="${getTranslation(h, "sparkline_detail")}" style="display:${r_dom === "sensor" && ctrl.show_sparkline === true ? "inline-flex" : "none"}"><ha-switch class="spd"></ha-switch></ha-formfield><ha-formfield label="${getTranslation(h, "visible")}"><ha-switch class="hd" checked></ha-switch></ha-formfield></div>
         <div class="entity-only ${hideEntity}" style="margin-top:12px; border-top:1px solid var(--divider-color); padding-top:12px">
            <oneline-room-card-textfield class="isz" label="${getTranslation(h, "icon_size")}" type="number" style="max-width:120px" placeholder="20"></oneline-room-card-textfield>
            <ha-selector class="cm" label="${getTranslation(h, "control_mode")}"></ha-selector>
@@ -7640,7 +7823,17 @@ const tl = box.querySelector(".tl");
       const sps = box.querySelector(".sps");
       if (sps) {
         sps.checked = ctrl.show_sparkline === true;
-        sps.addEventListener("change", e => { e.stopPropagation(); upd("show_sparkline", e.target.checked === true ? true : undefined); });
+        sps.addEventListener("change", e => {
+          e.stopPropagation();
+          const detailWrap = box.querySelector(".spd-wrap");
+          if (detailWrap) detailWrap.style.display = r_dom === "sensor" && e.target.checked === true ? "inline-flex" : "none";
+          upd("show_sparkline", e.target.checked === true ? true : undefined);
+        });
+      }
+      const spd = box.querySelector(".spd");
+      if (spd) {
+        spd.checked = ctrl.sparkline_detail === true;
+        spd.addEventListener("change", e => { e.stopPropagation(); upd("sparkline_detail", e.target.checked === true ? true : undefined); });
       }
       const sh = box.querySelector(".sh");
       if (sh) {
