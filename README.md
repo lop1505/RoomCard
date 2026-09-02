@@ -79,6 +79,7 @@ All 1.4.0 options remain backwards compatible with existing cards.
 * 💨 Fan speed chips (`show_fan_modes`) — tappable chips for `attributes.fan_modes`
 * 📈 Sensor sparklines (`show_sparkline`) — tiny line charts on sensor buttons; configurable history (`sparkline_hours`) and refresh cadence (`sparkline_refresh`)
 * 🎬 Room Modes (`room_modes`) — horizontally scrollable scene/script shortcuts with optional active-state highlighting
+* 🖼️ Adaptive header images (`adaptive_images`) — first-match condition rules with per-image focal points
 * 📐 Cover position presets — tap-to-set position presets (default: 0% / 50% / 100%)
 * 🎨 State-dependent colors (`color_map`) — icon color and background by entity state
 * 💡 Dynamic state icons — auto icon per state for Light, Switch, Fan, Lock, Cover, Media Player
@@ -131,6 +132,7 @@ covers all settings — no YAML required.
 | `image` | — | Header background image URL |
 | `image_preset` | — | Bundled room image ID, e.g. `living-room`, `kitchen` or `bathroom`. A custom `image` URL takes precedence when both are present |
 | `image_position` | `50% 50%` | Header image focal point as horizontal and vertical percentages, e.g. `40% 65%` |
+| `adaptive_images` | — | Ordered condition rules that temporarily replace the fallback `image` / `image_preset` and may define their own `image_position` |
 | `show_image` | `true` | Show the header background image. `false` hides the `<img>` and dark gradient and lets the header collapse to content height while name / icon / badges / chips remain visible |
 | `image_entity` | — | Light / switch / input_boolean / group entity. When this entity is off, the header image fades to grayscale |
 | `header_height` | `120` | Header image height in px (`0` = hidden, ignored when `show_image: false`) |
@@ -197,6 +199,38 @@ The generation and usage record for the bundled images is documented in [docs/ro
 type: custom:oneline-room-card
 name: Living room
 image_preset: living-room
+```
+
+#### Adaptive header images
+
+Adaptive images are evaluated in editor order; the first valid matching rule
+wins. If no rule matches—or a rule is incomplete—the existing `image`,
+`image_preset`, and `image_position` remain the fallback. Only the selected image
+is preloaded, and late image responses cannot replace a newer selection.
+
+Configure rules under **Configuration → Header → Image → Adaptive images**.
+Each rule supports a custom URL, Home Assistant upload or bundled preset, its own
+focal point, and Home Assistant-style state, numeric, time, screen, user, and
+nested `and` / `or` / `not` conditions.
+
+```yaml
+type: custom:oneline-room-card
+name: Living room
+image_preset: living-room
+image_position: 50% 50%
+adaptive_images:
+  - name: Evening
+    conditions:
+      - condition: time
+        after: "18:00:00"
+    image: /local/rooms/living-room-evening.jpg
+    image_position: 55% 45%
+  - name: Occupied
+    conditions:
+      - condition: state
+        entity: binary_sensor.living_room_occupancy
+        state: "on"
+    image_preset: living-room
 ```
 
 #### Sensors & chips

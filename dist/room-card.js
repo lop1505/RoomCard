@@ -1,5 +1,5 @@
 const VERSION = "1.4.0";
-const EDITOR_DOM_REVISION = "4";
+const EDITOR_DOM_REVISION = "5";
 const LOG_FLAG = `customCards_RoomCard_Logged_${VERSION}`;
 
 const MEDIA_PLAYER_FEATURES = Object.freeze({
@@ -58,7 +58,12 @@ const ROOM_IMAGE_PRESET_MAP = new Map(ROOM_IMAGE_PRESETS.map((preset) => [preset
 const getRoomImagePresetUrl = (presetId) => {
   const preset = ROOM_IMAGE_PRESET_MAP.get(String(presetId || ""));
   if (!preset) return "";
-  const url = new URL(`./rooms/${preset.file}`, import.meta.url);
+  let url;
+  try {
+    url = new URL(`./rooms/${preset.file}`, import.meta.url);
+  } catch (_error) {
+    url = new URL(`./rooms/${preset.file}`, globalThis.location?.href || "http://localhost/");
+  }
   url.searchParams.set("v", VERSION);
   return url.href;
 };
@@ -67,6 +72,115 @@ const resolveRoomImageUrl = (config) => {
   const customImage = typeof config?.image === "string" ? config.image.trim() : "";
   if (customImage) return customImage;
   return getRoomImagePresetUrl(config?.image_preset);
+};
+
+const parseTimeOfDay = (value) => {
+  const match = typeof value === "string" ? value.trim().match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/) : null;
+  if (!match) return null;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  const seconds = Number(match[3] || 0);
+  if (hours > 23 || minutes > 59 || seconds > 59) return null;
+  return (hours * 3600) + (minutes * 60) + seconds;
+};
+
+const evaluateAdaptiveImageCondition = (condition, hass, now = new Date()) => {
+  if (!condition || typeof condition !== "object") return { valid: false, active: false };
+  const type = condition.condition;
+  if (type === "state") {
+    const entity = trimStr(condition.entity);
+    if (!entity) return { valid: false, active: false };
+    const stateObj = hass?.states?.[entity];
+    if (!stateObj || isEntityOffline(stateObj)) return { valid: false, active: false };
+    const current = String(stateObj.state ?? "");
+    if (condition.state_not !== undefined && trimStr(String(condition.state_not)) !== "") {
+      const excluded = (Array.isArray(condition.state_not) ? condition.state_not : [condition.state_not]).map(String);
+      return { valid: true, active: !excluded.includes(current) };
+    }
+    const expected = (Array.isArray(condition.state) ? condition.state : [condition.state])
+      .filter((value) => value !== undefined && trimStr(String(value)) !== "")
+      .map(String);
+    return expected.length > 0 ? { valid: true, active: expected.includes(current) } : { valid: false, active: false };
+  }
+  if (type === "numeric_state") {
+    const entity = trimStr(condition.entity);
+    const resolveThreshold = (threshold) => {
+      const raw = trimStr(String(threshold ?? ""));
+      if (!raw) return null;
+      const direct = Number(raw);
+      if (Number.isFinite(direct)) return direct;
+      const entityValue = Number(hass?.states?.[raw]?.state);
+      return Number.isFinite(entityValue) ? entityValue : null;
+    };
+    const above = resolveThreshold(condition.above);
+    const below = resolveThreshold(condition.below);
+    const stateObj = entity ? hass?.states?.[entity] : null;
+    const value = Number(stateObj?.state);
+    if (!entity || (above === null && below === null) || !stateObj || isEntityOffline(stateObj) || !Number.isFinite(value)) return { valid: false, active: false };
+    return { valid: true, active: (above === null || value > above) && (below === null || value < below) };
+  }
+  if (type === "time") {
+    const after = condition.after === undefined ? null : parseTimeOfDay(condition.after);
+    const before = condition.before === undefined ? null : parseTimeOfDay(condition.before);
+    const weekdays = Array.isArray(condition.weekday) ? condition.weekday.map((day) => String(day).toLowerCase()) : [];
+    const weekdayNames = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+    if (after === null && before === null && weekdays.length === 0) return { valid: false, active: false };
+    if ((condition.after !== undefined && after === null) || (condition.before !== undefined && before === null)) return { valid: false, active: false };
+    if (weekdays.some((day) => !weekdayNames.includes(day))) return { valid: false, active: false };
+    const current = (now.getHours() * 3600) + (now.getMinutes() * 60) + now.getSeconds();
+    const timeActive = after !== null && before !== null && after > before
+      ? current > after || current < before
+      : (after === null || current > after) && (before === null || current < before);
+    return { valid: true, active: timeActive && (weekdays.length === 0 || weekdays.includes(weekdayNames[now.getDay()])) };
+  }
+  if (type === "screen") {
+    const query = trimStr(condition.media_query);
+    if (!query || typeof window.matchMedia !== "function") return { valid: false, active: false };
+    try { return { valid: true, active: window.matchMedia(query).matches }; }
+    catch (_error) { return { valid: false, active: false }; }
+  }
+  if (type === "user") {
+    if (!Array.isArray(condition.users) || condition.users.length === 0 || !hass?.user?.id) return { valid: false, active: false };
+    return { valid: true, active: condition.users.includes(hass.user.id) };
+  }
+  if (["and", "or", "not"].includes(type)) {
+    if (!Array.isArray(condition.conditions) || condition.conditions.length === 0) return { valid: false, active: false };
+    const nested = condition.conditions.map((item) => evaluateAdaptiveImageCondition(item, hass, now));
+    if (nested.some((result) => !result.valid)) return { valid: false, active: false };
+    if (type === "and") return { valid: true, active: nested.every((result) => result.active) };
+    if (type === "or") return { valid: true, active: nested.some((result) => result.active) };
+    return { valid: true, active: nested.every((result) => !result.active) };
+  }
+  return { valid: false, active: false };
+};
+
+const evaluateAdaptiveImageConditions = (conditions, hass, now = new Date()) => {
+  if (!Array.isArray(conditions) || conditions.length === 0) return { valid: false, active: false };
+  const results = conditions.map((condition) => evaluateAdaptiveImageCondition(condition, hass, now));
+  return { valid: results.every((result) => result.valid), active: results.every((result) => result.valid && result.active) };
+};
+
+const resolveAdaptiveRoomImage = (config, hass, now = new Date()) => {
+  const fallback = {
+    url: resolveRoomImageUrl(config),
+    position: parseImagePosition(config?.image_position).value,
+    ruleIndex: -1
+  };
+  const rules = Array.isArray(config?.adaptive_images) ? config.adaptive_images : [];
+  for (let index = 0; index < rules.length; index += 1) {
+    const rule = rules[index];
+    if (!rule || typeof rule !== "object") continue;
+    const condition = evaluateAdaptiveImageConditions(rule.conditions, hass, now);
+    if (!condition.valid || !condition.active) continue;
+    const url = resolveRoomImageUrl(rule);
+    if (!url) continue;
+    return {
+      url,
+      position: parseImagePosition(rule.image_position || config?.image_position).value,
+      ruleIndex: index
+    };
+  }
+  return fallback;
 };
 
 if (!window[LOG_FLAG]) {
@@ -382,6 +496,7 @@ const TRANSLATIONS = {
     info_line_position: "Info Line Position", info_position_header: "Inside header (default)", info_position_below: "Below header",
     last_activity_title: "Last Activity", last_activity_show: "Show last activity",
     room_modes: "Room Modes", room_modes_help: "Run scenes or scripts directly from the room card.", room_mode_add: "Add Room Mode", room_mode_entity: "Scene or script", room_mode_active_when: "Active when", room_mode_remove: "Remove mode", room_mode_up: "Move mode up", room_mode_down: "Move mode down",
+    adaptive_images: "Adaptive images", adaptive_images_help: "The first matching rule replaces the fallback header image.", adaptive_image_add: "Add image rule", adaptive_image_name: "Rule name (optional)", adaptive_image_conditions: "Conditions", adaptive_image_preset: "Built-in image", adaptive_image_custom: "Custom URL / upload", adaptive_image_duplicate: "Duplicate image rule", adaptive_image_remove: "Remove image rule", adaptive_image_up: "Move image rule up", adaptive_image_down: "Move image rule down", adaptive_image_position: "Rule focal point",
     a11y_close: "Close", a11y_previous_track: "Previous track", a11y_play_pause: "Play or pause", a11y_next_track: "Next track",
     a11y_mute: "Mute or unmute", a11y_volume: "Volume", a11y_expand: "Expand room controls", a11y_collapse: "Collapse room controls",
     a11y_activate: "Activate {name}", a11y_set_value: "Set {name}", a11y_select_option: "Select {name}"
@@ -483,6 +598,7 @@ const TRANSLATIONS = {
     info_line_position: "Info-Zeile Position", info_position_header: "Im Header (Standard)", info_position_below: "Unter dem Header",
     last_activity_title: "Letzte Aktivität", last_activity_show: "Letzte Aktivität anzeigen",
     room_modes: "Raum-Modi", room_modes_help: "Szenen oder Skripte direkt über die Raumkarte starten.", room_mode_add: "Raum-Modus hinzufügen", room_mode_entity: "Szene oder Skript", room_mode_active_when: "Aktiv wenn", room_mode_remove: "Modus entfernen", room_mode_up: "Modus nach oben", room_mode_down: "Modus nach unten",
+    adaptive_images: "Adaptive Bilder", adaptive_images_help: "Die erste passende Regel ersetzt das Standardbild im Header.", adaptive_image_add: "Bildregel hinzufügen", adaptive_image_name: "Regelname (optional)", adaptive_image_conditions: "Bedingungen", adaptive_image_preset: "Integriertes Bild", adaptive_image_custom: "Eigene URL / Upload", adaptive_image_duplicate: "Bildregel duplizieren", adaptive_image_remove: "Bildregel entfernen", adaptive_image_up: "Bildregel nach oben", adaptive_image_down: "Bildregel nach unten", adaptive_image_position: "Bildfokus der Regel",
     a11y_close: "Schließen", a11y_previous_track: "Vorheriger Titel", a11y_play_pause: "Wiedergabe oder Pause", a11y_next_track: "Nächster Titel",
     a11y_mute: "Stumm schalten oder Ton einschalten", a11y_volume: "Lautstärke", a11y_expand: "Raumsteuerung aufklappen", a11y_collapse: "Raumsteuerung zuklappen",
     a11y_activate: "{name} bedienen", a11y_set_value: "{name} einstellen", a11y_select_option: "{name} auswählen"
@@ -577,6 +693,7 @@ const TRANSLATIONS = {
     info_line_position: "Position ligne info", info_position_header: "Dans l'en-tête (défaut)", info_position_below: "Sous l'en-tête",
     last_activity_title: "Dernière activité", last_activity_show: "Afficher la dernière activité",
     room_modes: "Modes de pièce", room_modes_help: "Lancer des scènes ou des scripts depuis la carte de pièce.", room_mode_add: "Ajouter un mode", room_mode_entity: "Scène ou script", room_mode_active_when: "Actif lorsque", room_mode_remove: "Supprimer le mode", room_mode_up: "Déplacer vers le haut", room_mode_down: "Déplacer vers le bas",
+    adaptive_images: "Images adaptatives", adaptive_images_help: "La première règle correspondante remplace l’image d’en-tête par défaut.", adaptive_image_add: "Ajouter une règle d’image", adaptive_image_name: "Nom de la règle (facultatif)", adaptive_image_conditions: "Conditions", adaptive_image_preset: "Image intégrée", adaptive_image_custom: "URL personnalisée / import", adaptive_image_duplicate: "Dupliquer la règle d’image", adaptive_image_remove: "Supprimer la règle d’image", adaptive_image_up: "Monter la règle d’image", adaptive_image_down: "Descendre la règle d’image", adaptive_image_position: "Point focal de la règle",
     a11y_close: "Fermer", a11y_previous_track: "Piste précédente", a11y_play_pause: "Lecture ou pause", a11y_next_track: "Piste suivante",
     a11y_mute: "Couper ou rétablir le son", a11y_volume: "Volume", a11y_expand: "Développer les commandes", a11y_collapse: "Réduire les commandes",
     a11y_activate: "Activer {name}", a11y_set_value: "Régler {name}", a11y_select_option: "Sélectionner {name}"
@@ -1002,6 +1119,9 @@ const getConditionEntityDependencies = (conditions) => {
   const visit = (condition) => {
     if (!condition || typeof condition !== "object") return;
     if (typeof condition.entity === "string" && condition.entity.trim()) ids.add(condition.entity.trim());
+    [condition.above, condition.below].forEach((value) => {
+      if (typeof value === "string" && /^[a-z0-9_]+\.[a-z0-9_]+$/i.test(value.trim())) ids.add(value.trim());
+    });
     if (Array.isArray(condition.conditions)) condition.conditions.forEach(visit);
   };
   (Array.isArray(conditions) ? conditions : [conditions]).forEach(visit);
@@ -1135,12 +1255,15 @@ class OneLineRoomCard extends HTMLElement {
     this._boundPageVisibilityChange = () => this._setupSparklineInterval();
     this._closeDialog = null;
     this._sparklineDialogRequest = 0;
+    this._headerImageRequest = 0;
+    this._adaptiveMediaQueries = [];
   }
 
   connectedCallback() {
     document.addEventListener("visibilitychange", this._boundPageVisibilityChange);
     this._setupSparklineVisibilityObserver();
     if (this.config) {
+      this._setupAdaptiveMediaQueries();
       this._setupLastChangedInterval();
       this._setupSparklineInterval();
     }
@@ -1150,6 +1273,7 @@ class OneLineRoomCard extends HTMLElement {
     this._closeDialog?.();
     this._closeDialog = null;
     this._sparklineDialogRequest += 1;
+    this._headerImageRequest += 1;
     this._activeTimers.forEach(clearTimeout);
     this._activeTimers.clear();
     if (this._lastChangedInterval) {
@@ -1164,6 +1288,7 @@ class OneLineRoomCard extends HTMLElement {
     this._sparklineObserver?.disconnect();
     this._sparklineObserver = null;
     this._sparklinePending.clear();
+    this._clearAdaptiveMediaQueries();
   }
 
   _setupSparklineVisibilityObserver() {
@@ -1219,6 +1344,7 @@ class OneLineRoomCard extends HTMLElement {
     this._templateDependencyEntityIds = null;
     if (!this.content) this.render();
     this.updateContent();
+    this._setupAdaptiveMediaQueries();
     this._setupLastChangedInterval();
     this._setupSparklineInterval();
   }
@@ -1233,6 +1359,36 @@ class OneLineRoomCard extends HTMLElement {
     if (hasLastChanged || hasCardLastActivity) {
       this._lastChangedInterval = setInterval(() => { this.updateContent(); }, 60000);
     }
+  }
+
+  _clearAdaptiveMediaQueries() {
+    (this._adaptiveMediaQueries || []).forEach(({ query, listener }) => {
+      if (typeof query.removeEventListener === "function") query.removeEventListener("change", listener);
+      else query.removeListener?.(listener);
+    });
+    this._adaptiveMediaQueries = [];
+  }
+
+  _setupAdaptiveMediaQueries() {
+    this._clearAdaptiveMediaQueries();
+    if (typeof window.matchMedia !== "function") return;
+    const queries = new Set();
+    const visit = (condition) => {
+      if (!condition || typeof condition !== "object") return;
+      if (condition.condition === "screen" && trimStr(condition.media_query)) queries.add(trimStr(condition.media_query));
+      if (Array.isArray(condition.conditions)) condition.conditions.forEach(visit);
+    };
+    (Array.isArray(this.config?.adaptive_images) ? this.config.adaptive_images : [])
+      .forEach((rule) => (Array.isArray(rule?.conditions) ? rule.conditions : []).forEach(visit));
+    queries.forEach((mediaQuery) => {
+      try {
+        const query = window.matchMedia(mediaQuery);
+        const listener = () => this.updateContent();
+        if (typeof query.addEventListener === "function") query.addEventListener("change", listener);
+        else query.addListener?.(listener);
+        this._adaptiveMediaQueries.push({ query, listener });
+      } catch (_error) { }
+    });
   }
 
   _hasSparklineControls() {
@@ -1800,6 +1956,16 @@ class OneLineRoomCard extends HTMLElement {
     return controls.some((ctrl) => !ctrl?.hide && ctrl?.type === "template" && templateNeedsEveryHassUpdate(ctrl));
   }
 
+  _hasAdaptiveEnvironmentCondition() {
+    const visit = (condition) => {
+      if (!condition || typeof condition !== "object") return false;
+      if (["time", "screen", "user"].includes(condition.condition)) return true;
+      return Array.isArray(condition.conditions) && condition.conditions.some(visit);
+    };
+    return (Array.isArray(this.config?.adaptive_images) ? this.config.adaptive_images : [])
+      .some((rule) => Array.isArray(rule?.conditions) && rule.conditions.some(visit));
+  }
+
   _getTemplateDependencyEntityIds() {
     const ids = new Set();
     const add = (entityId) => {
@@ -1831,6 +1997,9 @@ class OneLineRoomCard extends HTMLElement {
     (Array.isArray(cfg.room_modes) ? cfg.room_modes : []).forEach((mode) => {
       add(mode?.entity);
       getConditionEntityDependencies(mode?.active_when).forEach(add);
+    });
+    (Array.isArray(cfg.adaptive_images) ? cfg.adaptive_images : []).forEach((rule) => {
+      getConditionEntityDependencies(rule?.conditions).forEach(add);
     });
     (Array.isArray(cfg.controls) ? cfg.controls : []).forEach((ctrl) => {
       add(ctrl?.entity);
@@ -2100,6 +2269,7 @@ class OneLineRoomCard extends HTMLElement {
     if (!this.config || !this.content) return false;
     if (this._configChanged) return true;
     if (this._hasVisibleTemplateControl()) return true;
+    if (this._hasAdaptiveEnvironmentCondition()) return true;
     const nextMetaSig = this._getRenderMetaSignature(hass);
     const nextStates = this._buildStateSnapshot(hass);
     return !this._isSameSnapshot(nextStates, nextMetaSig);
@@ -2158,6 +2328,30 @@ class OneLineRoomCard extends HTMLElement {
     }
   }
 
+  _applyHeaderImage(image, selection) {
+    if (!image) return;
+    const targetUrl = selection?.url || "/static/images/card_media/cover.png";
+    image.style.objectPosition = selection?.position || "50% 50%";
+    if (image.dataset.roomImageUrl === targetUrl) {
+      this._headerImageRequest += 1;
+      return;
+    }
+    const request = ++this._headerImageRequest;
+    const commit = () => {
+      if (request !== this._headerImageRequest || !image.isConnected) return;
+      image.src = targetUrl;
+      image.dataset.roomImageUrl = targetUrl;
+    };
+    if (!image.getAttribute("src") || typeof Image !== "function") {
+      commit();
+      return;
+    }
+    const preload = new Image();
+    preload.onload = commit;
+    preload.onerror = () => {};
+    preload.src = targetUrl;
+  }
+
   _updateContentState() {
     if (!this.config || !this._hass || !this.content) return;
     const h = this._hass, c = this.config;
@@ -2170,8 +2364,7 @@ class OneLineRoomCard extends HTMLElement {
     const configuredTempUnit = normalizeTemperatureUnit(c.temp_unit);
 
     const bgEl = this.shadowRoot.getElementById("bg");
-    bgEl.src = resolveRoomImageUrl(c) || "/static/images/card_media/cover.png";
-    bgEl.style.objectPosition = parseImagePosition(c.image_position).value;
+    this._applyHeaderImage(bgEl, resolveAdaptiveRoomImage(c, h));
     if (c.image_entity && h.states[c.image_entity]) {
       const isOff = !isEntityActive(h.states[c.image_entity], c.image_entity);
       bgEl.classList.toggle("grayscale", isOff);
@@ -4013,6 +4206,7 @@ connectedCallback() {
       this.shadowRoot.querySelectorAll("ha-selector,ha-entity-picker,ha-icon-picker,oneline-room-card-textfield,ha-switch,ha-card-conditions-editor").forEach(e => {
         if (e.hass !== hass) e.hass = hass;
       });
+      this.updPreview();
       if (this._config && (!this.shadowRoot.getElementById("show-name-toggle") || !this.shadowRoot.getElementById("typo-sec"))) {
         this.shadowRoot.replaceChildren();
         this.render();
@@ -4190,23 +4384,13 @@ connectedCallback() {
     if (fileInput) fileInput.disabled = true;
     this._setUploadStatus();
     try {
-      const prepared = await this._prepareImageUpload(file);
-      const formData = new FormData();
-      formData.append("file", prepared.file);
-      const response = await this._hass.fetchWithAuth("/api/image/upload", {
-        method: "POST",
-        body: formData,
-      });
-      if (!response.ok) throw Object.assign(new Error("upload"), { translationKey: "upload_failed", status: String(response.status || "HTTP") });
-      const data = await response.json();
-      if (!data?.id) throw Object.assign(new Error("upload"), { translationKey: "upload_failed", status: "invalid response" });
-      const imgUrl = `/api/image/serve/${data.id}/original`;
+      const { url: imgUrl, optimized } = await this._uploadImageFile(file);
       const next = { ...this._config, image: imgUrl };
       delete next.image_preset;
       this._fire(next);
       this._renderImagePresetPicker();
       this.updPreview();
-      this._setUploadStatus(prepared.optimized ? "upload_optimized" : "upload_success");
+      this._setUploadStatus(optimized ? "upload_optimized" : "upload_success");
     } catch (err) {
       console.error("Upload Error:", err);
       this._setUploadStatus(err?.translationKey || "upload_failed", { error: true, status: err?.status || "unknown" });
@@ -4215,6 +4399,17 @@ connectedCallback() {
       if (fileInput) { fileInput.disabled = false; fileInput.value = ""; }
       this._setUploadStatus(null);
     }
+  }
+
+  async _uploadImageFile(file) {
+    const prepared = await this._prepareImageUpload(file);
+    const formData = new FormData();
+    formData.append("file", prepared.file);
+    const response = await this._hass.fetchWithAuth("/api/image/upload", { method: "POST", body: formData });
+    if (!response.ok) throw Object.assign(new Error("upload"), { translationKey: "upload_failed", status: String(response.status || "HTTP") });
+    const data = await response.json();
+    if (!data?.id) throw Object.assign(new Error("upload"), { translationKey: "upload_failed", status: "invalid response" });
+    return { url: `/api/image/serve/${data.id}/original`, optimized: prepared.optimized };
   }
 
   _applyNavSelectorOptions() {
@@ -4615,7 +4810,7 @@ connectedCallback() {
     if (!this._config) return;
     const alreadyRendered = !!this.shadowRoot.innerHTML;
     const domRevision = this.shadowRoot.querySelector("[data-rc-dom-revision]")?.dataset?.rcDomRevision;
-    if (alreadyRendered && domRevision === EDITOR_DOM_REVISION) { this.updVal(); if (JSON.stringify(this._config?.controls || []) !== this._lastRenderedControlsSig) this.renBtn(); this._applyNavSelectorOptions(); this._ensureNavOptions(); this._ensureAreaOptions(); this._updateAreaSetupUI(); this._updateSensorsSectionUI(); this._updateSparklineRefreshUI(); this._updateImageSectionUI(); this._updateBadgesUI(); this._updateTypographyUI(); this._updateCardBehaviorUI(); this._updateActionsSectionUI(); this._updateRoomModesUI(); this._updateHeaderSectionUI(); this._updateTabUI(); return; }
+    if (alreadyRendered && domRevision === EDITOR_DOM_REVISION) { this.updVal(); if (JSON.stringify(this._config?.controls || []) !== this._lastRenderedControlsSig) this.renBtn(); this._applyNavSelectorOptions(); this._ensureNavOptions(); this._ensureAreaOptions(); this._updateAreaSetupUI(); this._updateSensorsSectionUI(); this._updateSparklineRefreshUI(); this._updateImageSectionUI(); this._updateAdaptiveImagesUI(); this._updateBadgesUI(); this._updateTypographyUI(); this._updateCardBehaviorUI(); this._updateActionsSectionUI(); this._updateRoomModesUI(); this._updateHeaderSectionUI(); this._updateTabUI(); return; }
     
     this.shadowRoot.replaceChildren();
     const h = this._hass;
@@ -4753,6 +4948,15 @@ connectedCallback() {
         .room-mode-editor-actions button:disabled { opacity:.35; cursor:default; }
         .room-mode-editor-actions button:last-child { color:var(--error-color, #d32f2f); }
         .room-mode-editor-actions ha-icon { --mdc-icon-size:18px; }
+        .adaptive-image-heading { display:flex; align-items:center; justify-content:space-between; gap:8px; margin:16px 0 4px; padding-top:12px; border-top:1px solid var(--divider-color); }
+        .adaptive-image-heading button { border:0; background:transparent; color:inherit; cursor:pointer; padding:4px; }
+        .adaptive-image-rule { border:1px solid var(--divider-color); border-radius:8px; padding:10px; margin:10px 0; background:var(--secondary-background-color); }
+        .adaptive-image-rule .focal-controls { margin-top:8px; }
+        .adaptive-image-actions { display:flex; gap:2px; }
+        .adaptive-image-actions button { width:32px; height:32px; display:inline-flex; align-items:center; justify-content:center; border:0; border-radius:6px; color:inherit; background:transparent; cursor:pointer; }
+        .adaptive-image-actions button:disabled { opacity:.35; cursor:default; }
+        .adaptive-image-actions button:last-child { color:var(--error-color, #d32f2f); }
+        .adaptive-image-actions ha-icon { --mdc-icon-size:18px; }
       </style>
       <span data-rc-version="${VERSION}" data-rc-dom-revision="${EDITOR_DOM_REVISION}" style="display:none"></span>
       <div id="tab-bar" class="tab-bar">
@@ -4946,6 +5150,16 @@ connectedCallback() {
               </mwc-button>
             </div>
             <div id="upload-status" class="upload-status" role="status" aria-live="polite"></div>
+            <div class="adaptive-image-heading">
+              <div>
+                <div class="image-preset-heading" style="margin:0">${getTranslation(h, "adaptive_images")}</div>
+                <div class="image-preset-help" style="margin:2px 0 0">${getTranslation(h, "adaptive_images_help")}</div>
+              </div>
+            </div>
+            <div id="adaptive-images-list"></div>
+            <mwc-button id="adaptive-images-add" raised label="${getTranslation(h, "adaptive_image_add")}">
+              <ha-icon icon="mdi:plus" slot="icon"></ha-icon>
+            </mwc-button>
           </div>
         </div>
         <div id="typo-sec" class="manual-sec" style="margin-top:12px">
@@ -5234,6 +5448,15 @@ connectedCallback() {
     if (uploadBtn && fileInput) {
       uploadBtn.addEventListener("click", () => fileInput.click());
       fileInput.addEventListener("change", (e) => this._handleUpload(e));
+    }
+    const adaptiveImagesAdd = this.shadowRoot.getElementById("adaptive-images-add");
+    if (adaptiveImagesAdd) {
+      adaptiveImagesAdd.addEventListener("click", (event) => {
+        event.stopPropagation();
+        const rules = [...(Array.isArray(this._config?.adaptive_images) ? this._config.adaptive_images : []), { conditions: [] }];
+        this._fire({ ...this._config, adaptive_images: rules });
+        this._updateAdaptiveImagesUI();
+      });
     }
     this._setupFocalPointControl();
     const areaSetupHead = this.shadowRoot.getElementById("area-setup-head");
@@ -6551,6 +6774,7 @@ if (tmplSelect) {
     this._updateBadgesUI();
     this._updateCardBehaviorUI();
     this._updateRoomModesUI();
+    this._updateAdaptiveImagesUI();
     this._updateHeaderSectionUI();
   }
 
@@ -6720,6 +6944,218 @@ if (tmplSelect) {
     if (layoutCh) layoutCh.style.transform = this._layoutSectionOpen ? "rotate(90deg)" : "";
   }
 
+  _updateAdaptiveImagesUI() {
+    const list = this.shadowRoot?.getElementById("adaptive-images-list");
+    if (!list || !this._config) return;
+    const rules = Array.isArray(this._config.adaptive_images) ? this._config.adaptive_images : [];
+    const updateRules = (nextRules) => {
+      const next = { ...this._config };
+      if (nextRules.length > 0) next.adaptive_images = nextRules;
+      else delete next.adaptive_images;
+      this._fire(next);
+      this.updPreview();
+      this._updateAdaptiveImagesUI();
+    };
+    const updateRule = (index, updater, rerender = false) => {
+      const nextRules = (Array.isArray(this._config?.adaptive_images) ? this._config.adaptive_images : []).map((rule) => ({ ...rule }));
+      if (!nextRules[index]) return;
+      updater(nextRules[index]);
+      const next = { ...this._config, adaptive_images: nextRules };
+      this._fire(next);
+      this.updPreview();
+      if (rerender) this._updateAdaptiveImagesUI();
+    };
+    const moveRule = (from, to) => {
+      if (to < 0 || to >= rules.length) return;
+      const nextRules = rules.map((rule) => ({ ...rule }));
+      const [moved] = nextRules.splice(from, 1);
+      nextRules.splice(to, 0, moved);
+      updateRules(nextRules);
+    };
+    const makeAction = (iconName, label, disabled, action) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.disabled = disabled;
+      button.setAttribute("aria-label", label);
+      const icon = document.createElement("ha-icon");
+      icon.setAttribute("icon", iconName);
+      button.appendChild(icon);
+      button.addEventListener("click", (event) => { event.stopPropagation(); action(); });
+      return button;
+    };
+
+    list.replaceChildren();
+    rules.forEach((rule, index) => {
+      const box = document.createElement("div");
+      box.className = "adaptive-image-rule";
+      const header = document.createElement("div");
+      header.className = "badge-head-row";
+      const title = document.createElement("strong");
+      title.textContent = `${index + 1}. ${rule.name || getTranslation(this._hass, "adaptive_images")}`;
+      const actions = document.createElement("div");
+      actions.className = "adaptive-image-actions";
+      actions.append(
+        makeAction("mdi:arrow-up", getTranslation(this._hass, "adaptive_image_up"), index === 0, () => moveRule(index, index - 1)),
+        makeAction("mdi:arrow-down", getTranslation(this._hass, "adaptive_image_down"), index === rules.length - 1, () => moveRule(index, index + 1)),
+        makeAction("mdi:content-copy", getTranslation(this._hass, "adaptive_image_duplicate"), false, () => {
+          const copy = JSON.parse(JSON.stringify(rule));
+          const nextRules = rules.map((item) => ({ ...item }));
+          nextRules.splice(index + 1, 0, copy);
+          updateRules(nextRules);
+        }),
+        makeAction("mdi:delete", getTranslation(this._hass, "adaptive_image_remove"), false, () => updateRules(rules.filter((_, ruleIndex) => ruleIndex !== index).map((item) => ({ ...item }))))
+      );
+      header.append(title, actions);
+
+      const nameField = document.createElement("oneline-room-card-textfield");
+      nameField.label = getTranslation(this._hass, "adaptive_image_name");
+      nameField.value = rule.name || "";
+      nameField.addEventListener("change", (event) => {
+        event.stopPropagation();
+        updateRule(index, (nextRule) => {
+          const value = trimStr(event.target.value);
+          if (value) nextRule.name = value;
+          else delete nextRule.name;
+        }, true);
+      });
+
+      const presetLabel = document.createElement("label");
+      presetLabel.className = "image-preset-help";
+      presetLabel.textContent = getTranslation(this._hass, "adaptive_image_preset");
+      const preset = document.createElement("select");
+      preset.setAttribute("aria-label", getTranslation(this._hass, "adaptive_image_preset"));
+      preset.style.cssText = "width:100%;padding:10px;margin-bottom:8px;border:1px solid var(--divider-color);border-radius:6px;background:var(--card-background-color);color:var(--primary-text-color)";
+      const customOption = document.createElement("option");
+      customOption.value = "";
+      customOption.textContent = getTranslation(this._hass, "adaptive_image_custom");
+      preset.appendChild(customOption);
+      ROOM_IMAGE_PRESETS.forEach((item) => {
+        const option = document.createElement("option");
+        option.value = item.id;
+        option.textContent = getTranslation(this._hass, item.labelKey);
+        preset.appendChild(option);
+      });
+      preset.value = !rule.image && ROOM_IMAGE_PRESET_MAP.has(rule.image_preset) ? rule.image_preset : "";
+      preset.addEventListener("change", (event) => {
+        event.stopPropagation();
+        updateRule(index, (nextRule) => {
+          if (event.target.value) {
+            nextRule.image_preset = event.target.value;
+            delete nextRule.image;
+          } else {
+            delete nextRule.image_preset;
+          }
+        }, true);
+      });
+
+      const urlField = document.createElement("oneline-room-card-textfield");
+      urlField.label = getTranslation(this._hass, "img_url");
+      urlField.value = rule.image || "";
+      urlField.addEventListener("change", (event) => {
+        event.stopPropagation();
+        updateRule(index, (nextRule) => {
+          const value = trimStr(event.target.value);
+          if (value) {
+            nextRule.image = value;
+            delete nextRule.image_preset;
+          } else delete nextRule.image;
+        }, true);
+      });
+
+      const uploadRow = document.createElement("div");
+      uploadRow.className = "upload-row";
+      const fileInput = document.createElement("input");
+      fileInput.type = "file";
+      fileInput.accept = "image/*";
+      fileInput.className = "upload-hidden";
+      const uploadButton = document.createElement("mwc-button");
+      uploadButton.raised = true;
+      uploadButton.label = getTranslation(this._hass, "upload_btn");
+      const uploadIcon = document.createElement("ha-icon");
+      uploadIcon.setAttribute("icon", "mdi:upload");
+      uploadIcon.setAttribute("slot", "icon");
+      uploadButton.appendChild(uploadIcon);
+      const uploadStatus = document.createElement("div");
+      uploadStatus.className = "upload-status";
+      uploadStatus.setAttribute("role", "status");
+      uploadStatus.setAttribute("aria-live", "polite");
+      uploadButton.addEventListener("click", (event) => { event.stopPropagation(); fileInput.click(); });
+      fileInput.addEventListener("change", async (event) => {
+        event.stopPropagation();
+        const file = event.target.files?.[0];
+        if (!file || !this._hass || this._uploading) return;
+        this._uploading = true;
+        uploadButton.disabled = true;
+        uploadButton.label = getTranslation(this._hass, "uploading");
+        try {
+          const result = await this._uploadImageFile(file);
+          updateRule(index, (nextRule) => {
+            nextRule.image = result.url;
+            delete nextRule.image_preset;
+          });
+          uploadStatus.textContent = getTranslation(this._hass, result.optimized ? "upload_optimized" : "upload_success");
+          urlField.value = result.url;
+          preset.value = "";
+        } catch (error) {
+          uploadStatus.textContent = getTranslation(this._hass, error?.translationKey || "upload_failed").replace("{status}", error?.status || "unknown");
+          uploadStatus.classList.add("error");
+        } finally {
+          this._uploading = false;
+          uploadButton.disabled = false;
+          uploadButton.label = getTranslation(this._hass, "upload_btn");
+          fileInput.value = "";
+        }
+      });
+      uploadRow.append(fileInput, uploadButton);
+
+      const position = parseImagePosition(rule.image_position || this._config.image_position);
+      const focalTitle = document.createElement("div");
+      focalTitle.className = "image-preset-help";
+      focalTitle.textContent = getTranslation(this._hass, "adaptive_image_position");
+      const focalControls = document.createElement("div");
+      focalControls.className = "focal-controls";
+      const buildRange = (axis, value, labelKey) => {
+        const label = document.createElement("label");
+        label.textContent = getTranslation(this._hass, labelKey);
+        const input = document.createElement("input");
+        input.type = "range";
+        input.min = "0";
+        input.max = "100";
+        input.step = "1";
+        input.value = String(value);
+        const output = document.createElement("span");
+        output.textContent = `${Math.round(value)}%`;
+        input.addEventListener("input", (event) => {
+          event.stopPropagation();
+          output.textContent = `${event.target.value}%`;
+          const x = axis === "x" ? Number(event.target.value) : Number(focalControls.querySelector("input[data-axis='x']")?.value ?? position.x);
+          const y = axis === "y" ? Number(event.target.value) : Number(focalControls.querySelector("input[data-axis='y']")?.value ?? position.y);
+          updateRule(index, (nextRule) => { nextRule.image_position = parseImagePosition(`${x}% ${y}%`).value; });
+        });
+        input.dataset.axis = axis;
+        focalControls.append(label, input, output);
+      };
+      buildRange("x", position.x, "image_horizontal");
+      buildRange("y", position.y, "image_vertical");
+
+      const conditionTitle = document.createElement("div");
+      conditionTitle.className = "image-preset-heading";
+      conditionTitle.textContent = getTranslation(this._hass, "adaptive_image_conditions");
+      const conditions = document.createElement("ha-card-conditions-editor");
+      conditions.hass = this._hass;
+      conditions.conditions = Array.isArray(rule.conditions) ? rule.conditions : [];
+      conditions.addEventListener("value-changed", (event) => {
+        event.stopPropagation();
+        const value = Array.isArray(event.detail?.value) ? event.detail.value : [];
+        conditions.conditions = value;
+        updateRule(index, (nextRule) => { nextRule.conditions = value; });
+      });
+
+      box.append(header, nameField, presetLabel, preset, urlField, uploadRow, uploadStatus, focalTitle, focalControls, conditionTitle, conditions);
+      list.appendChild(box);
+    });
+  }
+
   _updateImageSectionUI() {
     const sec = this.shadowRoot?.getElementById("image-sec");
     const content = this.shadowRoot?.getElementById("image-content");
@@ -6731,6 +7167,7 @@ if (tmplSelect) {
     if (this._imageSectionOpen) {
       this._renderImagePresetPicker();
       this._updateFocalPointUI();
+      this._updateAdaptiveImagesUI();
     }
   }
 
@@ -7251,11 +7688,10 @@ if (tmplSelect) {
     if (!this._config) return;
     const img = this.shadowRoot.getElementById("prev-img");
     const preview = this.shadowRoot.getElementById("focal-preview");
-    const imageUrl = resolveRoomImageUrl(this._config);
-    const position = parseImagePosition(this._config.image_position);
-    img.style.objectPosition = position.value;
-    if (imageUrl) {
-      img.src = imageUrl;
+    const selection = resolveAdaptiveRoomImage(this._config, this._hass);
+    img.style.objectPosition = selection.position;
+    if (selection.url) {
+      img.src = selection.url;
       img.classList.add("show");
       preview?.classList.add("show");
     } else {
