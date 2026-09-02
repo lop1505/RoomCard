@@ -8,6 +8,7 @@ All notable changes to OneLine Room Card are documented here.
 
 ## [1.4.0]
 
+* Runtime & Editor: Add configurable `status_groups` for neutral room summaries such as lights on, open windows, active media, or combined power. Count and numeric modes track only explicit entities, normalize compatible power units, reject incompatible sums, and can open an accessible contributor list with Home Assistant more-info. Closes [#126](https://github.com/lop1505/RoomCard/issues/126).
 * Runtime & Editor: Add ordered `adaptive_images` rules for condition-based header backgrounds. The first valid match selects a custom/uploaded image or bundled preset with its own focal point; state, numeric, time, user, screen, and compound conditions update safely while the existing image remains the fallback. Closes [#125](https://github.com/lop1505/RoomCard/issues/125).
 * Runtime & Editor: Add opt-in `sparkline_detail` for sensor controls. Interactive sparklines now open an accessible 6h/24h/7d history dialog with the current Home Assistant-formatted value and Min/Max/Average statistics, while preserving parent control actions and shared request caching. Closes [#123](https://github.com/lop1505/RoomCard/issues/123).
 * Runtime & Editor: Add ordered, horizontally scrollable `room_modes` shortcuts for scenes and scripts. Optional nested state/numeric conditions highlight active modes, missing entities are disabled, and the mode strip remains available while room controls are collapsed. Closes [#124](https://github.com/lop1505/RoomCard/issues/124).

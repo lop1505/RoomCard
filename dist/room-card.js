@@ -1,5 +1,5 @@
 const VERSION = "1.4.0";
-const EDITOR_DOM_REVISION = "5";
+const EDITOR_DOM_REVISION = "6";
 const LOG_FLAG = `customCards_RoomCard_Logged_${VERSION}`;
 
 const MEDIA_PLAYER_FEATURES = Object.freeze({
@@ -181,6 +181,82 @@ const resolveAdaptiveRoomImage = (config, hass, now = new Date()) => {
     };
   }
   return fallback;
+};
+
+const POWER_UNIT_FACTORS = Object.freeze({ mW: 0.001, W: 1, kW: 1000, MW: 1000000 });
+
+const getStatusGroupResult = (group, hass) => {
+  const empty = { visible: false, value: "", numericValue: 0, contributors: [], error: "" };
+  if (!group || typeof group !== "object") return empty;
+  if (Array.isArray(group.conditions) && group.conditions.length > 0) {
+    const gate = evaluateAdaptiveImageConditions(group.conditions, hass);
+    if (!gate.valid || !gate.active) return empty;
+  }
+  const entries = (Array.isArray(group.entities) ? group.entities : [])
+    .map((item) => typeof item === "string" ? { entity: item } : item)
+    .filter((item) => item && typeof item.entity === "string" && item.entity.trim());
+  const numericMode = group.aggregate === "sum" || group.display === "value";
+  const contributors = [];
+  entries.forEach((entry) => {
+    const entityId = entry.entity.trim();
+    const stateObj = hass?.states?.[entityId];
+    if (!stateObj || isEntityOffline(stateObj)) return;
+    if (Array.isArray(entry.conditions) && entry.conditions.length > 0) {
+      const condition = evaluateAdaptiveImageConditions(entry.conditions, hass);
+      if (!condition.valid || !condition.active) return;
+    }
+    const configuredStates = Array.isArray(entry.active_states)
+      ? entry.active_states
+      : (Array.isArray(group.active_states) ? group.active_states : (numericMode ? [] : ["on"]));
+    const activeStates = configuredStates.map((state) => String(state).toLowerCase().trim()).filter(Boolean);
+    if (activeStates.length > 0 && !activeStates.includes(String(stateObj.state).toLowerCase().trim())) return;
+    const number = Number(stateObj.state);
+    if (numericMode && !Number.isFinite(number)) return;
+    contributors.push({
+      entity_id: entityId,
+      friendly_name: stateObj.attributes?.friendly_name || entityId,
+      icon: stateObj.attributes?.icon || "mdi:information-outline",
+      state: hass?.formatEntityState ? hass.formatEntityState(stateObj) : String(stateObj.state ?? ""),
+      number,
+      unit: trimStr(stateObj.attributes?.unit_of_measurement)
+    });
+  });
+
+  if (!numericMode) {
+    const count = contributors.length;
+    return {
+      visible: !(group.hide_when_zero === true && count === 0),
+      value: String(count),
+      numericValue: count,
+      contributors,
+      error: ""
+    };
+  }
+
+  const requestedUnit = trimStr(group.unit);
+  const units = contributors.map((item) => item.unit).filter(Boolean);
+  const targetUnit = requestedUnit || units[0] || "";
+  const allPower = units.length > 0 && units.every((unit) => POWER_UNIT_FACTORS[unit] !== undefined);
+  const hasMissingUnit = units.length !== contributors.length;
+  const compatible = (!targetUnit && units.length === 0)
+    || (!hasMissingUnit && (units.every((unit) => unit === targetUnit) || (allPower && POWER_UNIT_FACTORS[targetUnit] !== undefined)));
+  if (!compatible) {
+    return { visible: true, value: "—", numericValue: NaN, contributors, error: "status_group_incompatible_units" };
+  }
+  const total = contributors.reduce((sum, item) => {
+    if (!item.unit || item.unit === targetUnit) return sum + item.number;
+    return sum + ((item.number * POWER_UNIT_FACTORS[item.unit]) / POWER_UNIT_FACTORS[targetUnit]);
+  }, 0);
+  const precision = Math.max(0, Math.min(4, Number.isFinite(Number(group.precision)) ? Number(group.precision) : 1));
+  const locale = hass?.locale?.language || hass?.language || undefined;
+  const formatted = new Intl.NumberFormat(locale, { maximumFractionDigits: precision }).format(total);
+  return {
+    visible: !(group.hide_when_zero === true && total === 0),
+    value: targetUnit ? `${formatted} ${targetUnit}` : formatted,
+    numericValue: total,
+    contributors,
+    error: ""
+  };
 };
 
 if (!window[LOG_FLAG]) {
@@ -497,6 +573,7 @@ const TRANSLATIONS = {
     last_activity_title: "Last Activity", last_activity_show: "Show last activity",
     room_modes: "Room Modes", room_modes_help: "Run scenes or scripts directly from the room card.", room_mode_add: "Add Room Mode", room_mode_entity: "Scene or script", room_mode_active_when: "Active when", room_mode_remove: "Remove mode", room_mode_up: "Move mode up", room_mode_down: "Move mode down",
     adaptive_images: "Adaptive images", adaptive_images_help: "The first matching rule replaces the fallback header image.", adaptive_image_add: "Add image rule", adaptive_image_name: "Rule name (optional)", adaptive_image_conditions: "Conditions", adaptive_image_preset: "Built-in image", adaptive_image_custom: "Custom URL / upload", adaptive_image_duplicate: "Duplicate image rule", adaptive_image_remove: "Remove image rule", adaptive_image_up: "Move image rule up", adaptive_image_down: "Move image rule down", adaptive_image_position: "Rule focal point",
+    status_groups: "Room status", status_groups_help: "Summarize configured entities without changing alert priority.", status_group_add: "Add status group", status_group_preset_lights: "Lights on", status_group_preset_windows: "Open windows", status_group_preset_media: "Active media", status_group_preset_power: "Power", status_group_entities: "Entities", status_group_active_states: "Active states (comma-separated)", status_group_display: "Display", status_group_count: "Count", status_group_value: "Numeric sum", status_group_unit: "Output unit", status_group_precision: "Decimals", status_group_hide_zero: "Hide when zero", status_group_details: "Open contributing entities", status_group_conditions: "Show group when", status_group_duplicate: "Duplicate status group", status_group_remove: "Remove status group", status_group_up: "Move status group up", status_group_down: "Move status group down", status_group_incompatible_units: "Incompatible units",
     a11y_close: "Close", a11y_previous_track: "Previous track", a11y_play_pause: "Play or pause", a11y_next_track: "Next track",
     a11y_mute: "Mute or unmute", a11y_volume: "Volume", a11y_expand: "Expand room controls", a11y_collapse: "Collapse room controls",
     a11y_activate: "Activate {name}", a11y_set_value: "Set {name}", a11y_select_option: "Select {name}"
@@ -599,6 +676,7 @@ const TRANSLATIONS = {
     last_activity_title: "Letzte Aktivität", last_activity_show: "Letzte Aktivität anzeigen",
     room_modes: "Raum-Modi", room_modes_help: "Szenen oder Skripte direkt über die Raumkarte starten.", room_mode_add: "Raum-Modus hinzufügen", room_mode_entity: "Szene oder Skript", room_mode_active_when: "Aktiv wenn", room_mode_remove: "Modus entfernen", room_mode_up: "Modus nach oben", room_mode_down: "Modus nach unten",
     adaptive_images: "Adaptive Bilder", adaptive_images_help: "Die erste passende Regel ersetzt das Standardbild im Header.", adaptive_image_add: "Bildregel hinzufügen", adaptive_image_name: "Regelname (optional)", adaptive_image_conditions: "Bedingungen", adaptive_image_preset: "Integriertes Bild", adaptive_image_custom: "Eigene URL / Upload", adaptive_image_duplicate: "Bildregel duplizieren", adaptive_image_remove: "Bildregel entfernen", adaptive_image_up: "Bildregel nach oben", adaptive_image_down: "Bildregel nach unten", adaptive_image_position: "Bildfokus der Regel",
+    status_groups: "Raumstatus", status_groups_help: "Konfigurierte Entitäten zusammenfassen, ohne die Alarmpriorität zu verändern.", status_group_add: "Statusgruppe hinzufügen", status_group_preset_lights: "Lichter an", status_group_preset_windows: "Offene Fenster", status_group_preset_media: "Aktive Medien", status_group_preset_power: "Leistung", status_group_entities: "Entitäten", status_group_active_states: "Aktive Zustände (kommagetrennt)", status_group_display: "Anzeige", status_group_count: "Anzahl", status_group_value: "Numerische Summe", status_group_unit: "Ausgabeeinheit", status_group_precision: "Nachkommastellen", status_group_hide_zero: "Bei null ausblenden", status_group_details: "Beitragende Entitäten öffnen", status_group_conditions: "Gruppe anzeigen wenn", status_group_duplicate: "Statusgruppe duplizieren", status_group_remove: "Statusgruppe entfernen", status_group_up: "Statusgruppe nach oben", status_group_down: "Statusgruppe nach unten", status_group_incompatible_units: "Nicht kompatible Einheiten",
     a11y_close: "Schließen", a11y_previous_track: "Vorheriger Titel", a11y_play_pause: "Wiedergabe oder Pause", a11y_next_track: "Nächster Titel",
     a11y_mute: "Stumm schalten oder Ton einschalten", a11y_volume: "Lautstärke", a11y_expand: "Raumsteuerung aufklappen", a11y_collapse: "Raumsteuerung zuklappen",
     a11y_activate: "{name} bedienen", a11y_set_value: "{name} einstellen", a11y_select_option: "{name} auswählen"
@@ -694,6 +772,7 @@ const TRANSLATIONS = {
     last_activity_title: "Dernière activité", last_activity_show: "Afficher la dernière activité",
     room_modes: "Modes de pièce", room_modes_help: "Lancer des scènes ou des scripts depuis la carte de pièce.", room_mode_add: "Ajouter un mode", room_mode_entity: "Scène ou script", room_mode_active_when: "Actif lorsque", room_mode_remove: "Supprimer le mode", room_mode_up: "Déplacer vers le haut", room_mode_down: "Déplacer vers le bas",
     adaptive_images: "Images adaptatives", adaptive_images_help: "La première règle correspondante remplace l’image d’en-tête par défaut.", adaptive_image_add: "Ajouter une règle d’image", adaptive_image_name: "Nom de la règle (facultatif)", adaptive_image_conditions: "Conditions", adaptive_image_preset: "Image intégrée", adaptive_image_custom: "URL personnalisée / import", adaptive_image_duplicate: "Dupliquer la règle d’image", adaptive_image_remove: "Supprimer la règle d’image", adaptive_image_up: "Monter la règle d’image", adaptive_image_down: "Descendre la règle d’image", adaptive_image_position: "Point focal de la règle",
+    status_groups: "État de la pièce", status_groups_help: "Résumer les entités configurées sans modifier la priorité des alertes.", status_group_add: "Ajouter un groupe d’état", status_group_preset_lights: "Lumières allumées", status_group_preset_windows: "Fenêtres ouvertes", status_group_preset_media: "Média actif", status_group_preset_power: "Puissance", status_group_entities: "Entités", status_group_active_states: "États actifs (séparés par des virgules)", status_group_display: "Affichage", status_group_count: "Nombre", status_group_value: "Somme numérique", status_group_unit: "Unité de sortie", status_group_precision: "Décimales", status_group_hide_zero: "Masquer à zéro", status_group_details: "Ouvrir les entités contributrices", status_group_conditions: "Afficher le groupe lorsque", status_group_duplicate: "Dupliquer le groupe d’état", status_group_remove: "Supprimer le groupe d’état", status_group_up: "Monter le groupe d’état", status_group_down: "Descendre le groupe d’état", status_group_incompatible_units: "Unités incompatibles",
     a11y_close: "Fermer", a11y_previous_track: "Piste précédente", a11y_play_pause: "Lecture ou pause", a11y_next_track: "Piste suivante",
     a11y_mute: "Couper ou rétablir le son", a11y_volume: "Volume", a11y_expand: "Développer les commandes", a11y_collapse: "Réduire les commandes",
     a11y_activate: "Activer {name}", a11y_set_value: "Régler {name}", a11y_select_option: "Sélectionner {name}"
@@ -1380,6 +1459,12 @@ class OneLineRoomCard extends HTMLElement {
     };
     (Array.isArray(this.config?.adaptive_images) ? this.config.adaptive_images : [])
       .forEach((rule) => (Array.isArray(rule?.conditions) ? rule.conditions : []).forEach(visit));
+    (Array.isArray(this.config?.status_groups) ? this.config.status_groups : []).forEach((group) => {
+      (Array.isArray(group?.conditions) ? group.conditions : []).forEach(visit);
+      (Array.isArray(group?.entities) ? group.entities : []).forEach((entry) => {
+        if (entry && typeof entry === "object") (Array.isArray(entry.conditions) ? entry.conditions : []).forEach(visit);
+      });
+    });
     queries.forEach((mediaQuery) => {
       try {
         const query = window.matchMedia(mediaQuery);
@@ -1786,6 +1871,9 @@ class OneLineRoomCard extends HTMLElement {
         .info-item.badge { padding: 2px 6px; border-radius: 999px; }
         .chips { position: absolute; bottom: 8px; left: 8px; display: flex; gap: 6px; flex-wrap: wrap; z-index: 2; }
         .chip { display: flex; align-items: center; gap: 4px; padding: 4px 8px; border: 0; border-radius: 8px; font-family: inherit; font-size: 11px; font-weight: bold; background: #FFF8E1; color: #FFA000; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+        .chip.status-group-chip { background:rgba(var(--rgb-primary-color, 3,169,244),.14); color:var(--primary-color, #03a9f4); }
+        button.chip.status-group-chip { cursor:pointer; }
+        button.chip.status-group-chip:focus-visible { outline:2px solid var(--primary-color, #03a9f4); outline-offset:2px; }
         .chip ha-icon { color: currentColor; }
         ha-card.no-chip-shadow .chip { box-shadow: none; }
         .chip.alert { background: #FFEBEE; color: #D32F2F; }
@@ -1962,8 +2050,14 @@ class OneLineRoomCard extends HTMLElement {
       if (["time", "screen", "user"].includes(condition.condition)) return true;
       return Array.isArray(condition.conditions) && condition.conditions.some(visit);
     };
-    return (Array.isArray(this.config?.adaptive_images) ? this.config.adaptive_images : [])
+    const adaptive = (Array.isArray(this.config?.adaptive_images) ? this.config.adaptive_images : [])
       .some((rule) => Array.isArray(rule?.conditions) && rule.conditions.some(visit));
+    if (adaptive) return true;
+    return (Array.isArray(this.config?.status_groups) ? this.config.status_groups : []).some((group) => {
+      if (Array.isArray(group?.conditions) && group.conditions.some(visit)) return true;
+      return (Array.isArray(group?.entities) ? group.entities : []).some((entry) =>
+        entry && typeof entry === "object" && Array.isArray(entry.conditions) && entry.conditions.some(visit));
+    });
   }
 
   _getTemplateDependencyEntityIds() {
@@ -2000,6 +2094,13 @@ class OneLineRoomCard extends HTMLElement {
     });
     (Array.isArray(cfg.adaptive_images) ? cfg.adaptive_images : []).forEach((rule) => {
       getConditionEntityDependencies(rule?.conditions).forEach(add);
+    });
+    (Array.isArray(cfg.status_groups) ? cfg.status_groups : []).forEach((group) => {
+      getConditionEntityDependencies(group?.conditions).forEach(add);
+      (Array.isArray(group?.entities) ? group.entities : []).forEach((entry) => {
+        add(typeof entry === "string" ? entry : entry?.entity);
+        if (entry && typeof entry === "object") getConditionEntityDependencies(entry.conditions).forEach(add);
+      });
     });
     (Array.isArray(cfg.controls) ? cfg.controls : []).forEach((ctrl) => {
       add(ctrl?.entity);
@@ -2145,7 +2246,7 @@ class OneLineRoomCard extends HTMLElement {
     return closeDialog;
   }
 
-  _showAlertDialog(alerts) {
+  _showAlertDialog(alerts, dialogTitle = getTranslation(this._hass, "active_alerts"), accentColor = "#FF5252") {
     const previouslyFocused = this.shadowRoot.activeElement || document.activeElement;
     const container = document.createElement("div");
     container.className = "alert-dialog-container";
@@ -2165,7 +2266,7 @@ class OneLineRoomCard extends HTMLElement {
     header.className = "alert-dialog-header";
     const heading = document.createElement("h2");
     heading.id = "alert-dialog-title";
-    heading.textContent = getTranslation(this._hass, "active_alerts");
+    heading.textContent = dialogTitle;
     const closeButton = document.createElement("button");
     closeButton.type = "button";
     closeButton.className = "alert-dialog-close";
@@ -2185,7 +2286,7 @@ class OneLineRoomCard extends HTMLElement {
       row.setAttribute("aria-label", `${alert.friendly_name}: ${alert.state}`);
       const icon = document.createElement("ha-icon");
       icon.setAttribute("icon", alert.icon);
-      icon.style.cssText = "color:#FF5252!important;--mdc-icon-size:24px";
+      icon.style.cssText = `color:${accentColor}!important;--mdc-icon-size:24px`;
       const name = document.createElement("span");
       name.className = "alert-entity-name";
       name.textContent = alert.friendly_name;
@@ -2227,6 +2328,40 @@ class OneLineRoomCard extends HTMLElement {
         }
         closeDialog();
       });
+    });
+  }
+
+  _renderStatusGroups(container, config, hass) {
+    if (!container) return;
+    (Array.isArray(config?.status_groups) ? config.status_groups : []).forEach((group, index) => {
+      const result = getStatusGroupResult(group, hass);
+      if (!result.visible) return;
+      const interactive = group?.details === true && result.contributors.length > 0;
+      const chip = document.createElement(interactive ? "button" : "div");
+      if (interactive) chip.type = "button";
+      chip.className = "chip status-group-chip";
+      chip.dataset.statusGroup = String(index);
+      const icon = document.createElement("ha-icon");
+      icon.setAttribute("icon", result.error ? "mdi:alert-circle-outline" : (trimStr(group?.icon) || "mdi:information-outline"));
+      icon.style.setProperty("--mdc-icon-size", "14px");
+      const name = trimStr(group?.name) || getTranslation(hass, "status_groups");
+      const text = group?.show_name === true ? `${name}: ${result.value}` : result.value;
+      chip.append(icon, document.createTextNode(` ${text}`));
+      chip.setAttribute("aria-label", result.error ? `${name}: ${getTranslation(hass, result.error)}` : `${name}: ${result.value}`);
+      if (result.error) chip.title = getTranslation(hass, result.error);
+      const color = trimStr(group?.color);
+      if (color) {
+        chip.style.color = color;
+        chip.style.background = /^#[0-9a-f]{6}$/i.test(color) ? `${color}26` : `color-mix(in srgb, ${color} 15%, transparent)`;
+      }
+      if (interactive) {
+        ["pointerdown", "pointerup", "pointercancel"].forEach((eventName) => chip.addEventListener(eventName, (event) => event.stopPropagation()));
+        chip.addEventListener("click", (event) => {
+          event.stopPropagation();
+          this._showAlertDialog(result.contributors, name, "var(--primary-color, #03a9f4)");
+        });
+      }
+      container.appendChild(chip);
     });
   }
 
@@ -2646,6 +2781,8 @@ class OneLineRoomCard extends HTMLElement {
       chip.appendChild(document.createTextNode(` ${label}`));
       ch.appendChild(chip);
     });
+
+    this._renderStatusGroups(ch, c, h);
 
     const cardEl = this.shadowRoot.querySelector("ha-card");
     if (cardEl) {
@@ -4119,6 +4256,7 @@ class OneLineRoomCardEditor extends HTMLElement {
     this._cardBehaviorOpen = true;
     this._actionsSectionOpen = false;
     this._roomModesSectionOpen = false;
+    this._statusGroupsSectionOpen = false;
     this._headerSectionOpen = true;
     this._layoutSectionOpen = false;
     this._areaSelectorOpen = false;
@@ -4810,7 +4948,7 @@ connectedCallback() {
     if (!this._config) return;
     const alreadyRendered = !!this.shadowRoot.innerHTML;
     const domRevision = this.shadowRoot.querySelector("[data-rc-dom-revision]")?.dataset?.rcDomRevision;
-    if (alreadyRendered && domRevision === EDITOR_DOM_REVISION) { this.updVal(); if (JSON.stringify(this._config?.controls || []) !== this._lastRenderedControlsSig) this.renBtn(); this._applyNavSelectorOptions(); this._ensureNavOptions(); this._ensureAreaOptions(); this._updateAreaSetupUI(); this._updateSensorsSectionUI(); this._updateSparklineRefreshUI(); this._updateImageSectionUI(); this._updateAdaptiveImagesUI(); this._updateBadgesUI(); this._updateTypographyUI(); this._updateCardBehaviorUI(); this._updateActionsSectionUI(); this._updateRoomModesUI(); this._updateHeaderSectionUI(); this._updateTabUI(); return; }
+    if (alreadyRendered && domRevision === EDITOR_DOM_REVISION) { this.updVal(); if (JSON.stringify(this._config?.controls || []) !== this._lastRenderedControlsSig) this.renBtn(); this._applyNavSelectorOptions(); this._ensureNavOptions(); this._ensureAreaOptions(); this._updateAreaSetupUI(); this._updateSensorsSectionUI(); this._updateSparklineRefreshUI(); this._updateImageSectionUI(); this._updateAdaptiveImagesUI(); this._updateBadgesUI(); this._updateTypographyUI(); this._updateCardBehaviorUI(); this._updateActionsSectionUI(); this._updateRoomModesUI(); this._updateStatusGroupsUI(); this._updateHeaderSectionUI(); this._updateTabUI(); return; }
     
     this.shadowRoot.replaceChildren();
     const h = this._hass;
@@ -5043,6 +5181,25 @@ connectedCallback() {
           <div style="font-size:12px;opacity:.7;margin:6px 0 10px">${getTranslation(h, "room_modes_help")}</div>
           <div id="room-modes-list"></div>
           <mwc-button id="room-modes-add" raised label="${getTranslation(h, "room_mode_add")}">
+            <ha-icon icon="mdi:plus" slot="icon"></ha-icon>
+          </mwc-button>
+        </div>
+      </div>
+      <div class="sec">
+        <div id="status-groups-head" class="sec-head" style="cursor:pointer;user-select:none;padding:4px 0">
+          <h3>${getTranslation(h, "status_groups")}</h3>
+          <ha-icon id="status-groups-chev" icon="mdi:chevron-right" style="--mdc-icon-size:18px;opacity:0.7;transition:transform 0.15s ease"></ha-icon>
+        </div>
+        <div id="status-groups-content" hidden>
+          <div style="font-size:12px;opacity:.7;margin:6px 0 10px">${getTranslation(h, "status_groups_help")}</div>
+          <div class="bg-presets" id="status-group-presets" style="margin-bottom:10px">
+            <button type="button" class="bg-preset" data-status-preset="lights">${getTranslation(h, "status_group_preset_lights")}</button>
+            <button type="button" class="bg-preset" data-status-preset="windows">${getTranslation(h, "status_group_preset_windows")}</button>
+            <button type="button" class="bg-preset" data-status-preset="media">${getTranslation(h, "status_group_preset_media")}</button>
+            <button type="button" class="bg-preset" data-status-preset="power">${getTranslation(h, "status_group_preset_power")}</button>
+          </div>
+          <div id="status-groups-list"></div>
+          <mwc-button id="status-groups-add" raised label="${getTranslation(h, "status_group_add")}">
             <ha-icon icon="mdi:plus" slot="icon"></ha-icon>
           </mwc-button>
         </div>
@@ -5515,6 +5672,37 @@ connectedCallback() {
         this._updateRoomModesUI();
       });
     }
+    const statusGroupsHead = this.shadowRoot.getElementById("status-groups-head");
+    if (statusGroupsHead) {
+      statusGroupsHead.addEventListener("click", () => {
+        this._statusGroupsSectionOpen = !this._statusGroupsSectionOpen;
+        this._updateStatusGroupsUI();
+      });
+    }
+    const addStatusGroup = (group) => {
+      const groups = [...(Array.isArray(this._config?.status_groups) ? this._config.status_groups : []), group];
+      this._statusGroupsSectionOpen = true;
+      this._fire({ ...this._config, status_groups: groups });
+      this._updateStatusGroupsUI();
+    };
+    const statusGroupsAdd = this.shadowRoot.getElementById("status-groups-add");
+    statusGroupsAdd?.addEventListener("click", (event) => {
+      event.stopPropagation();
+      addStatusGroup({ entities: [], active_states: ["on"], display: "count", details: true });
+    });
+    this.shadowRoot.querySelectorAll("[data-status-preset]").forEach((button) => {
+      button.addEventListener("click", (event) => {
+        event.stopPropagation();
+        const preset = button.dataset.statusPreset;
+        const presets = {
+          lights: { name: getTranslation(h, "status_group_preset_lights"), icon: "mdi:lightbulb-group", entities: [], active_states: ["on"], display: "count", hide_when_zero: true, details: true },
+          windows: { name: getTranslation(h, "status_group_preset_windows"), icon: "mdi:window-open-variant", entities: [], active_states: ["on", "open"], display: "count", hide_when_zero: true, details: true },
+          media: { name: getTranslation(h, "status_group_preset_media"), icon: "mdi:play-circle", entities: [], active_states: ["playing"], display: "count", hide_when_zero: true, details: true },
+          power: { name: getTranslation(h, "status_group_preset_power"), icon: "mdi:flash", entities: [], aggregate: "sum", display: "value", unit: "W", precision: 0, hide_when_zero: false, details: true }
+        };
+        if (presets[preset]) addStatusGroup(presets[preset]);
+      });
+    });
     const headerSecHead = this.shadowRoot.getElementById("header-sec-head");
     if (headerSecHead) {
       headerSecHead.addEventListener("click", () => {
@@ -6774,6 +6962,7 @@ if (tmplSelect) {
     this._updateBadgesUI();
     this._updateCardBehaviorUI();
     this._updateRoomModesUI();
+    this._updateStatusGroupsUI();
     this._updateAdaptiveImagesUI();
     this._updateHeaderSectionUI();
   }
@@ -6928,6 +7117,218 @@ if (tmplSelect) {
         updateMode(index, "active_when", value);
       });
       box.append(header, picker, fields, colorRow, conditionLabel, conditionEditor);
+      list.appendChild(box);
+    });
+  }
+
+  _updateStatusGroupsUI() {
+    const content = this.shadowRoot?.getElementById("status-groups-content");
+    const chev = this.shadowRoot?.getElementById("status-groups-chev");
+    const list = this.shadowRoot?.getElementById("status-groups-list");
+    if (!content || !list) return;
+    content.hidden = !this._statusGroupsSectionOpen;
+    if (chev) chev.style.transform = this._statusGroupsSectionOpen ? "rotate(90deg)" : "";
+    const groups = Array.isArray(this._config?.status_groups) ? this._config.status_groups : [];
+    const commitGroups = (nextGroups) => {
+      const next = { ...this._config };
+      if (nextGroups.length > 0) next.status_groups = nextGroups;
+      else delete next.status_groups;
+      this._fire(next);
+      this._updateStatusGroupsUI();
+    };
+    const updateGroup = (index, updater, rerender = false) => {
+      const nextGroups = (Array.isArray(this._config?.status_groups) ? this._config.status_groups : []).map((group) => ({ ...group }));
+      if (!nextGroups[index]) return;
+      updater(nextGroups[index]);
+      this._fire({ ...this._config, status_groups: nextGroups });
+      if (rerender) this._updateStatusGroupsUI();
+    };
+    const moveGroup = (from, to) => {
+      if (to < 0 || to >= groups.length) return;
+      const nextGroups = groups.map((group) => ({ ...group }));
+      const [moved] = nextGroups.splice(from, 1);
+      nextGroups.splice(to, 0, moved);
+      commitGroups(nextGroups);
+    };
+    const makeAction = (iconName, label, disabled, action) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.disabled = disabled;
+      button.setAttribute("aria-label", label);
+      const icon = document.createElement("ha-icon");
+      icon.setAttribute("icon", iconName);
+      button.appendChild(icon);
+      button.addEventListener("click", (event) => { event.stopPropagation(); action(); });
+      return button;
+    };
+
+    list.replaceChildren();
+    groups.forEach((group, index) => {
+      const box = document.createElement("div");
+      box.className = "badge-box status-group-editor";
+      const header = document.createElement("div");
+      header.className = "badge-head-row";
+      const title = document.createElement("span");
+      title.className = "badge-entity-label";
+      title.textContent = `${index + 1}. ${group.name || getTranslation(this._hass, "status_groups")}`;
+      const actions = document.createElement("div");
+      actions.className = "room-mode-editor-actions";
+      actions.append(
+        makeAction("mdi:arrow-up", getTranslation(this._hass, "status_group_up"), index === 0, () => moveGroup(index, index - 1)),
+        makeAction("mdi:arrow-down", getTranslation(this._hass, "status_group_down"), index === groups.length - 1, () => moveGroup(index, index + 1)),
+        makeAction("mdi:content-copy", getTranslation(this._hass, "status_group_duplicate"), false, () => {
+          const nextGroups = groups.map((item) => ({ ...item }));
+          nextGroups.splice(index + 1, 0, JSON.parse(JSON.stringify(group)));
+          commitGroups(nextGroups);
+        }),
+        makeAction("mdi:delete", getTranslation(this._hass, "status_group_remove"), false, () => commitGroups(groups.filter((_, groupIndex) => groupIndex !== index).map((item) => ({ ...item }))))
+      );
+      header.append(title, actions);
+
+      const textRow = document.createElement("div");
+      textRow.className = "row";
+      const name = document.createElement("oneline-room-card-textfield");
+      name.label = getTranslation(this._hass, "name");
+      name.value = group.name || "";
+      name.addEventListener("change", (event) => {
+        event.stopPropagation();
+        updateGroup(index, (nextGroup) => {
+          const value = trimStr(event.target.value);
+          if (value) nextGroup.name = value;
+          else delete nextGroup.name;
+        }, true);
+      });
+      const icon = document.createElement("ha-icon-picker");
+      icon.hass = this._hass;
+      icon.label = getTranslation(this._hass, "icon");
+      icon.value = group.icon || "";
+      icon.addEventListener("value-changed", (event) => {
+        event.stopPropagation();
+        updateGroup(index, (nextGroup) => {
+          const value = trimStr(event.detail?.value);
+          if (value) nextGroup.icon = value;
+          else delete nextGroup.icon;
+        });
+      });
+      textRow.append(name, icon);
+
+      const entities = document.createElement("ha-selector");
+      entities.hass = this._hass;
+      entities.label = getTranslation(this._hass, "status_group_entities");
+      entities.selector = { entity: { multiple: true } };
+      entities.value = (Array.isArray(group.entities) ? group.entities : []).map((entry) => typeof entry === "string" ? entry : entry?.entity).filter(Boolean);
+      entities.addEventListener("value-changed", (event) => {
+        event.stopPropagation();
+        const value = Array.isArray(event.detail?.value) ? event.detail.value.filter(Boolean) : [];
+        updateGroup(index, (nextGroup) => { nextGroup.entities = value; });
+      });
+
+      const displayLabel = document.createElement("label");
+      displayLabel.className = "image-preset-help";
+      displayLabel.textContent = getTranslation(this._hass, "status_group_display");
+      const display = document.createElement("select");
+      display.setAttribute("aria-label", getTranslation(this._hass, "status_group_display"));
+      display.style.cssText = "width:100%;padding:10px;margin-bottom:8px;border:1px solid var(--divider-color);border-radius:6px;background:var(--card-background-color);color:var(--primary-text-color)";
+      [["count", "status_group_count"], ["value", "status_group_value"]].forEach(([value, labelKey]) => {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = getTranslation(this._hass, labelKey);
+        display.appendChild(option);
+      });
+      display.value = group.aggregate === "sum" || group.display === "value" ? "value" : "count";
+      display.addEventListener("change", (event) => {
+        event.stopPropagation();
+        updateGroup(index, (nextGroup) => {
+          nextGroup.display = event.target.value;
+          if (event.target.value === "value") nextGroup.aggregate = "sum";
+          else delete nextGroup.aggregate;
+        }, true);
+      });
+
+      const activeStates = document.createElement("oneline-room-card-textfield");
+      activeStates.label = getTranslation(this._hass, "status_group_active_states");
+      activeStates.value = Array.isArray(group.active_states) ? group.active_states.join(", ") : "";
+      activeStates.style.display = display.value === "count" ? "" : "none";
+      activeStates.addEventListener("change", (event) => {
+        event.stopPropagation();
+        const values = String(event.target.value || "").split(",").map((value) => value.trim()).filter(Boolean);
+        updateGroup(index, (nextGroup) => {
+          if (values.length > 0) nextGroup.active_states = values;
+          else delete nextGroup.active_states;
+        });
+      });
+
+      const numericRow = document.createElement("div");
+      numericRow.className = "row";
+      numericRow.style.display = display.value === "value" ? "" : "none";
+      const unit = document.createElement("oneline-room-card-textfield");
+      unit.label = getTranslation(this._hass, "status_group_unit");
+      unit.value = group.unit || "";
+      unit.addEventListener("change", (event) => {
+        event.stopPropagation();
+        updateGroup(index, (nextGroup) => {
+          const value = trimStr(event.target.value);
+          if (value) nextGroup.unit = value;
+          else delete nextGroup.unit;
+        });
+      });
+      const precision = document.createElement("oneline-room-card-textfield");
+      precision.label = getTranslation(this._hass, "status_group_precision");
+      precision.type = "number";
+      precision.min = 0;
+      precision.max = 4;
+      precision.value = String(group.precision ?? 1);
+      precision.addEventListener("change", (event) => {
+        event.stopPropagation();
+        updateGroup(index, (nextGroup) => { nextGroup.precision = Math.max(0, Math.min(4, Number(event.target.value) || 0)); });
+      });
+      numericRow.append(unit, precision);
+
+      const color = document.createElement("oneline-room-card-textfield");
+      color.label = getTranslation(this._hass, "color");
+      color.value = group.color || "";
+      color.addEventListener("change", (event) => {
+        event.stopPropagation();
+        updateGroup(index, (nextGroup) => {
+          const value = trimStr(event.target.value);
+          if (value) nextGroup.color = value;
+          else delete nextGroup.color;
+        });
+      });
+
+      const toggles = document.createElement("div");
+      toggles.className = "editor-stack";
+      const makeToggle = (labelKey, key) => {
+        const formfield = document.createElement("ha-formfield");
+        formfield.label = getTranslation(this._hass, labelKey);
+        const toggle = document.createElement("ha-switch");
+        toggle.checked = group[key] === true;
+        toggle.addEventListener("change", (event) => {
+          event.stopPropagation();
+          updateGroup(index, (nextGroup) => { nextGroup[key] = event.target.checked === true; });
+        });
+        formfield.appendChild(toggle);
+        return formfield;
+      };
+      toggles.append(makeToggle("status_group_hide_zero", "hide_when_zero"), makeToggle("status_group_details", "details"));
+
+      const conditionTitle = document.createElement("div");
+      conditionTitle.className = "image-preset-heading";
+      conditionTitle.textContent = getTranslation(this._hass, "status_group_conditions");
+      const conditions = document.createElement("ha-card-conditions-editor");
+      conditions.hass = this._hass;
+      conditions.conditions = Array.isArray(group.conditions) ? group.conditions : [];
+      conditions.addEventListener("value-changed", (event) => {
+        event.stopPropagation();
+        const value = Array.isArray(event.detail?.value) ? event.detail.value : [];
+        conditions.conditions = value;
+        updateGroup(index, (nextGroup) => {
+          if (value.length > 0) nextGroup.conditions = value;
+          else delete nextGroup.conditions;
+        });
+      });
+
+      box.append(header, textRow, entities, displayLabel, display, activeStates, numericRow, color, toggles, conditionTitle, conditions);
       list.appendChild(box);
     });
   }
