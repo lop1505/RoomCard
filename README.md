@@ -80,6 +80,7 @@ All 1.4.0 options remain backwards compatible with existing cards.
 * 📈 Sensor sparklines (`show_sparkline`) — tiny line charts on sensor buttons; configurable history (`sparkline_hours`) and refresh cadence (`sparkline_refresh`)
 * 🎬 Room Modes (`room_modes`) — horizontally scrollable scene/script shortcuts with optional active-state highlighting
 * 🖼️ Adaptive header images (`adaptive_images`) — first-match condition rules with per-image focal points
+* 📊 Aggregate room status (`status_groups`) — configurable counts and safe numeric summaries with optional details
 * 📐 Cover position presets — tap-to-set position presets (default: 0% / 50% / 100%)
 * 🎨 State-dependent colors (`color_map`) — icon color and background by entity state
 * 💡 Dynamic state icons — auto icon per state for Light, Switch, Fan, Lock, Cover, Media Player
@@ -149,6 +150,7 @@ covers all settings — no YAML required.
 | `show_card_last_activity` | `false` | Show a header badge with elapsed time since the most recently changed button entity (e.g. `5 min`, `2h 15min`). Auto-refreshes every 60 s. |
 | `sparkline_refresh` | `300` | Auto-refresh cadence for all sparkline buttons in seconds (60–3600); configurable in the visual editor under **Buttons** |
 | `room_modes` | — | Ordered scene/script shortcuts shown between the header/info bar and controls |
+| `status_groups` | — | Informational header chips that count matching states or sum compatible numeric sensor values |
 
 #### Room Modes
 
@@ -268,6 +270,44 @@ window_sensors:
 window_labels:
   binary_sensor.bedroom_window: "Sofia's bedroom window"
 window_solid_background: true
+```
+
+#### Aggregate room status
+
+`status_groups` create neutral informational chips; they do not affect alerts,
+warning borders, or badge priority. Groups only watch their explicitly configured
+entities. Count mode matches `active_states`; numeric mode ignores unavailable,
+unknown, and non-numeric values. Power sensors using `mW`, `W`, `kW`, or `MW`
+are converted into the configured output unit before summing. Other units must
+match exactly—an incompatible combination displays a clear unavailable result
+instead of an incorrect total.
+
+Set `details: true` to make the chip keyboard-accessible and open a list of the
+contributing entities. Selecting a row opens Home Assistant more-info. The visual
+editor provides presets for lights, windows, media, and power under
+**Configuration → Room status**.
+
+```yaml
+status_groups:
+  - name: Lights
+    icon: mdi:lightbulb-group
+    entities:
+      - light.ceiling
+      - light.floor_lamp
+    active_states: ["on"]
+    display: count
+    hide_when_zero: true
+    details: true
+  - name: Power
+    icon: mdi:flash
+    entities:
+      - sensor.tv_power
+      - sensor.pc_power
+    aggregate: sum
+    display: value
+    unit: W
+    precision: 0
+    details: true
 ```
 
 #### Buttons (`controls`)
