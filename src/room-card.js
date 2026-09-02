@@ -1,5 +1,5 @@
 const VERSION = "1.4.0";
-const EDITOR_DOM_REVISION = "3";
+const EDITOR_DOM_REVISION = "4";
 const LOG_FLAG = `customCards_RoomCard_Logged_${VERSION}`;
 
 const MEDIA_PLAYER_FEATURES = Object.freeze({
@@ -381,6 +381,7 @@ const TRANSLATIONS = {
     vis_add: "Add Condition", vis_eq: "State is equal", vis_neq: "State is not equal", vis_above: "State is strictly greater than", vis_below: "State is strictly less than",
     info_line_position: "Info Line Position", info_position_header: "Inside header (default)", info_position_below: "Below header",
     last_activity_title: "Last Activity", last_activity_show: "Show last activity",
+    room_modes: "Room Modes", room_modes_help: "Run scenes or scripts directly from the room card.", room_mode_add: "Add Room Mode", room_mode_entity: "Scene or script", room_mode_active_when: "Active when", room_mode_remove: "Remove mode", room_mode_up: "Move mode up", room_mode_down: "Move mode down",
     a11y_close: "Close", a11y_previous_track: "Previous track", a11y_play_pause: "Play or pause", a11y_next_track: "Next track",
     a11y_mute: "Mute or unmute", a11y_volume: "Volume", a11y_expand: "Expand room controls", a11y_collapse: "Collapse room controls",
     a11y_activate: "Activate {name}", a11y_set_value: "Set {name}", a11y_select_option: "Select {name}"
@@ -481,6 +482,7 @@ const TRANSLATIONS = {
     vis_add: "Bedingung hinzufügen", vis_eq: "Zustand ist gleich", vis_neq: "Zustand ist nicht gleich", vis_above: "Numerisch größer als", vis_below: "Numerisch kleiner als",
     info_line_position: "Info-Zeile Position", info_position_header: "Im Header (Standard)", info_position_below: "Unter dem Header",
     last_activity_title: "Letzte Aktivität", last_activity_show: "Letzte Aktivität anzeigen",
+    room_modes: "Raum-Modi", room_modes_help: "Szenen oder Skripte direkt über die Raumkarte starten.", room_mode_add: "Raum-Modus hinzufügen", room_mode_entity: "Szene oder Skript", room_mode_active_when: "Aktiv wenn", room_mode_remove: "Modus entfernen", room_mode_up: "Modus nach oben", room_mode_down: "Modus nach unten",
     a11y_close: "Schließen", a11y_previous_track: "Vorheriger Titel", a11y_play_pause: "Wiedergabe oder Pause", a11y_next_track: "Nächster Titel",
     a11y_mute: "Stumm schalten oder Ton einschalten", a11y_volume: "Lautstärke", a11y_expand: "Raumsteuerung aufklappen", a11y_collapse: "Raumsteuerung zuklappen",
     a11y_activate: "{name} bedienen", a11y_set_value: "{name} einstellen", a11y_select_option: "{name} auswählen"
@@ -574,6 +576,7 @@ const TRANSLATIONS = {
     show_media_title: "Titre média",
     info_line_position: "Position ligne info", info_position_header: "Dans l'en-tête (défaut)", info_position_below: "Sous l'en-tête",
     last_activity_title: "Dernière activité", last_activity_show: "Afficher la dernière activité",
+    room_modes: "Modes de pièce", room_modes_help: "Lancer des scènes ou des scripts depuis la carte de pièce.", room_mode_add: "Ajouter un mode", room_mode_entity: "Scène ou script", room_mode_active_when: "Actif lorsque", room_mode_remove: "Supprimer le mode", room_mode_up: "Déplacer vers le haut", room_mode_down: "Déplacer vers le bas",
     a11y_close: "Fermer", a11y_previous_track: "Piste précédente", a11y_play_pause: "Lecture ou pause", a11y_next_track: "Piste suivante",
     a11y_mute: "Couper ou rétablir le son", a11y_volume: "Volume", a11y_expand: "Développer les commandes", a11y_collapse: "Réduire les commandes",
     a11y_activate: "Activer {name}", a11y_set_value: "Régler {name}", a11y_select_option: "Sélectionner {name}"
@@ -992,6 +995,65 @@ const getTemplateEntityDependencies = (ctrl) => {
 const templateNeedsEveryHassUpdate = (ctrl) => {
   const source = TEMPLATE_VALUE_KEYS.map((key) => String(ctrl?.[key] ?? "")).join("\n");
   return source.includes("${") && getTemplateEntityDependencies(ctrl).length === 0;
+};
+
+const getConditionEntityDependencies = (conditions) => {
+  const ids = new Set();
+  const visit = (condition) => {
+    if (!condition || typeof condition !== "object") return;
+    if (typeof condition.entity === "string" && condition.entity.trim()) ids.add(condition.entity.trim());
+    if (Array.isArray(condition.conditions)) condition.conditions.forEach(visit);
+  };
+  (Array.isArray(conditions) ? conditions : [conditions]).forEach(visit);
+  return Array.from(ids);
+};
+
+const evaluateRoomModeCondition = (condition, hass) => {
+  if (!condition || typeof condition !== "object") return { valid: false, active: false };
+  const type = condition.condition;
+  if (type === "state") {
+    const entity = trimStr(condition.entity);
+    const expected = (Array.isArray(condition.state) ? condition.state : [condition.state])
+      .filter((value) => value !== undefined && trimStr(String(value)) !== "")
+      .map(String);
+    if (!entity || expected.length === 0) return { valid: false, active: false };
+    const stateObj = hass?.states?.[entity];
+    if (!stateObj || isEntityOffline(stateObj)) return { valid: false, active: false };
+    return { valid: true, active: expected.includes(String(stateObj.state ?? "")) };
+  }
+  if (type === "numeric_state") {
+    const entity = trimStr(condition.entity);
+    const hasAbove = condition.above !== undefined && trimStr(String(condition.above)) !== "" && Number.isFinite(Number(condition.above));
+    const hasBelow = condition.below !== undefined && trimStr(String(condition.below)) !== "" && Number.isFinite(Number(condition.below));
+    if (!entity || (!hasAbove && !hasBelow)) return { valid: false, active: false };
+    const stateObj = hass?.states?.[entity];
+    if (!stateObj || isEntityOffline(stateObj)) return { valid: false, active: false };
+    const value = Number(stateObj.state);
+    if (!Number.isFinite(value)) return { valid: false, active: false };
+    return {
+      valid: true,
+      active: (!hasAbove || value > Number(condition.above)) && (!hasBelow || value < Number(condition.below))
+    };
+  }
+  if (["and", "or", "not"].includes(type)) {
+    if (!Array.isArray(condition.conditions) || condition.conditions.length === 0) return { valid: false, active: false };
+    const nested = condition.conditions.map((item) => evaluateRoomModeCondition(item, hass));
+    if (nested.some((result) => !result.valid)) return { valid: false, active: false };
+    if (type === "and") return { valid: true, active: nested.every((result) => result.active) };
+    if (type === "or") return { valid: true, active: nested.some((result) => result.active) };
+    return { valid: true, active: nested.every((result) => !result.active) };
+  }
+  return { valid: false, active: false };
+};
+
+const evaluateRoomModeActiveWhen = (activeWhen, hass) => {
+  const conditions = Array.isArray(activeWhen) ? activeWhen : (activeWhen ? [activeWhen] : []);
+  if (conditions.length === 0) return { valid: false, active: false };
+  const results = conditions.map((condition) => evaluateRoomModeCondition(condition, hass));
+  return {
+    valid: results.every((result) => result.valid),
+    active: results.every((result) => result.valid && result.active)
+  };
 };
 
 const SHARED_SPARKLINE_CACHE = new Map();
@@ -1526,7 +1588,9 @@ class OneLineRoomCard extends HTMLElement {
 
   getCardSize() {
     const c = this.config?.controls;
-    return 3 + Math.ceil((Array.isArray(c) ? c.length : 0) / 2.5);
+    const hasRoomModes = (Array.isArray(this.config?.room_modes) ? this.config.room_modes : [])
+      .some((mode) => ["scene", "script"].includes(getEntityDomain(mode?.entity)));
+    return 3 + (hasRoomModes ? 1 : 0) + Math.ceil((Array.isArray(c) ? c.length : 0) / 2.5);
   }
 
   static getStubConfig(hass) {
@@ -1670,6 +1734,14 @@ class OneLineRoomCard extends HTMLElement {
         .btn-chip ha-icon { --mdc-icon-size: 11px; }
         .info-bar { display: none; flex-wrap: nowrap; gap: 6px; padding: 4px 12px 6px; align-items: center; overflow: hidden; font-size: var(--rc-header-info-size, 12px); font-weight: var(--rc-header-info-weight, normal); font-style: var(--rc-header-info-style, normal); color: var(--rc-header-info-color, var(--secondary-text-color)); }
         .info-bar.active { display: flex; }
+        .room-modes { display: flex; gap: 7px; padding: 8px 10px; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; overscroll-behavior-inline: contain; border-top: 1px solid var(--divider-color, rgba(128,128,128,.18)); }
+        .room-modes:empty { display: none; }
+        .room-mode { flex: 0 0 auto; min-height: 34px; display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px; border: 1px solid var(--divider-color, rgba(128,128,128,.25)); border-radius: 999px; color: var(--primary-text-color); background: rgba(128,128,128,.08); font: inherit; font-size: 12px; font-weight: 600; white-space: nowrap; cursor: pointer; touch-action: manipulation; }
+        .room-mode ha-icon { --mdc-icon-size: 18px; color: var(--room-mode-color, var(--primary-color)); }
+        .room-mode.active { color: var(--text-primary-color, #fff); background: var(--room-mode-color, var(--primary-color)); border-color: var(--room-mode-color, var(--primary-color)); }
+        .room-mode.active ha-icon { color: currentColor; }
+        .room-mode:disabled { opacity: .45; cursor: not-allowed; }
+        .room-mode:focus-visible { outline: 2px solid var(--primary-color, #03a9f4); outline-offset: 2px; }
         @media (max-width: 480px) {
           .media-full-layout { gap: 8px; }
           .media-full-layout .media-thumb { width: 60px; height: 60px; }
@@ -1691,6 +1763,7 @@ class OneLineRoomCard extends HTMLElement {
             <button id="collapse-btn" class="collapse-btn" type="button"><ha-icon icon="mdi:chevron-down"></ha-icon></button>
           </div>
           <div id="info-bar" class="info-bar"></div>
+          <div id="room-modes" class="room-modes" role="group" aria-label="${getTranslation(this._hass, "room_modes")}"></div>
           <div id="ctrls" class="controls"></div>
         </div>
       </ha-card>`;
@@ -1755,6 +1828,10 @@ class OneLineRoomCard extends HTMLElement {
     (Array.isArray(cfg.window_sensors) ? cfg.window_sensors : []).forEach(add);
     (Array.isArray(cfg.battery_sensors) ? cfg.battery_sensors : []).forEach(add);
     (Array.isArray(cfg.alert_sensors) ? cfg.alert_sensors : []).forEach((s) => add(typeof s === "string" ? s : s?.entity));
+    (Array.isArray(cfg.room_modes) ? cfg.room_modes : []).forEach((mode) => {
+      add(mode?.entity);
+      getConditionEntityDependencies(mode?.active_when).forEach(add);
+    });
     (Array.isArray(cfg.controls) ? cfg.controls : []).forEach((ctrl) => {
       add(ctrl?.entity);
       if (ctrl?.type === "template") getTemplateEntityDependencies(ctrl).forEach(add);
@@ -2407,6 +2484,7 @@ class OneLineRoomCard extends HTMLElement {
       setStrProp("--rc-header-info-color", c.header_info_color, "white");
     }
 
+    this._renderRoomModes(c, h);
     this._syncCollapseUI();
 
     let visibleCtrls = (c.controls || []).filter(ctrl => {
@@ -2528,6 +2606,67 @@ class OneLineRoomCard extends HTMLElement {
     };
     apply();
     requestAnimationFrame(() => requestAnimationFrame(apply));
+  }
+
+  _renderRoomModes(config, hass) {
+    const container = this.shadowRoot.getElementById("room-modes");
+    if (!container) return;
+    const modes = (Array.isArray(config?.room_modes) ? config.room_modes : [])
+      .filter((mode) => ["scene", "script"].includes(getEntityDomain(mode?.entity)));
+    const signature = JSON.stringify(modes.map((mode) => ({
+      entity: mode.entity,
+      name: mode.name || "",
+      icon: mode.icon || "",
+      color: mode.color || "",
+      active_when: mode.active_when || null
+    })));
+    if (container.dataset.configSignature !== signature) {
+      const focusedEntity = this.shadowRoot.activeElement?.closest?.(".room-mode")?.dataset?.entity;
+      const buttons = modes.map((mode) => {
+        const domain = getEntityDomain(mode.entity);
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "room-mode";
+        button.dataset.entity = mode.entity;
+        button.dataset.domain = domain;
+        ["pointerdown", "pointerup", "pointercancel"].forEach((eventName) => {
+          button.addEventListener(eventName, (event) => event.stopPropagation());
+        });
+        button.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          if (button.disabled || !["scene", "script"].includes(domain)) return;
+          this._hass?.callService(domain, "turn_on", { entity_id: mode.entity });
+        });
+        const icon = document.createElement("ha-icon");
+        icon.setAttribute("icon", mode.icon || (domain === "scene" ? "mdi:palette-outline" : "mdi:play-circle-outline"));
+        const label = document.createElement("span");
+        label.textContent = mode.name || hass.states?.[mode.entity]?.attributes?.friendly_name || mode.entity;
+        button.append(icon, label);
+        return button;
+      });
+      container.replaceChildren(...buttons);
+      container.dataset.configSignature = signature;
+      if (focusedEntity) Array.from(container.querySelectorAll(".room-mode")).find((button) => button.dataset.entity === focusedEntity)?.focus();
+    }
+    modes.forEach((mode, index) => {
+      const button = container.children[index];
+      if (!button) return;
+      const stateObj = hass.states?.[mode.entity];
+      const disabled = !stateObj || isEntityOffline(stateObj);
+      button.disabled = disabled;
+      const label = mode.name || stateObj?.attributes?.friendly_name || mode.entity;
+      const labelNode = button.querySelector("span");
+      if (labelNode) labelNode.textContent = label;
+      button.setAttribute("aria-label", getTranslation(hass, "a11y_activate").replace("{name}", label));
+      const condition = evaluateRoomModeActiveWhen(mode.active_when, hass);
+      button.classList.toggle("active", condition.valid && condition.active);
+      if (condition.valid) button.setAttribute("aria-pressed", condition.active ? "true" : "false");
+      else button.removeAttribute("aria-pressed");
+      const color = trimStr(mode.color);
+      if (color) button.style.setProperty("--room-mode-color", color);
+      else button.style.removeProperty("--room-mode-color");
+    });
   }
 
   _checkConditions(conditions, h) {
@@ -3786,6 +3925,7 @@ class OneLineRoomCardEditor extends HTMLElement {
     this._badgesSectionOpen = false;
     this._cardBehaviorOpen = true;
     this._actionsSectionOpen = false;
+    this._roomModesSectionOpen = false;
     this._headerSectionOpen = true;
     this._layoutSectionOpen = false;
     this._areaSelectorOpen = false;
@@ -4475,7 +4615,7 @@ connectedCallback() {
     if (!this._config) return;
     const alreadyRendered = !!this.shadowRoot.innerHTML;
     const domRevision = this.shadowRoot.querySelector("[data-rc-dom-revision]")?.dataset?.rcDomRevision;
-    if (alreadyRendered && domRevision === EDITOR_DOM_REVISION) { this.updVal(); if (JSON.stringify(this._config?.controls || []) !== this._lastRenderedControlsSig) this.renBtn(); this._applyNavSelectorOptions(); this._ensureNavOptions(); this._ensureAreaOptions(); this._updateAreaSetupUI(); this._updateSensorsSectionUI(); this._updateSparklineRefreshUI(); this._updateImageSectionUI(); this._updateBadgesUI(); this._updateTypographyUI(); this._updateCardBehaviorUI(); this._updateActionsSectionUI(); this._updateHeaderSectionUI(); this._updateTabUI(); return; }
+    if (alreadyRendered && domRevision === EDITOR_DOM_REVISION) { this.updVal(); if (JSON.stringify(this._config?.controls || []) !== this._lastRenderedControlsSig) this.renBtn(); this._applyNavSelectorOptions(); this._ensureNavOptions(); this._ensureAreaOptions(); this._updateAreaSetupUI(); this._updateSensorsSectionUI(); this._updateSparklineRefreshUI(); this._updateImageSectionUI(); this._updateBadgesUI(); this._updateTypographyUI(); this._updateCardBehaviorUI(); this._updateActionsSectionUI(); this._updateRoomModesUI(); this._updateHeaderSectionUI(); this._updateTabUI(); return; }
     
     this.shadowRoot.replaceChildren();
     const h = this._hass;
@@ -4608,6 +4748,11 @@ connectedCallback() {
         .bg-presets { display: flex; gap: 8px; margin-top: 4px; font-size: 11px; flex-wrap: wrap; }
         .bg-preset { cursor: pointer; opacity: 0.7; text-decoration: underline; background: none; border: none; padding: 0; color: inherit; font: inherit; }
         .bg-preset:hover { opacity: 1; text-decoration: none; }
+        .room-mode-editor-actions { display:flex; align-items:center; gap:2px; }
+        .room-mode-editor-actions button { width:32px; height:32px; display:inline-flex; align-items:center; justify-content:center; border:0; border-radius:6px; color:inherit; background:transparent; cursor:pointer; }
+        .room-mode-editor-actions button:disabled { opacity:.35; cursor:default; }
+        .room-mode-editor-actions button:last-child { color:var(--error-color, #d32f2f); }
+        .room-mode-editor-actions ha-icon { --mdc-icon-size:18px; }
       </style>
       <span data-rc-version="${VERSION}" data-rc-dom-revision="${EDITOR_DOM_REVISION}" style="display:none"></span>
       <div id="tab-bar" class="tab-bar">
@@ -4684,6 +4829,19 @@ connectedCallback() {
           </div>
         </div>
       </div>
+      </div>
+      <div class="sec">
+        <div id="room-modes-head" class="sec-head" style="cursor:pointer;user-select:none;padding:4px 0">
+          <h3>${getTranslation(h, "room_modes")}</h3>
+          <ha-icon id="room-modes-chev" icon="mdi:chevron-right" style="--mdc-icon-size:18px;opacity:0.7;transition:transform 0.15s ease"></ha-icon>
+        </div>
+        <div id="room-modes-content" hidden>
+          <div style="font-size:12px;opacity:.7;margin:6px 0 10px">${getTranslation(h, "room_modes_help")}</div>
+          <div id="room-modes-list"></div>
+          <mwc-button id="room-modes-add" raised label="${getTranslation(h, "room_mode_add")}">
+            <ha-icon icon="mdi:plus" slot="icon"></ha-icon>
+          </mwc-button>
+        </div>
       </div>
       <div class="sec">
         <div id="header-sec-head" class="sec-head" style="cursor:pointer;user-select:none;padding:4px 0">
@@ -5116,6 +5274,22 @@ connectedCallback() {
       actionsHead.addEventListener("click", () => {
         this._actionsSectionOpen = !this._actionsSectionOpen;
         this._updateActionsSectionUI();
+      });
+    }
+    const roomModesHead = this.shadowRoot.getElementById("room-modes-head");
+    if (roomModesHead) {
+      roomModesHead.addEventListener("click", () => {
+        this._roomModesSectionOpen = !this._roomModesSectionOpen;
+        this._updateRoomModesUI();
+      });
+    }
+    const roomModesAdd = this.shadowRoot.getElementById("room-modes-add");
+    if (roomModesAdd) {
+      roomModesAdd.addEventListener("click", () => {
+        const roomModes = [...(Array.isArray(this._config?.room_modes) ? this._config.room_modes : []), { entity: "" }];
+        this._roomModesSectionOpen = true;
+        this._fire({ ...this._config, room_modes: roomModes });
+        this._updateRoomModesUI();
       });
     }
     const headerSecHead = this.shadowRoot.getElementById("header-sec-head");
@@ -6376,6 +6550,7 @@ if (tmplSelect) {
     this._updateTypographyUI();
     this._updateBadgesUI();
     this._updateCardBehaviorUI();
+    this._updateRoomModesUI();
     this._updateHeaderSectionUI();
   }
 
@@ -6405,6 +6580,132 @@ if (tmplSelect) {
     if (content) content.hidden = !this._actionsSectionOpen;
     if (section) section.classList.toggle("open", this._actionsSectionOpen);
     if (chev) chev.style.transform = this._actionsSectionOpen ? "rotate(90deg)" : "";
+  }
+
+  _updateRoomModesUI() {
+    const content = this.shadowRoot?.getElementById("room-modes-content");
+    const chev = this.shadowRoot?.getElementById("room-modes-chev");
+    const list = this.shadowRoot?.getElementById("room-modes-list");
+    if (!content || !list) return;
+    content.hidden = !this._roomModesSectionOpen;
+    if (chev) chev.style.transform = this._roomModesSectionOpen ? "rotate(90deg)" : "";
+    const modes = Array.isArray(this._config?.room_modes) ? this._config.room_modes : [];
+    const updateMode = (index, key, value) => {
+      const nextModes = (Array.isArray(this._config?.room_modes) ? this._config.room_modes : []).map((mode) => ({ ...mode }));
+      if (value === undefined || value === null || value === "" || (Array.isArray(value) && value.length === 0)) delete nextModes[index][key];
+      else nextModes[index][key] = value;
+      this._fire({ ...this._config, room_modes: nextModes });
+    };
+    const moveMode = (from, to) => {
+      const currentModes = Array.isArray(this._config?.room_modes) ? this._config.room_modes : [];
+      if (to < 0 || to >= currentModes.length) return;
+      const nextModes = currentModes.map((mode) => ({ ...mode }));
+      const [moved] = nextModes.splice(from, 1);
+      nextModes.splice(to, 0, moved);
+      this._fire({ ...this._config, room_modes: nextModes });
+      this._updateRoomModesUI();
+    };
+    list.replaceChildren();
+    modes.forEach((mode, index) => {
+      const box = document.createElement("div");
+      box.className = "badge-box room-mode-editor";
+      const header = document.createElement("div");
+      header.className = "badge-head-row";
+      const label = document.createElement("span");
+      label.className = "badge-entity-label";
+      label.textContent = `${index + 1}. ${mode.name || this._hass?.states?.[mode.entity]?.attributes?.friendly_name || mode.entity || getTranslation(this._hass, "room_modes")}`;
+      const actions = document.createElement("div");
+      actions.className = "room-mode-editor-actions";
+      const makeAction = (iconName, ariaLabel, disabled, action) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.disabled = disabled;
+        button.setAttribute("aria-label", ariaLabel);
+        const icon = document.createElement("ha-icon");
+        icon.setAttribute("icon", iconName);
+        button.appendChild(icon);
+        button.addEventListener("click", (event) => { event.stopPropagation(); action(); });
+        return button;
+      };
+      actions.append(
+        makeAction("mdi:arrow-up", getTranslation(this._hass, "room_mode_up"), index === 0, () => moveMode(index, index - 1)),
+        makeAction("mdi:arrow-down", getTranslation(this._hass, "room_mode_down"), index === modes.length - 1, () => moveMode(index, index + 1)),
+        makeAction("mdi:delete", getTranslation(this._hass, "room_mode_remove"), false, () => {
+          const nextModes = (Array.isArray(this._config?.room_modes) ? this._config.room_modes : []).filter((_, modeIndex) => modeIndex !== index).map((item) => ({ ...item }));
+          const next = { ...this._config };
+          if (nextModes.length > 0) next.room_modes = nextModes;
+          else delete next.room_modes;
+          this._fire(next);
+          this._updateRoomModesUI();
+        })
+      );
+      header.append(label, actions);
+
+      const picker = document.createElement("ha-entity-picker");
+      picker.hass = this._hass;
+      picker.label = getTranslation(this._hass, "room_mode_entity");
+      picker.value = mode.entity || "";
+      picker.setAttribute("allow-custom-entity", "");
+      picker.setAttribute("include-domains", '["scene","script"]');
+      picker.includeDomains = ["scene", "script"];
+      picker.addEventListener("value-changed", (event) => {
+        event.stopPropagation();
+        const value = trimStr(event.detail?.value);
+        updateMode(index, "entity", ["scene", "script"].includes(getEntityDomain(value)) ? value : undefined);
+        this._updateRoomModesUI();
+      });
+
+      const fields = document.createElement("div");
+      fields.className = "row";
+      const nameField = document.createElement("oneline-room-card-textfield");
+      nameField.label = getTranslation(this._hass, "name");
+      nameField.value = mode.name || "";
+      nameField.addEventListener("change", (event) => { event.stopPropagation(); updateMode(index, "name", trimStr(event.target.value)); });
+      const iconPicker = document.createElement("ha-icon-picker");
+      iconPicker.hass = this._hass;
+      iconPicker.label = getTranslation(this._hass, "icon");
+      iconPicker.value = mode.icon || "";
+      iconPicker.addEventListener("value-changed", (event) => { event.stopPropagation(); updateMode(index, "icon", trimStr(event.detail?.value)); });
+      fields.append(nameField, iconPicker);
+
+      const colorRow = document.createElement("div");
+      colorRow.className = "cl-row";
+      const colorField = document.createElement("oneline-room-card-textfield");
+      colorField.label = getTranslation(this._hass, "color");
+      colorField.value = mode.color || "";
+      const colorPicker = document.createElement("input");
+      colorPicker.type = "color";
+      colorPicker.className = "cp";
+      colorPicker.value = parseColorToPickerHex(mode.color || "#03a9f4");
+      colorField.addEventListener("change", (event) => {
+        event.stopPropagation();
+        const value = trimStr(event.target.value);
+        updateMode(index, "color", value);
+        colorPicker.value = parseColorToPickerHex(value || "#03a9f4");
+      });
+      colorPicker.addEventListener("change", (event) => {
+        event.stopPropagation();
+        colorField.value = event.target.value;
+        updateMode(index, "color", event.target.value);
+      });
+      colorRow.append(colorField, colorPicker);
+
+      const conditionLabel = document.createElement("div");
+      conditionLabel.className = "image-title";
+      conditionLabel.style.cssText = "margin:10px 0 6px;font-weight:600";
+      conditionLabel.textContent = getTranslation(this._hass, "room_mode_active_when");
+      const conditionEditor = document.createElement("ha-card-conditions-editor");
+      conditionEditor.hass = this._hass;
+      conditionEditor.conditions = Array.isArray(mode.active_when) ? mode.active_when : [];
+      conditionEditor.addEventListener("value-changed", (event) => {
+        event.stopPropagation();
+        const value = Array.isArray(event.detail?.value) ? event.detail.value : [];
+        conditionEditor.conditions = value;
+        updateMode(index, "active_when", value);
+      });
+      box.append(header, picker, fields, colorRow, conditionLabel, conditionEditor);
+      list.appendChild(box);
+    });
   }
 
   _updateHeaderSectionUI() {

@@ -78,6 +78,7 @@ All 1.4.0 options remain backwards compatible with existing cards.
 * 🔥 HVAC mode chips (`show_hvac_modes`) — tappable chips for `attributes.hvac_modes` with matching MDI icons (off/auto/heat/cool/heat_cool/dry/fan_only)
 * 💨 Fan speed chips (`show_fan_modes`) — tappable chips for `attributes.fan_modes`
 * 📈 Sensor sparklines (`show_sparkline`) — tiny line charts on sensor buttons; configurable history (`sparkline_hours`) and refresh cadence (`sparkline_refresh`)
+* 🎬 Room Modes (`room_modes`) — horizontally scrollable scene/script shortcuts with optional active-state highlighting
 * 📐 Cover position presets — tap-to-set position presets (default: 0% / 50% / 100%)
 * 🎨 State-dependent colors (`color_map`) — icon color and background by entity state
 * 💡 Dynamic state icons — auto icon per state for Light, Switch, Fan, Lock, Cover, Media Player
@@ -145,6 +146,40 @@ covers all settings — no YAML required.
 | `global_button_background` | — | Default button background (e.g. `rgba(0,0,0,0)`) |
 | `show_card_last_activity` | `false` | Show a header badge with elapsed time since the most recently changed button entity (e.g. `5 min`, `2h 15min`). Auto-refreshes every 60 s. |
 | `sparkline_refresh` | `300` | Auto-refresh cadence for all sparkline buttons in seconds (60–3600); configurable in the visual editor under **Buttons** |
+| `room_modes` | — | Ordered scene/script shortcuts shown between the header/info bar and controls |
+
+#### Room Modes
+
+Room Modes run `scene.turn_on` or `script.turn_on` directly. The strip stays visible
+when controls are collapsed and scrolls horizontally on narrow cards. `active_when`
+is optional; without a valid condition the mode remains usable but is never marked
+active. Supported conditions are `state`, `numeric_state`, and nested `and`, `or`,
+or `not` groups.
+
+```yaml
+room_modes:
+  - entity: scene.living_room_movie
+    name: Movie
+    icon: mdi:movie-open
+    color: "#9c6cff"
+    active_when:
+      - condition: state
+        entity: input_select.living_room_mode
+        state: movie
+  - entity: script.living_room_relax
+    name: Relax
+    active_when:
+      - condition: and
+        conditions:
+          - condition: numeric_state
+            entity: sensor.living_room_illuminance
+            below: 30
+          - condition: not
+            conditions:
+              - condition: state
+                entity: input_boolean.cleaning
+                state: "on"
+```
 
 #### Built-in room images
 
