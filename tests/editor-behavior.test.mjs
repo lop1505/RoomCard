@@ -147,6 +147,33 @@ test("sparkline refresh editor loads, clamps, validates, and removes the card-le
   editor.remove();
 });
 
+test("sparkline detail editor is opt-in and only visible for sensor sparklines", () => {
+  const editor = createEditor();
+  editor.hass = createHass({
+    states: {
+      "sensor.temperature": { state: "21", attributes: {} },
+      "light.ceiling": { state: "on", attributes: {} }
+    }
+  });
+  editor.setConfig({
+    controls: [
+      { entity: "sensor.temperature", show_sparkline: true },
+      { entity: "sensor.hidden", show_sparkline: false },
+      { entity: "light.ceiling", show_sparkline: true }
+    ]
+  });
+  const rows = editor.shadowRoot.querySelectorAll("#b .box");
+  assert.equal(rows[0].querySelector(".spd-wrap").style.display, "inline-flex");
+  const toggle = rows[0].querySelector(".spd");
+  assert.equal(toggle.checked, false);
+  assert.equal(rows[1].querySelector(".spd-wrap").style.display, "none");
+  assert.equal(rows[2].querySelector(".spd-wrap").style.display, "none");
+  toggle.checked = true;
+  toggle.dispatchEvent(new Event("change", { bubbles: true }));
+  assert.equal(editor._config.controls[0].sparkline_detail, true);
+  editor.remove();
+});
+
 test("status border editor switch defaults on and stores only the disabled override", () => {
   const editor = createEditor();
   editor.setConfig({ controls: [] });
