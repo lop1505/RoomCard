@@ -616,7 +616,7 @@ const TRANSLATIONS = {
     pos_left: "Links",
     pos_top: "Oben",
     row_type: "Zeilentyp", type_entity: "Entität", type_template: "Template",
-    tmpl_content: "Text (Template)", tmpl_icon: "Icon (Template)", tmpl_color: "Farbe (Template)", tmpl_status: "Status (Template)", tmpl_preview: "Vorschau",
+    tmpl_content: "Text (Template)", tmpl_icon: "Icon (Template)", tmpl_color: "Farbe (Template)", tmpl_state: "Status (Template)", tmpl_preview: "Vorschau",
     tmpl_light: "Licht", tmpl_switch: "Schalter / Steckdose", tmpl_select: "Auswahl", tmpl_climate: "Klima", tmpl_cover: "Rollladen / Abdeckung", tmpl_media: "Media Player",
     show_state: "Status anzeigen", show_label: "Bezeichnung anzeigen", show_icon: "Icon anzeigen", show_last_changed: "Letzte Änderung", show_sparkline: "Sparkline anzeigen", sparkline_detail: "Verlaufsdetails öffnen", sparkline_hours: "Verlauf (Stunden)", sparkline_refresh: "Sparkline-Aktualisierung (Sekunden)", sparkline_refresh_adjusted: "Bitte 60–3600 Sekunden eingeben. Der Wert wurde auf {value} angepasst.", sparkline_detail_title: "Verlaufsdetails", sparkline_loading: "Verlauf wird geladen…", sparkline_empty: "Keine Verlaufsdaten verfügbar.", sparkline_error: "Verlauf konnte nicht geladen werden.", sparkline_current: "Aktuell", sparkline_min: "Min", sparkline_max: "Max", sparkline_average: "Durchschnitt", lc_just_now: "gerade eben", state_first: "Wert zuerst", text_layout: "Text-Reihenfolge", primary_text: "Erste Zeile", primary_state: "Wert zuerst", primary_name: "Name zuerst",
     height: "Höhe", width: "Breite", align: "Ausrichtung", visible: "Sichtbar", left: "Links", center: "Mitte", right: "Rechts",
@@ -731,7 +731,8 @@ const TRANSLATIONS = {
     upload_btn: "Télécharger une image", uploading: "Téléchargement...", upload_success: "Image importée", upload_optimized: "Image optimisée et importée",
     upload_unsupported: "Choisissez une image JPEG, PNG ou WebP.", upload_too_large: "L'image source dépasse la limite de 20 Mo.", upload_decode_error: "L'image n'a pas pu être décodée.", upload_failed: "Échec de l'import ({status}).",
     image_focal_point: "Point focal de l'image", image_focal_help: "Cliquez ou déplacez le repère vers la zone importante.", image_center: "Centrer", image_horizontal: "Position horizontale", image_vertical: "Position verticale",
-    show_name: "Afficher le titre", header_badges: "Infos d'en-tête supplémentaires", badge_add: "Ajouter une entrée", badge_label: "Libellé (optionnel)", badge_background: "Arrière-plan (rgba)", standard_badge_background: "Fond du badge climat principal (rgba)",
+    show_name: "Afficher le titre", header_badges: "Infos d'en-tête supplémentaires", badge_add: "Ajouter une entrée", badge_label: "Libellé (optionnel)", badge_background: "Arrière-plan (rgba)", standard_badge_background: "Fond du badge climat principal (rgba)", badge_auto_climate_btn: "Ajouter automatiquement un bouton de commande du chauffage",
+    visibility: "Visibilité", visibility_cond: "Visibilité conditionnelle", vis_entity: "Entité de la condition", vis_state: "Afficher si l’état est", vis_invert: "Inverser la logique (masquer si l’état correspond)",
     migration_title: "Action requise",
     migration_text: "Carte renommée en <b>oneline-room-card</b> pour éviter les conflits.<br>Veuillez changer <code>type: custom:room-card</code> en <code>type: custom:oneline-room-card</code>.",
     control_mode: "Mode de contrôle", ctrl_default: "Défaut", ctrl_slider: "Curseur", ctrl_buttons: "Boutons", ctrl_full: "Contrôles complets", ctrl_all_options: "Toutes les options",
@@ -768,6 +769,8 @@ const TRANSLATIONS = {
     show_media_sources: "Sources",
     show_media_sound_modes: "Modes audio",
     show_media_title: "Titre média",
+    sub_chips: "Sous-puces", chip_add: "Ajouter une puce", chip_entity: "Entité", chip_attribute: "Attribut (facultatif)", chip_icon: "Icône (facultative)", chip_label: "Libellé (facultatif)", chips_position: "Position des puces", chips_top: "Au-dessus du titre", chips_bottom: "Sous le titre",
+    vis_add: "Ajouter une condition", vis_eq: "L’état est égal à", vis_neq: "L’état est différent de", vis_above: "L’état est strictement supérieur à", vis_below: "L’état est strictement inférieur à",
     info_line_position: "Position ligne info", info_position_header: "Dans l'en-tête (défaut)", info_position_below: "Sous l'en-tête",
     last_activity_title: "Dernière activité", last_activity_show: "Afficher la dernière activité",
     room_modes: "Modes de pièce", room_modes_help: "Lancer des scènes ou des scripts depuis la carte de pièce.", room_mode_add: "Ajouter un mode", room_mode_entity: "Scène ou script", room_mode_active_when: "Actif lorsque", room_mode_remove: "Supprimer le mode", room_mode_up: "Déplacer vers le haut", room_mode_down: "Déplacer vers le bas",
@@ -1345,6 +1348,9 @@ class OneLineRoomCard extends HTMLElement {
       this._setupAdaptiveMediaQueries();
       this._setupLastChangedInterval();
       this._setupSparklineInterval();
+      // HA may configure the card while detached, when header image commits are
+      // intentionally ignored. Retry on connection, even with unchanged state.
+      this.updateContent();
     }
   }
 

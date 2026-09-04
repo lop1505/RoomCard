@@ -127,6 +127,121 @@ test("runtime tracks dependencies and ignores stale image loads", () => {
   card.remove();
 });
 
+test("legacy header images initialize when configured before attachment", () => {
+  const configs = [
+    { image_preset: "kitchen" },
+    { image: "/local/custom.jpg" },
+    { image: "/api/image/serve/upload-id/original", image_preset: "kitchen" },
+    {}
+  ];
+  for (const config of configs) {
+    for (const hassFirst of [false, true]) {
+      const card = document.createElement("oneline-room-card");
+      try {
+        const hass = createHass();
+        if (hassFirst) card.hass = hass;
+        card.setConfig({ ...config, controls: [] });
+        if (!hassFirst) card.hass = hass;
+        document.body.appendChild(card);
+        const image = card.shadowRoot.getElementById("bg");
+        const expected = resolveAdaptiveRoomImage(config, hass).url || "/static/images/card_media/cover.png";
+        assert.equal(image.getAttribute("src"), expected, JSON.stringify({ config, hassFirst }));
+        assert.equal(image.dataset.roomImageUrl, expected);
+        card.hass = hass;
+        assert.equal(image.getAttribute("src"), expected, "unchanged HA state retains the image");
+      } finally {
+        card.remove();
+      }
+    }
+  }
+});
+
+test("header images resume after reconnect and reject loads from the previous connection", (t) => {
+  const originalImage = globalThis.Image;
+  const pending = [];
+  globalThis.Image = class {
+    set src(value) { this.value = value; pending.push(this); }
+  };
+  const card = document.createElement("oneline-room-card");
+  t.after(() => { card.remove(); globalThis.Image = originalImage; });
+  document.body.appendChild(card);
+  card.setConfig({ image: "/local/default.jpg" });
+  card.hass = createHass();
+  const image = card.shadowRoot.getElementById("bg");
+  card.setConfig({ image: "/local/next.jpg" });
+  assert.equal(pending.length, 1);
+  card.remove();
+  pending[0].onload();
+  assert.equal(image.getAttribute("src"), "/local/default.jpg");
+  document.body.appendChild(card);
+  assert.equal(pending.length, 2, "reconnection retries the current selection without a HA state change");
+  pending[0].onload();
+  assert.equal(image.getAttribute("src"), "/local/default.jpg", "old load remains invalid after reconnect");
+  pending[1].onload();
+  assert.equal(image.getAttribute("src"), "/local/next.jpg");
+});
+
+test("loaded adaptive image returns to the default when inactive or its last rule is removed", (t) => {
+  const originalImage = globalThis.Image;
+  const pending = [];
+  globalThis.Image = class {
+    set src(value) { this.value = value; pending.push(this); }
+  };
+  const card = document.createElement("oneline-room-card");
+  t.after(() => { card.remove(); globalThis.Image = originalImage; });
+  const config = {
+    image_preset: "kitchen",
+    image_position: "30% 40%",
+    adaptive_images: [{
+      image_preset: "bedroom",
+      image_position: "70% 20%",
+      conditions: [{ condition: "state", entity: "light.floor", state: "on" }]
+    }]
+  };
+  const on = createHass({ states: { "light.floor": { state: "on", attributes: {} } } });
+  const off = createHass({ states: { "light.floor": { state: "off", attributes: {} } } });
+  document.body.appendChild(card);
+  card.setConfig(config);
+  card.hass = on;
+  const image = card.shadowRoot.getElementById("bg");
+  const activeUrl = resolveAdaptiveRoomImage(config, on).url;
+  const defaultUrl = resolveAdaptiveRoomImage(config, off).url;
+  assert.equal(image.getAttribute("src"), activeUrl);
+  card.hass = off;
+  assert.equal(pending.at(-1).value, defaultUrl);
+  pending.at(-1).onload();
+  assert.equal(image.getAttribute("src"), defaultUrl);
+  assert.equal(image.style.objectPosition, "30% 40%");
+  card.hass = on;
+  pending.at(-1).onload();
+  assert.equal(image.getAttribute("src"), activeUrl);
+  const { adaptive_images, ...withoutRules } = config;
+  card.setConfig(withoutRules);
+  assert.equal(pending.at(-1).value, defaultUrl);
+  pending.at(-1).onload();
+  assert.equal(image.getAttribute("src"), defaultUrl);
+  assert.equal(image.style.objectPosition, "30% 40%");
+});
+
+test("removing a rule while detached restores the fallback upon attachment", () => {
+  const card = document.createElement("oneline-room-card");
+  try {
+    card.setConfig({
+      image: "/local/default.jpg",
+      adaptive_images: [{
+        image: "/local/active.jpg",
+        conditions: [{ condition: "state", entity: "light.floor", state: "on" }]
+      }]
+    });
+    card.hass = createHass({ states: { "light.floor": { state: "on", attributes: {} } } });
+    card.setConfig({ image: "/local/default.jpg" });
+    document.body.appendChild(card);
+    assert.equal(card.shadowRoot.getElementById("bg").getAttribute("src"), "/local/default.jpg");
+  } finally {
+    card.remove();
+  }
+});
+
 test("adaptive image editor round-trips conditions, ordering, duplication, and removal", () => {
   const editor = document.createElement("oneline-room-card-editor");
   document.body.appendChild(editor);

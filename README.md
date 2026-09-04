@@ -27,6 +27,10 @@ Developed with a focus on stability, simple design, and maximum flexibility.
 
 ## 🆕 What's new in 1.4.0
 
+* 🔎 Open opt-in sparkline details with 6h / 24h / 7d history and Min / Max / Average
+* 🎬 Start scenes and scripts with Room Modes, including optional active-state highlighting
+* 🌗 Switch header images using ordered conditions, with a reliable default-image fallback
+* 📊 Summarize lights, windows, media, or power with configurable room-status groups
 * 🖼️ Position header images with a visual focal-point editor and upload validated, automatically optimized JPEG, PNG, or WebP files
 * ▶️ Use improved media controls with separate transport and volume rows, Previous support, square artwork, and stable keyboard focus
 * 📈 Configure the card-level sparkline refresh interval; shared history requests and visibility-aware polling reduce background work
@@ -37,6 +41,8 @@ Developed with a focus on stability, simple design, and maximum flexibility.
 * 🧪 Rely on expanded runtime/editor regression coverage and stricter release/HACS validation
 
 All 1.4.0 options remain backwards compatible with existing cards.
+
+See the [illustrated v1.4.0 release notes](docs/releases/v1.4.0.md) for screenshots of the new features.
 
 ---
 
