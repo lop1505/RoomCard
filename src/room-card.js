@@ -1345,6 +1345,9 @@ class OneLineRoomCard extends HTMLElement {
       this._setupAdaptiveMediaQueries();
       this._setupLastChangedInterval();
       this._setupSparklineInterval();
+      // HA may configure the card while detached, when header image commits are
+      // intentionally ignored. Retry on connection, even with unchanged state.
+      this.updateContent();
     }
   }
 
