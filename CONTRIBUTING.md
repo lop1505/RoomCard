@@ -3,6 +3,7 @@
 ## Repository layout
 
 - `src/room-card.js` is the canonical source file.
+- `src/lib/values.js` owns browser-independent number/string helpers.
 - `dist/room-card.js` is the generated HACS artifact and must not be edited directly.
 - `dist/rooms/` contains the additional assets installed by HACS.
 - `tests/` contains automated regression tests.
