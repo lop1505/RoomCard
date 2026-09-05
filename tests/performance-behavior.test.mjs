@@ -10,13 +10,7 @@ const {
   SHARED_SPARKLINE_CACHE,
   SHARED_SPARKLINE_PENDING,
   pruneSharedSparklineCache
-} = await importRoomCard([
-  "getTemplateEntityDependencies",
-  "templateNeedsEveryHassUpdate",
-  "SHARED_SPARKLINE_CACHE",
-  "SHARED_SPARKLINE_PENDING",
-  "pruneSharedSparklineCache"
-]);
+} = await importRoomCard();
 
 const createRenderedCard = (config, hass) => {
   const card = document.createElement("oneline-room-card");

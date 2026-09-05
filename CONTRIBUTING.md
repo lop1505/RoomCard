@@ -15,6 +15,8 @@ See [the modularization plan](docs/modularization-plan.md) and [manual Home Assi
 ## Local checks
 
 Node.js 20 or newer is required. The project has no runtime dependencies.
+The build uses esbuild pinned to `0.28.2`. It produces one readable ESM file,
+without minification, code splitting, source maps, or runtime imports.
 
 ```sh
 npm ci
@@ -24,12 +26,23 @@ npm run check
 
 After changing `src/room-card.js`, always run `npm run build` and commit the matching `dist/room-card.js` artifact. CI rejects stale distribution output and inconsistent release versions.
 
+`scripts/build-config.mjs` owns the shared build options. `npm run check:dist`
+builds into an isolated temporary directory, compares that artifact byte for
+byte with the committed distribution, and removes only its temporary output.
+It does not repair or overwrite a stale committed artifact. `dist/rooms/` stays
+alongside the bundle and is not transformed by esbuild.
+
+Runtime/editor tests import the actual distribution. Direct helper assertions
+use explicit named ESM exports declared in the source, not exports appended to
+bundler-generated text. These internal test seams are not a supported consumer
+API; they will move with their owning modules during the gated extraction.
+
 ## Release metadata
 
 For a release, keep these values identical:
 
 - `const VERSION` in `src/room-card.js`
-- `const VERSION` in `dist/room-card.js`
+- the generated `VERSION` value in `dist/room-card.js` (esbuild may emit `var`)
 - `version` in `package.json`
 - the newest version heading in `CHANGELOG.md`
 - the “What's new” version in `README.md`

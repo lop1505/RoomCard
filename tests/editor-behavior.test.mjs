@@ -10,13 +10,7 @@ const {
   patchExistingEditor,
   OneLineRoomCardEditor,
   EDITOR_DOM_REVISION
-} = await importRoomCard([
-  "parseImagePosition",
-  "validateImageUpload",
-  "patchExistingEditor",
-  "OneLineRoomCardEditor",
-  "EDITOR_DOM_REVISION"
-]);
+} = await importRoomCard();
 
 const createEditor = () => {
   const editor = document.createElement("oneline-room-card-editor");

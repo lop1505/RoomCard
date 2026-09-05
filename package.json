@@ -14,6 +14,7 @@
     "node": ">=20"
   },
   "devDependencies": {
+    "esbuild": "0.28.2",
     "happy-dom": "20.11.6"
   }
 }

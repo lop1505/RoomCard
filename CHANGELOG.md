@@ -4,6 +4,8 @@ All notable changes to OneLine Room Card are documented here.
 
 ## [Unreleased]
 
+* Build: Introduce pinned esbuild 0.28.2 as the first isolated step toward #100. Keep runtime/editor behavior and the single-file HACS delivery unchanged; verify a fresh reproducible build, registration order, explicit helper test imports, and adjacent room-image assets. Source extraction and the Room Detail Drawer remain gated follow-up work for v1.5.0.
+
 ---
 
 ## [1.4.0]

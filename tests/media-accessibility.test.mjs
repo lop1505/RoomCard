@@ -4,7 +4,7 @@ import test from "node:test";
 import { createHass, importRoomCard, installDomEnvironment, wait } from "./support/dom-env.mjs";
 
 installDomEnvironment();
-await importRoomCard(["MEDIA_PLAYER_FEATURES"]);
+await importRoomCard();
 
 const createRenderedCard = (config, hass) => {
   const card = document.createElement("oneline-room-card");

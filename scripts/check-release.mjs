@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { assertFreshDistribution } from "./check-build.mjs";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -21,12 +22,12 @@ const matchVersion = (content, pattern, label) => {
 };
 
 const sourceVersion = matchVersion(source, /const VERSION = "(\d+\.\d+\.\d+)";/, "source");
-const distributionVersion = matchVersion(distribution, /const VERSION = "(\d+\.\d+\.\d+)";/, "distribution");
+const distributionVersion = matchVersion(distribution, /(?:const|var|let) VERSION = "(\d+\.\d+\.\d+)";/, "distribution");
 const readmeVersion = matchVersion(readme, /What's new in (\d+\.\d+\.\d+)/, "README");
 const changelogVersion = matchVersion(changelog, /^## \[(\d+\.\d+\.\d+)\]$/m, "changelog");
 const manifestVersion = JSON.parse(packageJson).version;
 
-assert.equal(distribution, source, "dist/room-card.js is stale. Run `npm run build`.");
+await assertFreshDistribution();
 
 for (const [label, version] of [
   ["distribution", distributionVersion],
