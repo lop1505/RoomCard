@@ -486,6 +486,8 @@ var isAlertSensorActive = (alertCfg, stateObj, normalize = normalizeAlertSensorC
 // src/i18n/translations.js
 var TRANSLATIONS = {
   en: {
+    room_details: "Room details",
+    drawer_prototype_note: "Preview: test opening, focus and nested dialogs. Room controls follow after this prototype is validated.",
     empty: "Empty",
     low: "Low",
     critical: "Critical",
@@ -806,6 +808,8 @@ var TRANSLATIONS = {
     a11y_select_option: "Select {name}"
   },
   de: {
+    room_details: "Raumdetails",
+    drawer_prototype_note: "Vorschau: Öffnen, Fokus und Unterdialoge testen. Die Raumsteuerung folgt nach Prüfung dieses Prototyps.",
     empty: "Leer",
     low: "Niedrig",
     critical: "Kritisch",
@@ -1126,6 +1130,8 @@ var TRANSLATIONS = {
     a11y_select_option: "{name} auswählen"
   },
   fr: {
+    room_details: "Détails de la pièce",
+    drawer_prototype_note: "Aperçu : testez l’ouverture, le focus et les boîtes de dialogue imbriquées. Les commandes suivront après validation de ce prototype.",
     empty: "Vide",
     low: "Faible",
     critical: "Critique",
@@ -1659,6 +1665,233 @@ var supportsMediaFeature = (stateObj, feature) => {
 var VERSION = "1.4.0";
 var EDITOR_DOM_REVISION = "6";
 
+// src/shared/dialog-coordinator.js
+var KEY = /* @__PURE__ */ Symbol.for("room-card.dialog-coordinator");
+var deepActiveElement = (root = document) => {
+  let active = root.activeElement;
+  while (active?.shadowRoot?.activeElement) active = active.shadowRoot.activeElement;
+  return active;
+};
+var focusableElements = (root) => {
+  const result = [];
+  const visit = (parent) => {
+    for (const node of parent.children || []) {
+      if (node.hidden || node.inert || node.getAttribute("aria-hidden") === "true") continue;
+      const style = getComputedStyle(node);
+      if (style.display === "none" || style.visibility === "hidden") continue;
+      if (node.tabIndex >= 0 && !node.disabled) result.push(node);
+      visit(node.shadowRoot || node);
+    }
+  };
+  visit(root);
+  return result;
+};
+var containsFocusTarget = (panel, target) => {
+  for (let node = target; node; node = node.parentNode || node.host) {
+    if (node === panel) return true;
+  }
+  return false;
+};
+var getDialogCoordinator = (doc = document) => {
+  if (doc[KEY]) return doc[KEY];
+  const stack = [];
+  let listening = false;
+  const top = () => stack.at(-1);
+  const focus = (target) => {
+    if (target?.isConnected) target.focus({ preventScroll: true });
+  };
+  const sync = () => {
+    for (const entry of stack) {
+      if (!entry.panel) continue;
+      const paused = entry !== top();
+      entry.panel.inert = paused;
+      entry.panel.setAttribute("aria-modal", String(!paused));
+      if (paused) entry.panel.setAttribute("aria-hidden", "true");
+      else entry.panel.removeAttribute("aria-hidden");
+    }
+    if (stack.length && !listening) {
+      doc.addEventListener("keydown", keydown, true);
+      doc.addEventListener("focusin", focusin, true);
+      listening = true;
+    } else if (!stack.length && listening) {
+      doc.removeEventListener("keydown", keydown, true);
+      doc.removeEventListener("focusin", focusin, true);
+      listening = false;
+    }
+  };
+  const keydown = (event) => {
+    const current = top();
+    if (!current?.panel) return;
+    if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      current.close();
+    } else if (event.key === "Tab") {
+      const nodes = focusableElements(current.panel);
+      const index = nodes.indexOf(deepActiveElement(doc));
+      const next = event.shiftKey ? index <= 0 ? nodes.length - 1 : index - 1 : (index + 1) % nodes.length;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      focus(nodes[next] || current.panel);
+    }
+  };
+  const focusin = (event) => {
+    const current = top();
+    if (!current?.panel || event.composedPath().includes(current.panel)) return;
+    focus(current.initialFocus || current.panel);
+  };
+  const coordinator = {
+    push(entry) {
+      entry.restoreTarget ??= deepActiveElement(doc);
+      stack.push(entry);
+      sync();
+      focus(entry.initialFocus);
+      return entry;
+    },
+    remove(entry, restore = true) {
+      const index = stack.indexOf(entry);
+      if (index < 0) return;
+      const wasTop = entry === top();
+      stack.splice(index, 1);
+      sync();
+      if (restore && wasTop) {
+        const current = top();
+        const target = entry.restoreTarget;
+        if (!current || current.panel && target?.isConnected && containsFocusTarget(current.panel, target)) focus(target);
+        else if (current?.panel) focus(current.initialFocus || current.panel);
+      }
+    },
+    isTop: (entry) => top() === entry,
+    get size() {
+      return stack.length;
+    },
+    replaceDrawer() {
+      for (const entry of [...stack].reverse()) {
+        if (entry.kind !== "ha") entry.close(false);
+      }
+    }
+  };
+  doc[KEY] = coordinator;
+  return coordinator;
+};
+
+// src/shared/ha-dialog-adapter.js
+var observeHassDialogs = (coordinator, doc = document) => {
+  const entries = /* @__PURE__ */ new Map();
+  const opened = (event) => {
+    const path = event.composedPath();
+    if (!path.some((node) => ["HA-DIALOG", "HA-BOTTOM-SHEET", "HA-ADAPTIVE-DIALOG"].includes(node.tagName))) return;
+    const owner = path.find((node) => node.tagName?.startsWith("HA-") && typeof node.closeDialog === "function");
+    if (!owner || entries.has(owner)) return;
+    const entry = { kind: "ha", restoreTarget: deepActiveElement(doc) };
+    entries.set(owner, entry);
+    coordinator.push(entry);
+  };
+  const closed = (event) => {
+    for (const [owner, entry] of entries) {
+      if (event.detail?.dialog !== owner.localName || !event.composedPath().includes(owner)) continue;
+      entries.delete(owner);
+      queueMicrotask(() => coordinator.remove(entry));
+    }
+  };
+  doc.addEventListener("opened", opened, true);
+  doc.addEventListener("dialog-closed", closed, true);
+  return () => {
+    doc.removeEventListener("opened", opened, true);
+    doc.removeEventListener("dialog-closed", closed, true);
+    for (const entry of entries.values()) coordinator.remove(entry, false);
+    entries.clear();
+  };
+};
+
+// src/card/detail-drawer.js
+var createDetailDrawer = ({ title, closeLabel, trigger, onClose }) => {
+  const coordinator = getDialogCoordinator();
+  coordinator.replaceDrawer();
+  const host = document.createElement("div");
+  host.dataset.roomCardDrawer = "";
+  const root = host.attachShadow({ mode: "open" });
+  root.innerHTML = `
+    <style>
+      :host { position:fixed; inset:0; z-index:5; color:var(--primary-text-color,#212121); font-family:var(--paper-font-body1_-_font-family, sans-serif); }
+      * { box-sizing:border-box; }
+      .backdrop { position:absolute; inset:0; background:rgba(0,0,0,.48); }
+      .panel { position:absolute; inset:0 0 0 auto; display:flex; flex-direction:column; width:480px; max-width:100%; background:var(--ha-card-background,var(--card-background-color,#fff)); box-shadow:-6px 0 30px rgba(0,0,0,.25); animation:enter .18s ease-out; }
+      header { flex:none; display:flex; align-items:center; gap:16px; padding:calc(16px + env(safe-area-inset-top,0px)) calc(16px + env(safe-area-inset-right,0px)) 16px calc(16px + env(safe-area-inset-left,0px)); border-bottom:1px solid var(--divider-color,#ddd); }
+      h2 { flex:1; margin:0; font-size:20px; overflow-wrap:anywhere; }
+      button { min-width:44px; min-height:44px; padding:10px; border:1px solid var(--divider-color,#ddd); border-radius:12px; background:transparent; color:inherit; font:inherit; cursor:pointer; }
+      button:disabled { opacity:.5; cursor:default; }
+      button:focus-visible { outline:2px solid var(--primary-color,#03a9f4); outline-offset:2px; }
+      .content { flex:1; min-height:0; overflow:auto; overscroll-behavior:contain; padding:16px calc(16px + env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) calc(16px + env(safe-area-inset-left,0px)); }
+      .prototype-actions { display:flex; flex-wrap:wrap; gap:10px; }
+      .prototype-note { color:var(--secondary-text-color,#666); }
+      @keyframes enter { from { opacity:0; transform:translateX(24px); } to { opacity:1; transform:none; } }
+      @media (max-width:767px) {
+        .panel { inset:auto 0 0; width:100%; max-height:90vh; max-height:90dvh; border-radius:20px 20px 0 0; animation-name:enter-bottom; }
+        @keyframes enter-bottom { from { opacity:0; transform:translateY(24px); } to { opacity:1; transform:none; } }
+      }
+      @media (prefers-reduced-motion:reduce) { .panel { animation:none; } }
+    </style>
+    <div class="backdrop" aria-hidden="true"></div>
+    <section class="panel" role="dialog" aria-modal="true" aria-labelledby="drawer-title" tabindex="-1">
+      <header><h2 id="drawer-title"></h2><button type="button" class="close">✕</button></header>
+      <div class="content"></div>
+    </section>`;
+  const panel = root.querySelector(".panel");
+  const heading = root.querySelector("h2");
+  const closeButton = root.querySelector(".close");
+  const content = root.querySelector(".content");
+  heading.textContent = title;
+  closeButton.setAttribute("aria-label", closeLabel);
+  let closed = false;
+  const close = (restore = true) => {
+    if (closed) return;
+    closed = true;
+    stopHass();
+    window.removeEventListener("location-changed", navigation);
+    window.removeEventListener("popstate", navigation);
+    window.removeEventListener("hashchange", navigation);
+    onClose?.();
+    host.remove();
+    coordinator.remove(entry, restore);
+  };
+  const route = window.location.pathname + window.location.hash;
+  const navigation = () => {
+    if (window.location.pathname + window.location.hash !== route) close(false);
+  };
+  closeButton.addEventListener("click", () => {
+    if (coordinator.isTop(entry)) close();
+  });
+  root.querySelector(".backdrop").addEventListener("click", () => {
+    if (coordinator.isTop(entry)) close();
+  });
+  for (const name of ["click", "pointerdown", "pointerup", "keydown", "keyup"]) host.addEventListener(name, (event) => event.stopPropagation());
+  document.body.append(host);
+  const entry = { kind: "drawer", panel, initialFocus: closeButton, restoreTarget: trigger, close };
+  const stopHass = observeHassDialogs(coordinator);
+  coordinator.push(entry);
+  window.addEventListener("location-changed", navigation);
+  window.addEventListener("popstate", navigation);
+  window.addEventListener("hashchange", navigation);
+  return {
+    host,
+    root,
+    panel,
+    content,
+    close,
+    update({ title: nextTitle, closeLabel: nextCloseLabel, themeSource }) {
+      heading.textContent = nextTitle;
+      closeButton.setAttribute("aria-label", nextCloseLabel);
+      const style = getComputedStyle(themeSource);
+      host.style.cssText = "";
+      for (let i = 0; i < style.length; i++) {
+        const name = style.item(i);
+        if (name.startsWith("--")) host.style.setProperty(name, style.getPropertyValue(name));
+      }
+    }
+  };
+};
+
 // src/shared/presentation.js
 var IMAGE_UPLOAD_LIMITS = Object.freeze({
   maxSourceBytes: 20 * 1024 * 1024,
@@ -1979,6 +2212,7 @@ var OneLineRoomCard = class extends HTMLElement {
     }
   }
   disconnectedCallback() {
+    this._detailDrawer?.close(false);
     this._closeDialog?.();
     this._closeDialog = null;
     this._sparklineDialogRequest += 1;
@@ -2022,7 +2256,10 @@ var OneLineRoomCard = class extends HTMLElement {
   set hass(hass) {
     this._hass = hass;
     if (!this.content) this.render();
-    if (!this._shouldUpdateFromHass(hass)) return;
+    if (!this._shouldUpdateFromHass(hass)) {
+      if (this._detailDrawer) this._syncDetailDrawer();
+      return;
+    }
     this._updateContentState();
     this._captureStateSnapshot(hass);
   }
@@ -2035,6 +2272,7 @@ var OneLineRoomCard = class extends HTMLElement {
   setConfig(config) {
     const prevKey = this._collapseKey;
     this.config = config;
+    if (config.detail_drawer?.enabled !== true) this._detailDrawer?.close();
     this._sparklineRefreshSec = clampNum(config.sparkline_refresh, 60, 3600, 300);
     this._collapseKey = `oneline-room-card-collapsed:${this._getCollapseUniqueId(config)}`;
     if (this._collapseKey !== prevKey) {
@@ -2538,6 +2776,9 @@ var OneLineRoomCard = class extends HTMLElement {
         .collapse-btn { position: absolute; bottom: 8px; right: 8px; z-index: 3; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 50%; background: rgba(0,0,0,0.38); display: none; align-items: center; justify-content: center; cursor: pointer; }
         .collapse-btn ha-icon { --mdc-icon-size: 18px; color: white; transition: transform 0.35s ease; }
         .collapse-btn.open ha-icon { transform: rotate(180deg); }
+        .details-btn { position:absolute; top:8px; right:8px; z-index:3; min-width:44px; min-height:44px; padding:8px 12px; border:0; border-radius:12px; background:rgba(0,0,0,.55); color:white; font:inherit; cursor:pointer; }
+        .details-btn[hidden] { display:none; }
+        .details-btn:focus-visible { outline:2px solid var(--primary-color,#03a9f4); outline-offset:2px; }
         .btn-chips { display: flex; flex-direction: row; flex-wrap: wrap; gap: 2px; align-items: center; max-width: 100%; margin-top: 2px; }
         .btn-chips.chips-top { margin-top: 0; margin-bottom: 2px; }
         .btn.has-inline-ctrl .btn-chips { margin-top: 4px; padding-bottom: 2px; }
@@ -2574,6 +2815,7 @@ var OneLineRoomCard = class extends HTMLElement {
             </div>
             <div id="chips" class="chips"></div>
             <button id="collapse-btn" class="collapse-btn" type="button"><ha-icon icon="mdi:chevron-down"></ha-icon></button>
+            <button id="details-btn" class="details-btn" type="button" hidden></button>
           </div>
           <div id="info-bar" class="info-bar"></div>
           <div id="room-modes" class="room-modes" role="group" aria-label="${getTranslation(this._hass, "room_modes")}"></div>
@@ -2584,6 +2826,12 @@ var OneLineRoomCard = class extends HTMLElement {
     this.controls = this.shadowRoot.getElementById("ctrls");
     const imageBox = this.shadowRoot.querySelector(".img-box");
     if (imageBox) this._attachHeaderActions(imageBox);
+    const detailsButton = this.shadowRoot.getElementById("details-btn");
+    for (const eventName of ["pointerdown", "pointerup", "pointercancel", "keydown", "keyup"]) detailsButton.addEventListener(eventName, (event) => event.stopPropagation());
+    detailsButton.addEventListener("click", (event) => {
+      event.stopPropagation();
+      this._showDetailDrawer(detailsButton);
+    });
     const collapseButton = this.shadowRoot.getElementById("collapse-btn");
     if (collapseButton) {
       ["pointerdown", "pointerup", "pointercancel"].forEach((eventName) => {
@@ -2735,46 +2983,29 @@ var OneLineRoomCard = class extends HTMLElement {
   }
   _openDialog(container, panel, closeButton, previouslyFocused, onClose) {
     this._closeDialog?.(false);
-    this.shadowRoot.appendChild(container);
+    const coordinator = getDialogCoordinator();
+    (this._detailDrawer?.root || this.shadowRoot).appendChild(container);
     let closing = false;
     const closeDialog = (restoreFocus = true) => {
       if (closing) return;
       closing = true;
-      document.removeEventListener("keydown", handleKeydown);
       container.remove();
       onClose?.();
       if (this._closeDialog === closeDialog) this._closeDialog = null;
-      if (restoreFocus && previouslyFocused?.isConnected && typeof previouslyFocused.focus === "function") {
-        const focusTimer = setTimeout(() => {
-          this._activeTimers.delete(focusTimer);
-          previouslyFocused.focus();
-        }, 0);
-        this._activeTimers.add(focusTimer);
-      }
+      coordinator.remove(entry, restoreFocus);
     };
-    const handleKeydown = (event) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        closeDialog();
-        return;
-      }
-      if (event.key !== "Tab") return;
-      const focusable = Array.from(panel.querySelectorAll("button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])"));
-      if (focusable.length === 0) return;
-      const currentIndex = focusable.indexOf(this.shadowRoot.activeElement);
-      const nextIndex = event.shiftKey ? currentIndex <= 0 ? focusable.length - 1 : currentIndex - 1 : currentIndex < 0 || currentIndex === focusable.length - 1 ? 0 : currentIndex + 1;
-      event.preventDefault();
-      focusable[nextIndex].focus();
-    };
+    const entry = { panel, initialFocus: closeButton, restoreTarget: previouslyFocused, close: closeDialog };
     this._closeDialog = closeDialog;
-    closeButton.addEventListener("click", closeDialog);
-    container.querySelector("[data-dialog-backdrop]")?.addEventListener("click", closeDialog);
-    document.addEventListener("keydown", handleKeydown);
-    closeButton.focus();
+    const dismiss = () => {
+      if (coordinator.isTop(entry)) closeDialog();
+    };
+    closeButton.addEventListener("click", dismiss);
+    container.querySelector("[data-dialog-backdrop]")?.addEventListener("click", dismiss);
+    coordinator.push(entry);
     return closeDialog;
   }
   _showAlertDialog(alerts, dialogTitle = getTranslation(this._hass, "active_alerts"), accentColor = "#FF5252") {
-    const previouslyFocused = this.shadowRoot.activeElement || document.activeElement;
+    const previouslyFocused = deepActiveElement();
     const container = document.createElement("div");
     container.className = "alert-dialog-container";
     const backdrop = document.createElement("div");
@@ -2846,9 +3077,10 @@ var OneLineRoomCard = class extends HTMLElement {
       row.addEventListener("click", () => {
         const entityId = row.dataset.entity;
         if (entityId && this._hass) {
+          if (this._detailDrawer) row.focus({ preventScroll: true });
           this._fireAction("tap", { entity: entityId, tap_action: { action: "more-info" } });
         }
-        closeDialog();
+        if (!this._detailDrawer) closeDialog();
       });
     });
   }
@@ -2995,6 +3227,7 @@ var OneLineRoomCard = class extends HTMLElement {
   }
   _updateContentState() {
     if (!this.config || !this._hass || !this.content) return;
+    this._syncDetailDrawer();
     const h = this._hass, c = this.config;
     const effectiveEntity = c.entity;
     const effectiveTempSensor = c.temp_sensor;
@@ -4503,6 +4736,10 @@ var OneLineRoomCard = class extends HTMLElement {
     node.addEventListener("blur", cancel);
   }
   _fireAction(type, config) {
+    if (config?.[`${type}_action`]?.action === "room-details") {
+      this._showDetailDrawer(deepActiveElement());
+      return;
+    }
     if (config.entity && this._isEntityUnavailable(config.entity)) return;
     const eventDetail = buildHassActionDetail(type, config, this._hass);
     this.dispatchEvent(new CustomEvent("hass-action", { bubbles: true, composed: true, detail: eventDetail }));
@@ -4525,6 +4762,73 @@ var OneLineRoomCard = class extends HTMLElement {
   }
   static getConfigElement() {
     return document.createElement("oneline-room-card-editor");
+  }
+  _showDetailDrawer(trigger) {
+    if (!this.isConnected || this.config?.detail_drawer?.enabled !== true || this._detailDrawer) return;
+    this._closeDialog?.(false);
+    const t = (key) => getTranslation(this._hass, key);
+    this._detailDrawer = createDetailDrawer({
+      title: this.config.detail_drawer.title || this.config.name || t("room_details"),
+      closeLabel: t("a11y_close"),
+      trigger,
+      onClose: () => {
+        this._closeDialog?.(false);
+        this._detailDrawer = null;
+        this.shadowRoot.getElementById("details-btn")?.setAttribute("aria-expanded", "false");
+      }
+    });
+    const note = document.createElement("p");
+    note.className = "prototype-note";
+    const actions = document.createElement("div");
+    actions.className = "prototype-actions";
+    for (const [name, action] of [
+      ["more", (event) => {
+        event.currentTarget.focus({ preventScroll: true });
+        this._fireAction("tap", { entity: this.config.entity, tap_action: { action: "more-info" } });
+      }],
+      ["history", (event) => this._showSparklineDialog(this._drawerHistoryEntity(), 24, event.currentTarget)],
+      ["status", () => this._showAlertDialog(this._drawerStatusRows(), t("status_groups"))]
+    ]) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.dataset.drawerAction = name;
+      button.addEventListener("click", action);
+      actions.append(button);
+    }
+    this._detailDrawer.content.append(note, actions);
+    this._syncDetailDrawer();
+  }
+  _drawerHistoryEntity() {
+    return (this.config?.controls || []).find((ctrl) => ctrl.entity?.startsWith("sensor.") && ctrl.show_sparkline === true)?.entity || (this.config?.temp_sensor?.startsWith("sensor.") ? this.config.temp_sensor : "");
+  }
+  _drawerStatusRows() {
+    return (this.config?.status_groups || []).flatMap((group) => {
+      const result = getStatusGroupResult(group, this._hass);
+      return result.visible ? result.contributors : [];
+    });
+  }
+  _syncDetailDrawer() {
+    const t = (key) => getTranslation(this._hass, key);
+    const enabled = this.config?.detail_drawer?.enabled === true;
+    const button = this.shadowRoot.getElementById("details-btn");
+    if (button) {
+      button.hidden = !enabled;
+      button.textContent = t("room_details");
+      button.setAttribute("aria-haspopup", "dialog");
+      button.setAttribute("aria-expanded", String(!!this._detailDrawer));
+    }
+    if (!this._detailDrawer) return;
+    this._detailDrawer.update({ title: this.config.detail_drawer.title || this.config.name || t("room_details"), closeLabel: t("a11y_close"), themeSource: this });
+    this._detailDrawer.content.querySelector(".prototype-note").textContent = t("drawer_prototype_note");
+    const more = this._detailDrawer.content.querySelector('[data-drawer-action="more"]');
+    more.textContent = t("act_more");
+    more.disabled = !this.config.entity || !this._hass?.states?.[this.config.entity] || this._isEntityUnavailable(this.config.entity);
+    const history2 = this._detailDrawer.content.querySelector('[data-drawer-action="history"]');
+    history2.textContent = t("sparkline_detail_title");
+    history2.disabled = !this._drawerHistoryEntity() || !this._hass?.states?.[this._drawerHistoryEntity()];
+    const status = this._detailDrawer.content.querySelector('[data-drawer-action="status"]');
+    status.textContent = t("status_groups");
+    status.disabled = this._drawerStatusRows().length === 0;
   }
 };
 

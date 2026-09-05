@@ -1,5 +1,6 @@
 const TRANSLATIONS = {
   en: {
+    room_details: "Room details", drawer_prototype_note: "Preview: test opening, focus and nested dialogs. Room controls follow after this prototype is validated.",
     empty: "Empty", low: "Low", critical: "Critical", window: "Window", general: "General",
     sensors_manual: "Sensors (Manual)", buttons: "Buttons", button: "Button", add_button: "Add Button",
     main_climate: "Main Climate Device (Optional)", climate_info: "Fills Temp/Humidity automatically if empty below.",
@@ -99,6 +100,7 @@ const TRANSLATIONS = {
     a11y_activate: "Activate {name}", a11y_set_value: "Set {name}", a11y_select_option: "Select {name}"
   },
   de: {
+    room_details: "Raumdetails", drawer_prototype_note: "Vorschau: Öffnen, Fokus und Unterdialoge testen. Die Raumsteuerung folgt nach Prüfung dieses Prototyps.",
     empty: "Leer", low: "Niedrig", critical: "Kritisch", window: "Fenster", general: "Allgemein",
     sensors_manual: "Sensoren (Manuell)", buttons: "Buttons", button: "Button", add_button: "Button hinzufügen",
     main_climate: "Haupt-Klima-Gerät", climate_info: "Füllt Temp/Feuchtigkeit automatisch, wenn unten leer.",
@@ -202,6 +204,7 @@ const TRANSLATIONS = {
     a11y_activate: "{name} bedienen", a11y_set_value: "{name} einstellen", a11y_select_option: "{name} auswählen"
   },
   fr: {
+    room_details: "Détails de la pièce", drawer_prototype_note: "Aperçu : testez l’ouverture, le focus et les boîtes de dialogue imbriquées. Les commandes suivront après validation de ce prototype.",
     empty: "Vide", low: "Faible", critical: "Critique", window: "Fenêtre", general: "Général",
     sensors_manual: "Capteurs (Manuel)", buttons: "Boutons", button: "Bouton", add_button: "Ajouter un bouton",
     main_climate: "Appareil climatique principal (Optionnel)", climate_info: "Remplit automatiquement Temp/Humidité si vide ci-dessous.",
