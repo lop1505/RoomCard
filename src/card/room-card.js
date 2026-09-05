@@ -10,6 +10,8 @@ import { buildHassActionDetail } from "../lib/actions.js";
 import { SHARED_SPARKLINE_CACHE, SHARED_SPARKLINE_PENDING, normalizeSparklineSamples, getSparklineStats, pruneSharedSparklineCache, fetchHistorySamples } from "../lib/history.js";
 import { MEDIA_PLAYER_FEATURES, getSliderCapabilities, getInlineButtons, supportsMediaFeature } from "../lib/capabilities.js";
 import { VERSION, EDITOR_DOM_REVISION } from "../version.js";
+import { createDetailDrawer } from "./detail-drawer.js";
+import { deepActiveElement, getDialogCoordinator } from "../shared/dialog-coordinator.js";
 import { IMAGE_UPLOAD_LIMITS, parseImagePosition, validateImageUpload, ROOM_IMAGE_PRESETS, ROOM_IMAGE_PRESET_MAP, getRoomImagePresetUrl, resolveRoomImageUrl, evaluateAdaptiveImageConditions, resolveAdaptiveRoomImage, getStatusGroupResult, isHeaderManualColorEnabled, resolveLabelPosition, setAlignmentClass, applyLabelPosition, evalTemplateString, resolveTemplateCtrl, resolveSubChipPresentations, TEMPLATE_VALUE_KEYS, getTemplateEntityDependencies, templateNeedsEveryHassUpdate, formatLastChanged } from "../shared/presentation.js";
 
 
@@ -51,6 +53,7 @@ class OneLineRoomCard extends HTMLElement {
   }
 
   disconnectedCallback() {
+    this._detailDrawer?.close(false);
     this._closeDialog?.();
     this._closeDialog = null;
     this._sparklineDialogRequest += 1;
@@ -97,7 +100,10 @@ class OneLineRoomCard extends HTMLElement {
   set hass(hass) {
     this._hass = hass;
     if (!this.content) this.render();
-    if (!this._shouldUpdateFromHass(hass)) return;
+    if (!this._shouldUpdateFromHass(hass)) {
+      if (this._detailDrawer) this._syncDetailDrawer();
+      return;
+    }
     this._updateContentState();
     this._captureStateSnapshot(hass);
   }
@@ -112,6 +118,7 @@ class OneLineRoomCard extends HTMLElement {
   setConfig(config) {
     const prevKey = this._collapseKey;
     this.config = config;
+    if (config.detail_drawer?.enabled !== true) this._detailDrawer?.close();
     this._sparklineRefreshSec = clampNum(config.sparkline_refresh, 60, 3600, 300);
     this._collapseKey = `oneline-room-card-collapsed:${this._getCollapseUniqueId(config)}`;
     if (this._collapseKey !== prevKey) {
@@ -634,6 +641,9 @@ class OneLineRoomCard extends HTMLElement {
         .collapse-btn { position: absolute; bottom: 8px; right: 8px; z-index: 3; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 50%; background: rgba(0,0,0,0.38); display: none; align-items: center; justify-content: center; cursor: pointer; }
         .collapse-btn ha-icon { --mdc-icon-size: 18px; color: white; transition: transform 0.35s ease; }
         .collapse-btn.open ha-icon { transform: rotate(180deg); }
+        .details-btn { position:absolute; top:8px; right:8px; z-index:3; min-width:44px; min-height:44px; padding:8px 12px; border:0; border-radius:12px; background:rgba(0,0,0,.55); color:white; font:inherit; cursor:pointer; }
+        .details-btn[hidden] { display:none; }
+        .details-btn:focus-visible { outline:2px solid var(--primary-color,#03a9f4); outline-offset:2px; }
         .btn-chips { display: flex; flex-direction: row; flex-wrap: wrap; gap: 2px; align-items: center; max-width: 100%; margin-top: 2px; }
         .btn-chips.chips-top { margin-top: 0; margin-bottom: 2px; }
         .btn.has-inline-ctrl .btn-chips { margin-top: 4px; padding-bottom: 2px; }
@@ -670,6 +680,7 @@ class OneLineRoomCard extends HTMLElement {
             </div>
             <div id="chips" class="chips"></div>
             <button id="collapse-btn" class="collapse-btn" type="button"><ha-icon icon="mdi:chevron-down"></ha-icon></button>
+            <button id="details-btn" class="details-btn" type="button" hidden></button>
           </div>
           <div id="info-bar" class="info-bar"></div>
           <div id="room-modes" class="room-modes" role="group" aria-label="${getTranslation(this._hass, "room_modes")}"></div>
@@ -681,6 +692,12 @@ class OneLineRoomCard extends HTMLElement {
     this.controls = this.shadowRoot.getElementById("ctrls");
     const imageBox = this.shadowRoot.querySelector(".img-box");
     if (imageBox) this._attachHeaderActions(imageBox);
+    const detailsButton = this.shadowRoot.getElementById("details-btn");
+    for (const eventName of ["pointerdown", "pointerup", "pointercancel", "keydown", "keyup"]) detailsButton.addEventListener(eventName, event => event.stopPropagation());
+    detailsButton.addEventListener("click", event => {
+      event.stopPropagation();
+      this._showDetailDrawer(detailsButton);
+    });
     const collapseButton = this.shadowRoot.getElementById("collapse-btn");
     if (collapseButton) {
       ["pointerdown", "pointerup", "pointercancel"].forEach((eventName) => {
@@ -844,49 +861,28 @@ class OneLineRoomCard extends HTMLElement {
 
   _openDialog(container, panel, closeButton, previouslyFocused, onClose) {
     this._closeDialog?.(false);
-    this.shadowRoot.appendChild(container);
+    const coordinator = getDialogCoordinator();
+    (this._detailDrawer?.root || this.shadowRoot).appendChild(container);
     let closing = false;
     const closeDialog = (restoreFocus = true) => {
       if (closing) return;
       closing = true;
-      document.removeEventListener("keydown", handleKeydown);
       container.remove();
       onClose?.();
       if (this._closeDialog === closeDialog) this._closeDialog = null;
-      if (restoreFocus && previouslyFocused?.isConnected && typeof previouslyFocused.focus === "function") {
-        const focusTimer = setTimeout(() => {
-          this._activeTimers.delete(focusTimer);
-          previouslyFocused.focus();
-        }, 0);
-        this._activeTimers.add(focusTimer);
-      }
+      coordinator.remove(entry, restoreFocus);
     };
-    const handleKeydown = (event) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        closeDialog();
-        return;
-      }
-      if (event.key !== "Tab") return;
-      const focusable = Array.from(panel.querySelectorAll("button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])"));
-      if (focusable.length === 0) return;
-      const currentIndex = focusable.indexOf(this.shadowRoot.activeElement);
-      const nextIndex = event.shiftKey
-        ? (currentIndex <= 0 ? focusable.length - 1 : currentIndex - 1)
-        : (currentIndex < 0 || currentIndex === focusable.length - 1 ? 0 : currentIndex + 1);
-      event.preventDefault();
-      focusable[nextIndex].focus();
-    };
+    const entry = { panel, initialFocus: closeButton, restoreTarget: previouslyFocused, close: closeDialog };
     this._closeDialog = closeDialog;
-    closeButton.addEventListener("click", closeDialog);
-    container.querySelector("[data-dialog-backdrop]")?.addEventListener("click", closeDialog);
-    document.addEventListener("keydown", handleKeydown);
-    closeButton.focus();
+    const dismiss = () => { if (coordinator.isTop(entry)) closeDialog(); };
+    closeButton.addEventListener("click", dismiss);
+    container.querySelector("[data-dialog-backdrop]")?.addEventListener("click", dismiss);
+    coordinator.push(entry);
     return closeDialog;
   }
 
   _showAlertDialog(alerts, dialogTitle = getTranslation(this._hass, "active_alerts"), accentColor = "#FF5252") {
-    const previouslyFocused = this.shadowRoot.activeElement || document.activeElement;
+    const previouslyFocused = deepActiveElement();
     const container = document.createElement("div");
     container.className = "alert-dialog-container";
 
@@ -963,9 +959,11 @@ class OneLineRoomCard extends HTMLElement {
       row.addEventListener("click", () => {
         const entityId = row.dataset.entity;
         if (entityId && this._hass) {
+          if (this._detailDrawer) row.focus({ preventScroll: true });
           this._fireAction("tap", { entity: entityId, tap_action: { action: "more-info" } });
         }
-        closeDialog();
+        // Preserve status details underneath HA more-info when inside a drawer.
+        if (!this._detailDrawer) closeDialog();
       });
     });
   }
@@ -1128,6 +1126,7 @@ class OneLineRoomCard extends HTMLElement {
 
   _updateContentState() {
     if (!this.config || !this._hass || !this.content) return;
+    this._syncDetailDrawer();
     const h = this._hass, c = this.config;
     const effectiveEntity = c.entity;
     const effectiveTempSensor = c.temp_sensor;
@@ -2703,6 +2702,10 @@ class OneLineRoomCard extends HTMLElement {
   }
 
   _fireAction(type, config) {
+    if (config?.[`${type}_action`]?.action === "room-details") {
+      this._showDetailDrawer(deepActiveElement());
+      return;
+    }
     if (config.entity && this._isEntityUnavailable(config.entity)) return;
     const eventDetail = buildHassActionDetail(type, config, this._hass);
     this.dispatchEvent(new CustomEvent("hass-action", { bubbles: true, composed: true, detail: eventDetail }));
@@ -2728,6 +2731,77 @@ class OneLineRoomCard extends HTMLElement {
   }
 
   static getConfigElement() { return document.createElement("oneline-room-card-editor"); }
+
+  _showDetailDrawer(trigger) {
+    if (!this.isConnected || this.config?.detail_drawer?.enabled !== true || this._detailDrawer) return;
+    this._closeDialog?.(false);
+    const t = key => getTranslation(this._hass, key);
+    this._detailDrawer = createDetailDrawer({
+      title: this.config.detail_drawer.title || this.config.name || t("room_details"),
+      closeLabel: t("a11y_close"), trigger,
+      onClose: () => {
+        this._closeDialog?.(false);
+        this._detailDrawer = null;
+        this.shadowRoot.getElementById("details-btn")?.setAttribute("aria-expanded", "false");
+      }
+    });
+    const note = document.createElement("p");
+    note.className = "prototype-note";
+    const actions = document.createElement("div");
+    actions.className = "prototype-actions";
+    for (const [name, action] of [
+      ["more", event => {
+        event.currentTarget.focus({ preventScroll: true });
+        this._fireAction("tap", { entity: this.config.entity, tap_action: { action: "more-info" } });
+      }],
+      ["history", event => this._showSparklineDialog(this._drawerHistoryEntity(), 24, event.currentTarget)],
+      ["status", () => this._showAlertDialog(this._drawerStatusRows(), t("status_groups"))]
+    ]) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.dataset.drawerAction = name;
+      button.addEventListener("click", action);
+      actions.append(button);
+    }
+    this._detailDrawer.content.append(note, actions);
+    this._syncDetailDrawer();
+  }
+
+  _drawerHistoryEntity() {
+    return (this.config?.controls || []).find(ctrl => ctrl.entity?.startsWith("sensor.") && ctrl.show_sparkline === true)?.entity
+      || (this.config?.temp_sensor?.startsWith("sensor.") ? this.config.temp_sensor : "");
+  }
+
+  _drawerStatusRows() {
+    return (this.config?.status_groups || []).flatMap(group => {
+      const result = getStatusGroupResult(group, this._hass);
+      return result.visible ? result.contributors : [];
+    });
+  }
+
+  _syncDetailDrawer() {
+    const t = key => getTranslation(this._hass, key);
+    const enabled = this.config?.detail_drawer?.enabled === true;
+    const button = this.shadowRoot.getElementById("details-btn");
+    if (button) {
+      button.hidden = !enabled;
+      button.textContent = t("room_details");
+      button.setAttribute("aria-haspopup", "dialog");
+      button.setAttribute("aria-expanded", String(!!this._detailDrawer));
+    }
+    if (!this._detailDrawer) return;
+    this._detailDrawer.update({ title: this.config.detail_drawer.title || this.config.name || t("room_details"), closeLabel: t("a11y_close"), themeSource: this });
+    this._detailDrawer.content.querySelector(".prototype-note").textContent = t("drawer_prototype_note");
+    const more = this._detailDrawer.content.querySelector('[data-drawer-action="more"]');
+    more.textContent = t("act_more");
+    more.disabled = !this.config.entity || !this._hass?.states?.[this.config.entity] || this._isEntityUnavailable(this.config.entity);
+    const history = this._detailDrawer.content.querySelector('[data-drawer-action="history"]');
+    history.textContent = t("sparkline_detail_title");
+    history.disabled = !this._drawerHistoryEntity() || !this._hass?.states?.[this._drawerHistoryEntity()];
+    const status = this._detailDrawer.content.querySelector('[data-drawer-action="status"]');
+    status.textContent = t("status_groups");
+    status.disabled = this._drawerStatusRows().length === 0;
+  }
 }
 
 export { OneLineRoomCard };
