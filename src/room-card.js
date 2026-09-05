@@ -1,5 +1,7 @@
 import { clampNum, replaceTemplateExpressions, trimStr } from "./lib/values.js";
 
+import { formatEntityStateForDisplay, formatEntityAttributeForDisplay } from "./lib/formatting.js";
+
 const VERSION = "1.4.0";
 const EDITOR_DOM_REVISION = "6";
 const LOG_FLAG = `customCards_RoomCard_Logged_${VERSION}`;
@@ -790,29 +792,6 @@ const getTranslation = (hass, key) => {
 };
 
 
-const formatEntityStateForDisplay = (hass, stateObj, fallbackUnit = "") => {
-  if (!stateObj) return "";
-  try {
-    if (typeof hass?.formatEntityState === "function") {
-      const formatted = hass.formatEntityState(stateObj);
-      const entityUnit = trimStr(stateObj.attributes?.unit_of_measurement) || "";
-      return !entityUnit && fallbackUnit ? `${formatted}${fallbackUnit}` : formatted;
-    }
-  } catch (_e) { }
-  const raw = stateObj.state ?? "";
-  const entityUnit = trimStr(stateObj.attributes?.unit_of_measurement) || fallbackUnit;
-  return `${raw}${entityUnit || ""}`;
-};
-
-const formatEntityAttributeForDisplay = (hass, stateObj, attribute, value, fallbackUnit = "") => {
-  if (!stateObj || value == null) return "";
-  try {
-    if (typeof hass?.formatEntityAttributeValue === "function") {
-      return hass.formatEntityAttributeValue(stateObj, attribute, value);
-    }
-  } catch (_e) { }
-  return `${value}${fallbackUnit || ""}`;
-};
 
 const normalizeTemperatureUnit = (unit) => {
   const normalized = String(unit || "").trim().replace(/\s+/g, "").replace("º", "°").toUpperCase();

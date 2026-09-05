@@ -89,6 +89,32 @@ var replaceTemplateExpressions = (str, evalExpr) => {
 };
 var trimStr = (v) => typeof v === "string" ? v.trim() : v;
 
+// src/lib/formatting.js
+var formatEntityStateForDisplay = (hass, stateObj, fallbackUnit = "") => {
+  if (!stateObj) return "";
+  try {
+    if (typeof hass?.formatEntityState === "function") {
+      const formatted = hass.formatEntityState(stateObj);
+      const entityUnit2 = trimStr(stateObj.attributes?.unit_of_measurement) || "";
+      return !entityUnit2 && fallbackUnit ? `${formatted}${fallbackUnit}` : formatted;
+    }
+  } catch (_e) {
+  }
+  const raw = stateObj.state ?? "";
+  const entityUnit = trimStr(stateObj.attributes?.unit_of_measurement) || fallbackUnit;
+  return `${raw}${entityUnit || ""}`;
+};
+var formatEntityAttributeForDisplay = (hass, stateObj, attribute, value, fallbackUnit = "") => {
+  if (!stateObj || value == null) return "";
+  try {
+    if (typeof hass?.formatEntityAttributeValue === "function") {
+      return hass.formatEntityAttributeValue(stateObj, attribute, value);
+    }
+  } catch (_e) {
+  }
+  return `${value}${fallbackUnit || ""}`;
+};
+
 // src/room-card.js
 var VERSION = "1.4.0";
 var EDITOR_DOM_REVISION = "6";
@@ -1551,30 +1577,6 @@ var TRANSLATIONS = {
 var getTranslation = (hass, key) => {
   const lang = hass?.language?.split("-")[0] || "en";
   return TRANSLATIONS[lang]?.[key] ?? TRANSLATIONS["en"]?.[key] ?? key;
-};
-var formatEntityStateForDisplay = (hass, stateObj, fallbackUnit = "") => {
-  if (!stateObj) return "";
-  try {
-    if (typeof hass?.formatEntityState === "function") {
-      const formatted = hass.formatEntityState(stateObj);
-      const entityUnit2 = trimStr(stateObj.attributes?.unit_of_measurement) || "";
-      return !entityUnit2 && fallbackUnit ? `${formatted}${fallbackUnit}` : formatted;
-    }
-  } catch (_e) {
-  }
-  const raw = stateObj.state ?? "";
-  const entityUnit = trimStr(stateObj.attributes?.unit_of_measurement) || fallbackUnit;
-  return `${raw}${entityUnit || ""}`;
-};
-var formatEntityAttributeForDisplay = (hass, stateObj, attribute, value, fallbackUnit = "") => {
-  if (!stateObj || value == null) return "";
-  try {
-    if (typeof hass?.formatEntityAttributeValue === "function") {
-      return hass.formatEntityAttributeValue(stateObj, attribute, value);
-    }
-  } catch (_e) {
-  }
-  return `${value}${fallbackUnit || ""}`;
 };
 var normalizeTemperatureUnit = (unit) => {
   const normalized = String(unit || "").trim().replace(/\s+/g, "").replace("º", "°").toUpperCase();
