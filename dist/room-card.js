@@ -269,6 +269,186 @@ var isEntityActive = (stateObj, entityId) => {
   return false;
 };
 
+// src/lib/conditions.js
+var parseTimeOfDay = (value) => {
+  const match = typeof value === "string" ? value.trim().match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/) : null;
+  if (!match) return null;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  const seconds = Number(match[3] || 0);
+  if (hours > 23 || minutes > 59 || seconds > 59) return null;
+  return hours * 3600 + minutes * 60 + seconds;
+};
+var evaluateAdaptiveImageCondition = (condition, hass, now, matchMedia) => {
+  if (!condition || typeof condition !== "object") return { valid: false, active: false };
+  const type = condition.condition;
+  if (type === "state") {
+    const entity = trimStr(condition.entity);
+    if (!entity) return { valid: false, active: false };
+    const stateObj = hass?.states?.[entity];
+    if (!stateObj || isEntityOffline(stateObj)) return { valid: false, active: false };
+    const current = String(stateObj.state ?? "");
+    if (condition.state_not !== void 0 && trimStr(String(condition.state_not)) !== "") {
+      const excluded = (Array.isArray(condition.state_not) ? condition.state_not : [condition.state_not]).map(String);
+      return { valid: true, active: !excluded.includes(current) };
+    }
+    const expected = (Array.isArray(condition.state) ? condition.state : [condition.state]).filter((value) => value !== void 0 && trimStr(String(value)) !== "").map(String);
+    return expected.length > 0 ? { valid: true, active: expected.includes(current) } : { valid: false, active: false };
+  }
+  if (type === "numeric_state") {
+    const entity = trimStr(condition.entity);
+    const resolveThreshold = (threshold) => {
+      const raw = trimStr(String(threshold ?? ""));
+      if (!raw) return null;
+      const direct = Number(raw);
+      if (Number.isFinite(direct)) return direct;
+      const entityValue = Number(hass?.states?.[raw]?.state);
+      return Number.isFinite(entityValue) ? entityValue : null;
+    };
+    const above = resolveThreshold(condition.above);
+    const below = resolveThreshold(condition.below);
+    const stateObj = entity ? hass?.states?.[entity] : null;
+    const value = Number(stateObj?.state);
+    if (!entity || above === null && below === null || !stateObj || isEntityOffline(stateObj) || !Number.isFinite(value)) return { valid: false, active: false };
+    return { valid: true, active: (above === null || value > above) && (below === null || value < below) };
+  }
+  if (type === "time") {
+    const after = condition.after === void 0 ? null : parseTimeOfDay(condition.after);
+    const before = condition.before === void 0 ? null : parseTimeOfDay(condition.before);
+    const weekdays = Array.isArray(condition.weekday) ? condition.weekday.map((day) => String(day).toLowerCase()) : [];
+    const weekdayNames = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+    if (after === null && before === null && weekdays.length === 0) return { valid: false, active: false };
+    if (condition.after !== void 0 && after === null || condition.before !== void 0 && before === null) return { valid: false, active: false };
+    if (weekdays.some((day) => !weekdayNames.includes(day))) return { valid: false, active: false };
+    const current = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+    const timeActive = after !== null && before !== null && after > before ? current > after || current < before : (after === null || current > after) && (before === null || current < before);
+    return { valid: true, active: timeActive && (weekdays.length === 0 || weekdays.includes(weekdayNames[now.getDay()])) };
+  }
+  if (type === "screen") {
+    const query = trimStr(condition.media_query);
+    if (!query || typeof matchMedia !== "function") return { valid: false, active: false };
+    try {
+      return { valid: true, active: matchMedia(query).matches };
+    } catch (_error) {
+      return { valid: false, active: false };
+    }
+  }
+  if (type === "user") {
+    if (!Array.isArray(condition.users) || condition.users.length === 0 || !hass?.user?.id) return { valid: false, active: false };
+    return { valid: true, active: condition.users.includes(hass.user.id) };
+  }
+  if (["and", "or", "not"].includes(type)) {
+    if (!Array.isArray(condition.conditions) || condition.conditions.length === 0) return { valid: false, active: false };
+    const nested = condition.conditions.map((item) => evaluateAdaptiveImageCondition(item, hass, now, matchMedia));
+    if (nested.some((result) => !result.valid)) return { valid: false, active: false };
+    if (type === "and") return { valid: true, active: nested.every((result) => result.active) };
+    if (type === "or") return { valid: true, active: nested.some((result) => result.active) };
+    return { valid: true, active: nested.every((result) => !result.active) };
+  }
+  return { valid: false, active: false };
+};
+var evaluateAdaptiveImageConditions = (conditions, hass, now, matchMedia) => {
+  if (!Array.isArray(conditions) || conditions.length === 0) return { valid: false, active: false };
+  const results = conditions.map((condition) => evaluateAdaptiveImageCondition(condition, hass, now, matchMedia));
+  return { valid: results.every((result) => result.valid), active: results.every((result) => result.valid && result.active) };
+};
+var getConditionEntityDependencies = (conditions) => {
+  const ids = /* @__PURE__ */ new Set();
+  const visit = (condition) => {
+    if (!condition || typeof condition !== "object") return;
+    if (typeof condition.entity === "string" && condition.entity.trim()) ids.add(condition.entity.trim());
+    [condition.above, condition.below].forEach((value) => {
+      if (typeof value === "string" && /^[a-z0-9_]+\.[a-z0-9_]+$/i.test(value.trim())) ids.add(value.trim());
+    });
+    if (Array.isArray(condition.conditions)) condition.conditions.forEach(visit);
+  };
+  (Array.isArray(conditions) ? conditions : [conditions]).forEach(visit);
+  return Array.from(ids);
+};
+var evaluateRoomModeCondition = (condition, hass) => {
+  if (!condition || typeof condition !== "object") return { valid: false, active: false };
+  const type = condition.condition;
+  if (type === "state") {
+    const entity = trimStr(condition.entity);
+    const expected = (Array.isArray(condition.state) ? condition.state : [condition.state]).filter((value) => value !== void 0 && trimStr(String(value)) !== "").map(String);
+    if (!entity || expected.length === 0) return { valid: false, active: false };
+    const stateObj = hass?.states?.[entity];
+    if (!stateObj || isEntityOffline(stateObj)) return { valid: false, active: false };
+    return { valid: true, active: expected.includes(String(stateObj.state ?? "")) };
+  }
+  if (type === "numeric_state") {
+    const entity = trimStr(condition.entity);
+    const hasAbove = condition.above !== void 0 && trimStr(String(condition.above)) !== "" && Number.isFinite(Number(condition.above));
+    const hasBelow = condition.below !== void 0 && trimStr(String(condition.below)) !== "" && Number.isFinite(Number(condition.below));
+    if (!entity || !hasAbove && !hasBelow) return { valid: false, active: false };
+    const stateObj = hass?.states?.[entity];
+    if (!stateObj || isEntityOffline(stateObj)) return { valid: false, active: false };
+    const value = Number(stateObj.state);
+    if (!Number.isFinite(value)) return { valid: false, active: false };
+    return {
+      valid: true,
+      active: (!hasAbove || value > Number(condition.above)) && (!hasBelow || value < Number(condition.below))
+    };
+  }
+  if (["and", "or", "not"].includes(type)) {
+    if (!Array.isArray(condition.conditions) || condition.conditions.length === 0) return { valid: false, active: false };
+    const nested = condition.conditions.map((item) => evaluateRoomModeCondition(item, hass));
+    if (nested.some((result) => !result.valid)) return { valid: false, active: false };
+    if (type === "and") return { valid: true, active: nested.every((result) => result.active) };
+    if (type === "or") return { valid: true, active: nested.some((result) => result.active) };
+    return { valid: true, active: nested.every((result) => !result.active) };
+  }
+  return { valid: false, active: false };
+};
+var evaluateRoomModeActiveWhen = (activeWhen, hass) => {
+  const conditions = Array.isArray(activeWhen) ? activeWhen : activeWhen ? [activeWhen] : [];
+  if (conditions.length === 0) return { valid: false, active: false };
+  const results = conditions.map((condition) => evaluateRoomModeCondition(condition, hass));
+  return {
+    valid: results.every((result) => result.valid),
+    active: results.every((result) => result.valid && result.active)
+  };
+};
+var evaluateVisibilityCondition = (c, h, matchMedia, checkCondition = (condition) => evaluateVisibilityCondition(condition, h, matchMedia)) => {
+  if (!c || !c.condition) return true;
+  const type = c.condition;
+  if (type === "state") {
+    if (!c.entity) return true;
+    const st = h.states[c.entity]?.state;
+    if (c.state_not !== void 0) return st !== c.state_not;
+    return st === c.state;
+  }
+  if (type === "numeric_state") {
+    if (!c.entity) return true;
+    const val = parseFloat(h.states[c.entity]?.state);
+    if (isNaN(val)) return false;
+    if (c.above !== void 0 && val <= parseFloat(c.above)) return false;
+    if (c.below !== void 0 && val >= parseFloat(c.below)) return false;
+    return true;
+  }
+  if (type === "screen") {
+    if (!c.media_query) return true;
+    return matchMedia(c.media_query).matches;
+  }
+  if (type === "user") {
+    if (!Array.isArray(c.users) || !h.user) return true;
+    return c.users.includes(h.user.id);
+  }
+  if (type === "and") {
+    if (!Array.isArray(c.conditions)) return true;
+    return c.conditions.every((cond) => checkCondition(cond));
+  }
+  if (type === "or") {
+    if (!Array.isArray(c.conditions)) return true;
+    return c.conditions.some((cond) => checkCondition(cond));
+  }
+  if (type === "not") {
+    if (!Array.isArray(c.conditions)) return true;
+    return c.conditions.every((cond) => !checkCondition(cond));
+  }
+  return true;
+};
+
 // src/room-card.js
 var VERSION = "1.4.0";
 var EDITOR_DOM_REVISION = "6";
@@ -336,88 +516,7 @@ var resolveRoomImageUrl = (config) => {
   if (customImage) return customImage;
   return getRoomImagePresetUrl(config?.image_preset);
 };
-var parseTimeOfDay = (value) => {
-  const match = typeof value === "string" ? value.trim().match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/) : null;
-  if (!match) return null;
-  const hours = Number(match[1]);
-  const minutes = Number(match[2]);
-  const seconds = Number(match[3] || 0);
-  if (hours > 23 || minutes > 59 || seconds > 59) return null;
-  return hours * 3600 + minutes * 60 + seconds;
-};
-var evaluateAdaptiveImageCondition = (condition, hass, now = /* @__PURE__ */ new Date()) => {
-  if (!condition || typeof condition !== "object") return { valid: false, active: false };
-  const type = condition.condition;
-  if (type === "state") {
-    const entity = trimStr(condition.entity);
-    if (!entity) return { valid: false, active: false };
-    const stateObj = hass?.states?.[entity];
-    if (!stateObj || isEntityOffline(stateObj)) return { valid: false, active: false };
-    const current = String(stateObj.state ?? "");
-    if (condition.state_not !== void 0 && trimStr(String(condition.state_not)) !== "") {
-      const excluded = (Array.isArray(condition.state_not) ? condition.state_not : [condition.state_not]).map(String);
-      return { valid: true, active: !excluded.includes(current) };
-    }
-    const expected = (Array.isArray(condition.state) ? condition.state : [condition.state]).filter((value) => value !== void 0 && trimStr(String(value)) !== "").map(String);
-    return expected.length > 0 ? { valid: true, active: expected.includes(current) } : { valid: false, active: false };
-  }
-  if (type === "numeric_state") {
-    const entity = trimStr(condition.entity);
-    const resolveThreshold = (threshold) => {
-      const raw = trimStr(String(threshold ?? ""));
-      if (!raw) return null;
-      const direct = Number(raw);
-      if (Number.isFinite(direct)) return direct;
-      const entityValue = Number(hass?.states?.[raw]?.state);
-      return Number.isFinite(entityValue) ? entityValue : null;
-    };
-    const above = resolveThreshold(condition.above);
-    const below = resolveThreshold(condition.below);
-    const stateObj = entity ? hass?.states?.[entity] : null;
-    const value = Number(stateObj?.state);
-    if (!entity || above === null && below === null || !stateObj || isEntityOffline(stateObj) || !Number.isFinite(value)) return { valid: false, active: false };
-    return { valid: true, active: (above === null || value > above) && (below === null || value < below) };
-  }
-  if (type === "time") {
-    const after = condition.after === void 0 ? null : parseTimeOfDay(condition.after);
-    const before = condition.before === void 0 ? null : parseTimeOfDay(condition.before);
-    const weekdays = Array.isArray(condition.weekday) ? condition.weekday.map((day) => String(day).toLowerCase()) : [];
-    const weekdayNames = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
-    if (after === null && before === null && weekdays.length === 0) return { valid: false, active: false };
-    if (condition.after !== void 0 && after === null || condition.before !== void 0 && before === null) return { valid: false, active: false };
-    if (weekdays.some((day) => !weekdayNames.includes(day))) return { valid: false, active: false };
-    const current = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
-    const timeActive = after !== null && before !== null && after > before ? current > after || current < before : (after === null || current > after) && (before === null || current < before);
-    return { valid: true, active: timeActive && (weekdays.length === 0 || weekdays.includes(weekdayNames[now.getDay()])) };
-  }
-  if (type === "screen") {
-    const query = trimStr(condition.media_query);
-    if (!query || typeof window.matchMedia !== "function") return { valid: false, active: false };
-    try {
-      return { valid: true, active: window.matchMedia(query).matches };
-    } catch (_error) {
-      return { valid: false, active: false };
-    }
-  }
-  if (type === "user") {
-    if (!Array.isArray(condition.users) || condition.users.length === 0 || !hass?.user?.id) return { valid: false, active: false };
-    return { valid: true, active: condition.users.includes(hass.user.id) };
-  }
-  if (["and", "or", "not"].includes(type)) {
-    if (!Array.isArray(condition.conditions) || condition.conditions.length === 0) return { valid: false, active: false };
-    const nested = condition.conditions.map((item) => evaluateAdaptiveImageCondition(item, hass, now));
-    if (nested.some((result) => !result.valid)) return { valid: false, active: false };
-    if (type === "and") return { valid: true, active: nested.every((result) => result.active) };
-    if (type === "or") return { valid: true, active: nested.some((result) => result.active) };
-    return { valid: true, active: nested.every((result) => !result.active) };
-  }
-  return { valid: false, active: false };
-};
-var evaluateAdaptiveImageConditions = (conditions, hass, now = /* @__PURE__ */ new Date()) => {
-  if (!Array.isArray(conditions) || conditions.length === 0) return { valid: false, active: false };
-  const results = conditions.map((condition) => evaluateAdaptiveImageCondition(condition, hass, now));
-  return { valid: results.every((result) => result.valid), active: results.every((result) => result.valid && result.active) };
-};
+var evaluateAdaptiveImageConditions2 = (conditions, hass, now = /* @__PURE__ */ new Date()) => evaluateAdaptiveImageConditions(conditions, hass, now, typeof window.matchMedia === "function" ? window.matchMedia.bind(window) : void 0);
 var resolveAdaptiveRoomImage = (config, hass, now = /* @__PURE__ */ new Date()) => {
   const fallback = {
     url: resolveRoomImageUrl(config),
@@ -428,7 +527,7 @@ var resolveAdaptiveRoomImage = (config, hass, now = /* @__PURE__ */ new Date()) 
   for (let index = 0; index < rules.length; index += 1) {
     const rule = rules[index];
     if (!rule || typeof rule !== "object") continue;
-    const condition = evaluateAdaptiveImageConditions(rule.conditions, hass, now);
+    const condition = evaluateAdaptiveImageConditions2(rule.conditions, hass, now);
     if (!condition.valid || !condition.active) continue;
     const url = resolveRoomImageUrl(rule);
     if (!url) continue;
@@ -445,7 +544,7 @@ var getStatusGroupResult = (group, hass) => {
   const empty = { visible: false, value: "", numericValue: 0, contributors: [], error: "" };
   if (!group || typeof group !== "object") return empty;
   if (Array.isArray(group.conditions) && group.conditions.length > 0) {
-    const gate = evaluateAdaptiveImageConditions(group.conditions, hass);
+    const gate = evaluateAdaptiveImageConditions2(group.conditions, hass);
     if (!gate.valid || !gate.active) return empty;
   }
   const entries = (Array.isArray(group.entities) ? group.entities : []).map((item) => typeof item === "string" ? { entity: item } : item).filter((item) => item && typeof item.entity === "string" && item.entity.trim());
@@ -456,7 +555,7 @@ var getStatusGroupResult = (group, hass) => {
     const stateObj = hass?.states?.[entityId];
     if (!stateObj || isEntityOffline(stateObj)) return;
     if (Array.isArray(entry.conditions) && entry.conditions.length > 0) {
-      const condition = evaluateAdaptiveImageConditions(entry.conditions, hass);
+      const condition = evaluateAdaptiveImageConditions2(entry.conditions, hass);
       if (!condition.valid || !condition.active) return;
     }
     const configuredStates = Array.isArray(entry.active_states) ? entry.active_states : Array.isArray(group.active_states) ? group.active_states : numericMode ? [] : ["on"];
@@ -1857,63 +1956,6 @@ var getTemplateEntityDependencies = (ctrl) => {
 var templateNeedsEveryHassUpdate = (ctrl) => {
   const source = TEMPLATE_VALUE_KEYS.map((key) => String(ctrl?.[key] ?? "")).join("\n");
   return source.includes("${") && getTemplateEntityDependencies(ctrl).length === 0;
-};
-var getConditionEntityDependencies = (conditions) => {
-  const ids = /* @__PURE__ */ new Set();
-  const visit = (condition) => {
-    if (!condition || typeof condition !== "object") return;
-    if (typeof condition.entity === "string" && condition.entity.trim()) ids.add(condition.entity.trim());
-    [condition.above, condition.below].forEach((value) => {
-      if (typeof value === "string" && /^[a-z0-9_]+\.[a-z0-9_]+$/i.test(value.trim())) ids.add(value.trim());
-    });
-    if (Array.isArray(condition.conditions)) condition.conditions.forEach(visit);
-  };
-  (Array.isArray(conditions) ? conditions : [conditions]).forEach(visit);
-  return Array.from(ids);
-};
-var evaluateRoomModeCondition = (condition, hass) => {
-  if (!condition || typeof condition !== "object") return { valid: false, active: false };
-  const type = condition.condition;
-  if (type === "state") {
-    const entity = trimStr(condition.entity);
-    const expected = (Array.isArray(condition.state) ? condition.state : [condition.state]).filter((value) => value !== void 0 && trimStr(String(value)) !== "").map(String);
-    if (!entity || expected.length === 0) return { valid: false, active: false };
-    const stateObj = hass?.states?.[entity];
-    if (!stateObj || isEntityOffline(stateObj)) return { valid: false, active: false };
-    return { valid: true, active: expected.includes(String(stateObj.state ?? "")) };
-  }
-  if (type === "numeric_state") {
-    const entity = trimStr(condition.entity);
-    const hasAbove = condition.above !== void 0 && trimStr(String(condition.above)) !== "" && Number.isFinite(Number(condition.above));
-    const hasBelow = condition.below !== void 0 && trimStr(String(condition.below)) !== "" && Number.isFinite(Number(condition.below));
-    if (!entity || !hasAbove && !hasBelow) return { valid: false, active: false };
-    const stateObj = hass?.states?.[entity];
-    if (!stateObj || isEntityOffline(stateObj)) return { valid: false, active: false };
-    const value = Number(stateObj.state);
-    if (!Number.isFinite(value)) return { valid: false, active: false };
-    return {
-      valid: true,
-      active: (!hasAbove || value > Number(condition.above)) && (!hasBelow || value < Number(condition.below))
-    };
-  }
-  if (["and", "or", "not"].includes(type)) {
-    if (!Array.isArray(condition.conditions) || condition.conditions.length === 0) return { valid: false, active: false };
-    const nested = condition.conditions.map((item) => evaluateRoomModeCondition(item, hass));
-    if (nested.some((result) => !result.valid)) return { valid: false, active: false };
-    if (type === "and") return { valid: true, active: nested.every((result) => result.active) };
-    if (type === "or") return { valid: true, active: nested.some((result) => result.active) };
-    return { valid: true, active: nested.every((result) => !result.active) };
-  }
-  return { valid: false, active: false };
-};
-var evaluateRoomModeActiveWhen = (activeWhen, hass) => {
-  const conditions = Array.isArray(activeWhen) ? activeWhen : activeWhen ? [activeWhen] : [];
-  if (conditions.length === 0) return { valid: false, active: false };
-  const results = conditions.map((condition) => evaluateRoomModeCondition(condition, hass));
-  return {
-    valid: results.every((result) => result.valid),
-    active: results.every((result) => result.valid && result.active)
-  };
 };
 var SHARED_SPARKLINE_CACHE = /* @__PURE__ */ new Map();
 var SHARED_SPARKLINE_PENDING = /* @__PURE__ */ new Map();
@@ -3537,43 +3579,7 @@ var OneLineRoomCard = class extends HTMLElement {
     return conditions.every((c) => this._checkCondition(c, h));
   }
   _checkCondition(c, h) {
-    if (!c || !c.condition) return true;
-    const type = c.condition;
-    if (type === "state") {
-      if (!c.entity) return true;
-      const st = h.states[c.entity]?.state;
-      if (c.state_not !== void 0) return st !== c.state_not;
-      return st === c.state;
-    }
-    if (type === "numeric_state") {
-      if (!c.entity) return true;
-      const val = parseFloat(h.states[c.entity]?.state);
-      if (isNaN(val)) return false;
-      if (c.above !== void 0 && val <= parseFloat(c.above)) return false;
-      if (c.below !== void 0 && val >= parseFloat(c.below)) return false;
-      return true;
-    }
-    if (type === "screen") {
-      if (!c.media_query) return true;
-      return window.matchMedia(c.media_query).matches;
-    }
-    if (type === "user") {
-      if (!Array.isArray(c.users) || !h.user) return true;
-      return c.users.includes(h.user.id);
-    }
-    if (type === "and") {
-      if (!Array.isArray(c.conditions)) return true;
-      return c.conditions.every((cond) => this._checkCondition(cond, h));
-    }
-    if (type === "or") {
-      if (!Array.isArray(c.conditions)) return true;
-      return c.conditions.some((cond) => this._checkCondition(cond, h));
-    }
-    if (type === "not") {
-      if (!Array.isArray(c.conditions)) return true;
-      return c.conditions.every((cond) => !this._checkCondition(cond, h));
-    }
-    return true;
+    return evaluateVisibilityCondition(c, h, (query) => window.matchMedia(query), (condition) => this._checkCondition(condition, h));
   }
   _getSliderCapabilities(domain, st, ctrl) {
     let supported = false, min = 0, max = 100, step = 1, value = 0, pct = 0, action = null;
@@ -10039,7 +10045,7 @@ export {
   clampNum,
   convertTemperatureValue,
   evalTemplateString,
-  evaluateAdaptiveImageConditions,
+  evaluateAdaptiveImageConditions2 as evaluateAdaptiveImageConditions,
   evaluateRoomModeActiveWhen,
   formatConvertedTemperature,
   formatEntityStateForDisplay,
