@@ -449,6 +449,40 @@ var evaluateVisibilityCondition = (c, h, matchMedia, checkCondition = (condition
   return true;
 };
 
+// src/lib/alerts.js
+var normalizeAlertSensorConfig = (cfg) => {
+  if (!cfg) return null;
+  if (typeof cfg === "string") return { entity: cfg };
+  if (typeof cfg === "object") {
+    const normalized = { ...cfg };
+    if (normalized.state && typeof normalized.state === "string") {
+      normalized.state = normalized.state.split(",").map((s) => String(s).toLowerCase().trim()).filter(Boolean);
+    } else if (Array.isArray(normalized.state)) {
+      normalized.state = normalized.state.map((s) => String(s).toLowerCase().trim()).filter(Boolean);
+    }
+    return normalized;
+  }
+  return null;
+};
+var isAlertSensorActive = (alertCfg, stateObj, normalize = normalizeAlertSensorConfig) => {
+  if (!alertCfg || !stateObj) return false;
+  const current = String(stateObj.state).toLowerCase().trim();
+  const normalized = normalize(alertCfg);
+  if (!normalized || !normalized.entity) return false;
+  if (Array.isArray(normalized.state) && normalized.state.length > 0) {
+    return normalized.state.includes(current);
+  }
+  const numeric = Number(stateObj.state);
+  const hasNumeric = Number.isFinite(numeric);
+  const compareNumber = (value) => Number.isFinite(Number(value)) ? Number(value) : NaN;
+  const above = compareNumber(normalized.above ?? normalized.min);
+  const below = compareNumber(normalized.below ?? normalized.max);
+  if (!Number.isNaN(above) && hasNumeric && numeric > above) return true;
+  if (!Number.isNaN(below) && hasNumeric && numeric < below) return true;
+  const activeStates = ["on", "open", "true", "active", "alarm", "warning", "detected", "triggered", "problem", "motion", "error"];
+  return activeStates.includes(current);
+};
+
 // src/room-card.js
 var VERSION = "1.4.0";
 var EDITOR_DOM_REVISION = "6";
@@ -2822,36 +2856,10 @@ var OneLineRoomCard = class extends HTMLElement {
     ].join("|");
   }
   _normalizeAlertSensorConfig(cfg) {
-    if (!cfg) return null;
-    if (typeof cfg === "string") return { entity: cfg };
-    if (typeof cfg === "object") {
-      const normalized = { ...cfg };
-      if (normalized.state && typeof normalized.state === "string") {
-        normalized.state = normalized.state.split(",").map((s) => String(s).toLowerCase().trim()).filter(Boolean);
-      } else if (Array.isArray(normalized.state)) {
-        normalized.state = normalized.state.map((s) => String(s).toLowerCase().trim()).filter(Boolean);
-      }
-      return normalized;
-    }
-    return null;
+    return normalizeAlertSensorConfig(cfg);
   }
   _isAlertSensorActive(alertCfg, stateObj) {
-    if (!alertCfg || !stateObj) return false;
-    const current = String(stateObj.state).toLowerCase().trim();
-    const normalized = this._normalizeAlertSensorConfig(alertCfg);
-    if (!normalized || !normalized.entity) return false;
-    if (Array.isArray(normalized.state) && normalized.state.length > 0) {
-      return normalized.state.includes(current);
-    }
-    const numeric = Number(stateObj.state);
-    const hasNumeric = Number.isFinite(numeric);
-    const compareNumber = (value) => Number.isFinite(Number(value)) ? Number(value) : NaN;
-    const above = compareNumber(normalized.above ?? normalized.min);
-    const below = compareNumber(normalized.below ?? normalized.max);
-    if (!Number.isNaN(above) && hasNumeric && numeric > above) return true;
-    if (!Number.isNaN(below) && hasNumeric && numeric < below) return true;
-    const activeStates = ["on", "open", "true", "active", "alarm", "warning", "detected", "triggered", "problem", "motion", "error"];
-    return activeStates.includes(current);
+    return isAlertSensorActive(alertCfg, stateObj, (config) => this._normalizeAlertSensorConfig(config));
   }
   _openDialog(container, panel, closeButton, previouslyFocused, onClose) {
     this._closeDialog?.(false);
