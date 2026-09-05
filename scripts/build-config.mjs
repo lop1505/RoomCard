@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { build } from "esbuild";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { assertModuleBoundaries } from "./module-boundaries.mjs";
 
 export const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -27,5 +28,6 @@ export const buildRoomCard = async (outfile) => {
   const outputs = Object.values(result.metafile.outputs);
   assert.equal(outputs.length, 1, "HACS requires a single JavaScript artifact.");
   assert.deepEqual(outputs[0].imports, [], "The artifact must not contain runtime imports.");
+  assertModuleBoundaries(result.metafile.inputs);
   return result;
 };

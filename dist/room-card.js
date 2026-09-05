@@ -1655,10 +1655,11 @@ var supportsMediaFeature = (stateObj, feature) => {
   return (Number(supported) & feature) !== 0;
 };
 
-// src/room-card.js
+// src/version.js
 var VERSION = "1.4.0";
 var EDITOR_DOM_REVISION = "6";
-var LOG_FLAG = `customCards_RoomCard_Logged_${VERSION}`;
+
+// src/shared/presentation.js
 var IMAGE_UPLOAD_LIMITS = Object.freeze({
   maxSourceBytes: 20 * 1024 * 1024,
   maxDimension: 2560,
@@ -1804,6 +1805,147 @@ var getStatusGroupResult = (group, hass) => {
     error: ""
   };
 };
+var isHeaderManualColorEnabled = (config) => !!trimStr(config?.color);
+var resolveLabelPosition = (btn, config) => {
+  const globalPos = config?.global_label_position ?? config?.buttons_label_position ?? "right";
+  const per = btn?.label_position;
+  if (!per || per === "global") return globalPos;
+  return per;
+};
+var setAlignmentClass = (el, pos) => {
+  if (!el) return;
+  el.classList.remove("label-right", "label-left", "label-bottom", "label-top");
+  el.classList.add(
+    pos === "bottom" ? "label-bottom" : pos === "left" ? "label-left" : pos === "top" ? "label-top" : "label-right"
+  );
+};
+var applyLabelPosition = (layoutEl, pos) => {
+  if (!layoutEl) return;
+  layoutEl.style.flexDirection = "";
+  layoutEl.style.alignItems = "";
+  layoutEl.style.justifyContent = "";
+  layoutEl.style.gap = "";
+  layoutEl.style.textAlign = "";
+  layoutEl.style.padding = "";
+  layoutEl.style.overflow = "";
+  layoutEl.style.flexWrap = "";
+  const txt = layoutEl.querySelector(".btn-txt");
+  if (txt) {
+    txt.style.textAlign = "";
+    txt.style.alignItems = "";
+    txt.style.flex = "";
+    txt.style.minHeight = "";
+    txt.style.maxWidth = "";
+    txt.style.overflow = "";
+    txt.style.whiteSpace = "";
+  }
+  const iconBox = layoutEl.querySelector(".icon-box");
+  if (iconBox) {
+    iconBox.style.flexShrink = "";
+  }
+  const nameEl = layoutEl.querySelector(".btn-name");
+  if (nameEl) {
+    nameEl.style.overflow = "";
+    nameEl.style.textOverflow = "";
+    nameEl.style.whiteSpace = "";
+    nameEl.style.maxWidth = "";
+    nameEl.style.lineHeight = "";
+    nameEl.style.fontSize = "";
+  }
+  const stateEl = layoutEl.querySelector(".btn-state");
+  if (stateEl) {
+    stateEl.style.overflow = "";
+    stateEl.style.textOverflow = "";
+    stateEl.style.whiteSpace = "";
+    stateEl.style.maxWidth = "";
+    stateEl.style.lineHeight = "";
+    stateEl.style.fontSize = "";
+  }
+  layoutEl.classList.remove("label-right", "label-left", "label-bottom", "label-top");
+  setAlignmentClass(layoutEl, pos);
+};
+var evalTemplateString = (tpl, h, ctrl) => {
+  if (tpl === void 0 || tpl === null) return "";
+  const str = String(tpl);
+  if (!str.includes("${")) return str;
+  try {
+    const states = h?.states || {};
+    const entity = (id) => states[id];
+    const attr = (id, name) => states[id]?.attributes?.[name];
+    return replaceTemplateExpressions(str, (expr) => {
+      try {
+        const fn = new Function("hass", "states", "entity", "attr", "ctrl", `return (${expr});`);
+        const res = fn(h, states, entity, attr, ctrl);
+        return res === void 0 || res === null ? "" : String(res);
+      } catch (err) {
+        return "";
+      }
+    });
+  } catch (err) {
+    return "";
+  }
+};
+var resolveTemplateCtrl = (ctrl, h) => {
+  const content = evalTemplateString(ctrl.content, h, ctrl);
+  const icon = trimStr(evalTemplateString(ctrl.icon, h, ctrl));
+  const color = trimStr(evalTemplateString(ctrl.color, h, ctrl));
+  const state = evalTemplateString(ctrl.state, h, ctrl);
+  return { content, icon, color, state };
+};
+var resolveSubChipPresentations = (ctrl, h) => {
+  const presentations = [];
+  for (const chip of Array.isArray(ctrl?.sub_chips) ? ctrl.sub_chips : []) {
+    if (!chip?.entity || !h?.states?.[chip.entity]) continue;
+    const chipState = h.states[chip.entity];
+    const value = chip.attribute ? chipState.attributes?.[chip.attribute] : h.formatEntityState ? h.formatEntityState(chipState) : chipState.state;
+    const displayValue = value != null ? String(value) : "";
+    let label = chip.label || "";
+    if (label.includes("{state}")) label = label.replace("{state}", displayValue);
+    else if (label && displayValue) label = `${label}: ${displayValue}`;
+    else if (!label && displayValue) label = displayValue;
+    presentations.push({ icon: chip.icon || "", label });
+  }
+  return presentations;
+};
+var TEMPLATE_VALUE_KEYS = Object.freeze(["content", "icon", "color", "state"]);
+var getTemplateEntityDependencies = (ctrl) => {
+  const dependencies = /* @__PURE__ */ new Set();
+  const add = (entityId) => {
+    const value = trimStr(entityId);
+    if (/^[a-z0-9_]+\.[a-z0-9_]+$/i.test(value || "")) dependencies.add(value);
+  };
+  const declared = ctrl?.template_entities ?? ctrl?.dependencies;
+  (Array.isArray(declared) ? declared : typeof declared === "string" ? declared.split(",") : []).forEach(add);
+  const source = TEMPLATE_VALUE_KEYS.map((key) => String(ctrl?.[key] ?? "")).join("\n");
+  const patterns = [
+    /(?:entity|attr)\(\s*["']([^"']+)["']/g,
+    /(?:hass\.)?states\s*\[\s*["']([^"']+)["']\s*\]/g
+  ];
+  patterns.forEach((pattern) => {
+    let match;
+    while ((match = pattern.exec(source)) !== null) add(match[1]);
+  });
+  return Array.from(dependencies);
+};
+var templateNeedsEveryHassUpdate = (ctrl) => {
+  const source = TEMPLATE_VALUE_KEYS.map((key) => String(ctrl?.[key] ?? "")).join("\n");
+  return source.includes("${") && getTemplateEntityDependencies(ctrl).length === 0;
+};
+function formatLastChanged(lastChanged, hass) {
+  if (!lastChanged) return "";
+  const elapsedSec = Math.floor((Date.now() - new Date(lastChanged)) / 1e3);
+  if (elapsedSec < 60) return getTranslation(hass, "lc_just_now");
+  const elapsedMin = Math.floor(elapsedSec / 60);
+  if (elapsedMin < 60) return `${elapsedMin} min`;
+  const elapsedHours = Math.floor(elapsedMin / 60);
+  const remMin = elapsedMin % 60;
+  if (elapsedHours < 24) return remMin > 0 ? `${elapsedHours}h ${remMin}min` : `${elapsedHours}h`;
+  const elapsedDays = Math.floor(elapsedHours / 24);
+  return `${elapsedDays}d`;
+}
+
+// src/room-card.js
+var LOG_FLAG = `customCards_RoomCard_Logged_${VERSION}`;
 if (!window[LOG_FLAG]) {
   console.info(
     `%c ONELINE-ROOM-CARD %c ${VERSION} `,
@@ -2062,144 +2204,6 @@ var OneLineRoomCardTextField = class extends HTMLElement {
 };
 if (!customElements.get("oneline-room-card-textfield")) {
   customElements.define("oneline-room-card-textfield", OneLineRoomCardTextField);
-}
-var isHeaderManualColorEnabled = (config) => !!trimStr(config?.color);
-var resolveLabelPosition = (btn, config) => {
-  const globalPos = config?.global_label_position ?? config?.buttons_label_position ?? "right";
-  const per = btn?.label_position;
-  if (!per || per === "global") return globalPos;
-  return per;
-};
-var setAlignmentClass = (el, pos) => {
-  if (!el) return;
-  el.classList.remove("label-right", "label-left", "label-bottom", "label-top");
-  el.classList.add(
-    pos === "bottom" ? "label-bottom" : pos === "left" ? "label-left" : pos === "top" ? "label-top" : "label-right"
-  );
-};
-var applyLabelPosition = (layoutEl, pos) => {
-  if (!layoutEl) return;
-  layoutEl.style.flexDirection = "";
-  layoutEl.style.alignItems = "";
-  layoutEl.style.justifyContent = "";
-  layoutEl.style.gap = "";
-  layoutEl.style.textAlign = "";
-  layoutEl.style.padding = "";
-  layoutEl.style.overflow = "";
-  layoutEl.style.flexWrap = "";
-  const txt = layoutEl.querySelector(".btn-txt");
-  if (txt) {
-    txt.style.textAlign = "";
-    txt.style.alignItems = "";
-    txt.style.flex = "";
-    txt.style.minHeight = "";
-    txt.style.maxWidth = "";
-    txt.style.overflow = "";
-    txt.style.whiteSpace = "";
-  }
-  const iconBox = layoutEl.querySelector(".icon-box");
-  if (iconBox) {
-    iconBox.style.flexShrink = "";
-  }
-  const nameEl = layoutEl.querySelector(".btn-name");
-  if (nameEl) {
-    nameEl.style.overflow = "";
-    nameEl.style.textOverflow = "";
-    nameEl.style.whiteSpace = "";
-    nameEl.style.maxWidth = "";
-    nameEl.style.lineHeight = "";
-    nameEl.style.fontSize = "";
-  }
-  const stateEl = layoutEl.querySelector(".btn-state");
-  if (stateEl) {
-    stateEl.style.overflow = "";
-    stateEl.style.textOverflow = "";
-    stateEl.style.whiteSpace = "";
-    stateEl.style.maxWidth = "";
-    stateEl.style.lineHeight = "";
-    stateEl.style.fontSize = "";
-  }
-  layoutEl.classList.remove("label-right", "label-left", "label-bottom", "label-top");
-  setAlignmentClass(layoutEl, pos);
-};
-var evalTemplateString = (tpl, h, ctrl) => {
-  if (tpl === void 0 || tpl === null) return "";
-  const str = String(tpl);
-  if (!str.includes("${")) return str;
-  try {
-    const states = h?.states || {};
-    const entity = (id) => states[id];
-    const attr = (id, name) => states[id]?.attributes?.[name];
-    return replaceTemplateExpressions(str, (expr) => {
-      try {
-        const fn = new Function("hass", "states", "entity", "attr", "ctrl", `return (${expr});`);
-        const res = fn(h, states, entity, attr, ctrl);
-        return res === void 0 || res === null ? "" : String(res);
-      } catch (err) {
-        return "";
-      }
-    });
-  } catch (err) {
-    return "";
-  }
-};
-var resolveTemplateCtrl = (ctrl, h) => {
-  const content = evalTemplateString(ctrl.content, h, ctrl);
-  const icon = trimStr(evalTemplateString(ctrl.icon, h, ctrl));
-  const color = trimStr(evalTemplateString(ctrl.color, h, ctrl));
-  const state = evalTemplateString(ctrl.state, h, ctrl);
-  return { content, icon, color, state };
-};
-var resolveSubChipPresentations = (ctrl, h) => {
-  const presentations = [];
-  for (const chip of Array.isArray(ctrl?.sub_chips) ? ctrl.sub_chips : []) {
-    if (!chip?.entity || !h?.states?.[chip.entity]) continue;
-    const chipState = h.states[chip.entity];
-    const value = chip.attribute ? chipState.attributes?.[chip.attribute] : h.formatEntityState ? h.formatEntityState(chipState) : chipState.state;
-    const displayValue = value != null ? String(value) : "";
-    let label = chip.label || "";
-    if (label.includes("{state}")) label = label.replace("{state}", displayValue);
-    else if (label && displayValue) label = `${label}: ${displayValue}`;
-    else if (!label && displayValue) label = displayValue;
-    presentations.push({ icon: chip.icon || "", label });
-  }
-  return presentations;
-};
-var TEMPLATE_VALUE_KEYS = Object.freeze(["content", "icon", "color", "state"]);
-var getTemplateEntityDependencies = (ctrl) => {
-  const dependencies = /* @__PURE__ */ new Set();
-  const add = (entityId) => {
-    const value = trimStr(entityId);
-    if (/^[a-z0-9_]+\.[a-z0-9_]+$/i.test(value || "")) dependencies.add(value);
-  };
-  const declared = ctrl?.template_entities ?? ctrl?.dependencies;
-  (Array.isArray(declared) ? declared : typeof declared === "string" ? declared.split(",") : []).forEach(add);
-  const source = TEMPLATE_VALUE_KEYS.map((key) => String(ctrl?.[key] ?? "")).join("\n");
-  const patterns = [
-    /(?:entity|attr)\(\s*["']([^"']+)["']/g,
-    /(?:hass\.)?states\s*\[\s*["']([^"']+)["']\s*\]/g
-  ];
-  patterns.forEach((pattern) => {
-    let match;
-    while ((match = pattern.exec(source)) !== null) add(match[1]);
-  });
-  return Array.from(dependencies);
-};
-var templateNeedsEveryHassUpdate = (ctrl) => {
-  const source = TEMPLATE_VALUE_KEYS.map((key) => String(ctrl?.[key] ?? "")).join("\n");
-  return source.includes("${") && getTemplateEntityDependencies(ctrl).length === 0;
-};
-function formatLastChanged(lastChanged, hass) {
-  if (!lastChanged) return "";
-  const elapsedSec = Math.floor((Date.now() - new Date(lastChanged)) / 1e3);
-  if (elapsedSec < 60) return getTranslation(hass, "lc_just_now");
-  const elapsedMin = Math.floor(elapsedSec / 60);
-  if (elapsedMin < 60) return `${elapsedMin} min`;
-  const elapsedHours = Math.floor(elapsedMin / 60);
-  const remMin = elapsedMin % 60;
-  if (elapsedHours < 24) return remMin > 0 ? `${elapsedHours}h ${remMin}min` : `${elapsedHours}h`;
-  const elapsedDays = Math.floor(elapsedHours / 24);
-  return `${elapsedDays}d`;
 }
 var OneLineRoomCard = class extends HTMLElement {
   constructor() {
