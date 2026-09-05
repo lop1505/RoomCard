@@ -115,6 +115,85 @@ var formatEntityAttributeForDisplay = (hass, stateObj, attribute, value, fallbac
   return `${value}${fallbackUnit || ""}`;
 };
 
+// src/lib/temperature.js
+var normalizeTemperatureUnit = (unit) => {
+  const normalized = String(unit || "").trim().replace(/\s+/g, "").replace("º", "°").toUpperCase();
+  if (normalized === "C" || normalized === "°C") return "°C";
+  if (normalized === "F" || normalized === "°F") return "°F";
+  return "";
+};
+var convertTemperatureValue = (value, sourceUnit, targetUnit) => {
+  const numeric = Number(value);
+  const source = normalizeTemperatureUnit(sourceUnit);
+  const target = normalizeTemperatureUnit(targetUnit);
+  if (!Number.isFinite(numeric) || !source || !target) return null;
+  if (source === target) return numeric;
+  return source === "°C" ? numeric * 9 / 5 + 32 : (numeric - 32) * 5 / 9;
+};
+var temperatureNumberLocale = (hass) => {
+  switch (hass?.locale?.number_format) {
+    case "comma_decimal":
+      return ["en-US", "en"];
+    case "decimal_comma":
+      return ["de", "es", "it"];
+    case "space_comma":
+      return ["fr", "sv", "cs"];
+    case "quote_decimal":
+      return ["de-CH"];
+    case "system":
+      return void 0;
+    default:
+      return hass?.locale?.language || hass?.language || void 0;
+  }
+};
+var formatConvertedTemperature = (hass, stateObj, value, sourceUnit, targetUnit, fallbackPrecision = 1) => {
+  const target = normalizeTemperatureUnit(targetUnit);
+  const converted = convertTemperatureValue(value, sourceUnit, target);
+  if (converted == null) return "";
+  const configuredPrecision = hass?.entities?.[stateObj?.entity_id]?.display_precision;
+  const registryPrecision = configuredPrecision == null ? NaN : Number(configuredPrecision);
+  const precision = Number.isInteger(registryPrecision) && registryPrecision >= 0 ? Math.min(registryPrecision, 6) : fallbackPrecision;
+  const fixedValue = converted.toFixed(precision);
+  const syntheticState = {
+    ...stateObj || {},
+    entity_id: "sensor.room_card_temperature",
+    state: fixedValue,
+    attributes: {
+      ...stateObj?.attributes || {},
+      device_class: "temperature",
+      unit_of_measurement: target
+    }
+  };
+  try {
+    if (typeof hass?.formatEntityState === "function") return hass.formatEntityState(syntheticState);
+  } catch (_e) {
+  }
+  const noGrouping = hass?.locale?.number_format === "none";
+  const formatted = new Intl.NumberFormat(noGrouping ? "en-US" : temperatureNumberLocale(hass), {
+    minimumFractionDigits: precision,
+    maximumFractionDigits: precision,
+    useGrouping: !noGrouping
+  }).format(converted);
+  return `${formatted} ${target}`;
+};
+var formatTemperatureStateForDisplay = (hass, stateObj, targetUnit, fallbackSourceUnit = "°C") => {
+  if (!stateObj) return "";
+  const target = normalizeTemperatureUnit(targetUnit);
+  const source = normalizeTemperatureUnit(stateObj.attributes?.unit_of_measurement) || normalizeTemperatureUnit(fallbackSourceUnit);
+  if (!target || !source || target === source) {
+    return formatEntityStateForDisplay(hass, stateObj, source || fallbackSourceUnit);
+  }
+  return formatConvertedTemperature(hass, stateObj, stateObj.state, source, target, 1) || formatEntityStateForDisplay(hass, stateObj, source || fallbackSourceUnit);
+};
+var formatTemperatureAttributeForDisplay = (hass, stateObj, attribute, value, targetUnit, fallbackSourceUnit = "°C") => {
+  const source = normalizeTemperatureUnit(hass?.config?.unit_system?.temperature) || normalizeTemperatureUnit(fallbackSourceUnit);
+  const target = normalizeTemperatureUnit(targetUnit);
+  if (!target || !source || target === source) {
+    return formatEntityAttributeForDisplay(hass, stateObj, attribute, value, source || fallbackSourceUnit);
+  }
+  return formatConvertedTemperature(hass, stateObj, value, source, target, 1) || formatEntityAttributeForDisplay(hass, stateObj, attribute, value, source || fallbackSourceUnit);
+};
+
 // src/room-card.js
 var VERSION = "1.4.0";
 var EDITOR_DOM_REVISION = "6";
@@ -1577,83 +1656,6 @@ var TRANSLATIONS = {
 var getTranslation = (hass, key) => {
   const lang = hass?.language?.split("-")[0] || "en";
   return TRANSLATIONS[lang]?.[key] ?? TRANSLATIONS["en"]?.[key] ?? key;
-};
-var normalizeTemperatureUnit = (unit) => {
-  const normalized = String(unit || "").trim().replace(/\s+/g, "").replace("º", "°").toUpperCase();
-  if (normalized === "C" || normalized === "°C") return "°C";
-  if (normalized === "F" || normalized === "°F") return "°F";
-  return "";
-};
-var convertTemperatureValue = (value, sourceUnit, targetUnit) => {
-  const numeric = Number(value);
-  const source = normalizeTemperatureUnit(sourceUnit);
-  const target = normalizeTemperatureUnit(targetUnit);
-  if (!Number.isFinite(numeric) || !source || !target) return null;
-  if (source === target) return numeric;
-  return source === "°C" ? numeric * 9 / 5 + 32 : (numeric - 32) * 5 / 9;
-};
-var temperatureNumberLocale = (hass) => {
-  switch (hass?.locale?.number_format) {
-    case "comma_decimal":
-      return ["en-US", "en"];
-    case "decimal_comma":
-      return ["de", "es", "it"];
-    case "space_comma":
-      return ["fr", "sv", "cs"];
-    case "quote_decimal":
-      return ["de-CH"];
-    case "system":
-      return void 0;
-    default:
-      return hass?.locale?.language || hass?.language || void 0;
-  }
-};
-var formatConvertedTemperature = (hass, stateObj, value, sourceUnit, targetUnit, fallbackPrecision = 1) => {
-  const target = normalizeTemperatureUnit(targetUnit);
-  const converted = convertTemperatureValue(value, sourceUnit, target);
-  if (converted == null) return "";
-  const configuredPrecision = hass?.entities?.[stateObj?.entity_id]?.display_precision;
-  const registryPrecision = configuredPrecision == null ? NaN : Number(configuredPrecision);
-  const precision = Number.isInteger(registryPrecision) && registryPrecision >= 0 ? Math.min(registryPrecision, 6) : fallbackPrecision;
-  const fixedValue = converted.toFixed(precision);
-  const syntheticState = {
-    ...stateObj || {},
-    entity_id: "sensor.room_card_temperature",
-    state: fixedValue,
-    attributes: {
-      ...stateObj?.attributes || {},
-      device_class: "temperature",
-      unit_of_measurement: target
-    }
-  };
-  try {
-    if (typeof hass?.formatEntityState === "function") return hass.formatEntityState(syntheticState);
-  } catch (_e) {
-  }
-  const noGrouping = hass?.locale?.number_format === "none";
-  const formatted = new Intl.NumberFormat(noGrouping ? "en-US" : temperatureNumberLocale(hass), {
-    minimumFractionDigits: precision,
-    maximumFractionDigits: precision,
-    useGrouping: !noGrouping
-  }).format(converted);
-  return `${formatted} ${target}`;
-};
-var formatTemperatureStateForDisplay = (hass, stateObj, targetUnit, fallbackSourceUnit = "°C") => {
-  if (!stateObj) return "";
-  const target = normalizeTemperatureUnit(targetUnit);
-  const source = normalizeTemperatureUnit(stateObj.attributes?.unit_of_measurement) || normalizeTemperatureUnit(fallbackSourceUnit);
-  if (!target || !source || target === source) {
-    return formatEntityStateForDisplay(hass, stateObj, source || fallbackSourceUnit);
-  }
-  return formatConvertedTemperature(hass, stateObj, stateObj.state, source, target, 1) || formatEntityStateForDisplay(hass, stateObj, source || fallbackSourceUnit);
-};
-var formatTemperatureAttributeForDisplay = (hass, stateObj, attribute, value, targetUnit, fallbackSourceUnit = "°C") => {
-  const source = normalizeTemperatureUnit(hass?.config?.unit_system?.temperature) || normalizeTemperatureUnit(fallbackSourceUnit);
-  const target = normalizeTemperatureUnit(targetUnit);
-  if (!target || !source || target === source) {
-    return formatEntityAttributeForDisplay(hass, stateObj, attribute, value, source || fallbackSourceUnit);
-  }
-  return formatConvertedTemperature(hass, stateObj, value, source, target, 1) || formatEntityAttributeForDisplay(hass, stateObj, attribute, value, source || fallbackSourceUnit);
 };
 var hexToRgba = (hex, alpha = 0.35) => {
   const m = /^#?([0-9a-f]{6})$/i.exec(trimStr(hex) || "");
