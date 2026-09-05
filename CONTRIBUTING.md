@@ -14,6 +14,8 @@
 - `src/lib/history.js` owns shared cache primitives and history parsing/requests through an explicit HA callback. Per-card refresh timers, cache coordination and DOM updates stay in the runtime.
 - `src/lib/capabilities.js` owns slider ranges, inline button definitions and media feature masks; availability is supplied by the card.
 - `src/i18n/translations.js` owns the unchanged EN/DE/FR dictionaries and fallback lookup.
+- `src/shared/presentation.js` holds unchanged shared image, template, status and layout support. It may use browser/DOM facilities, but never imports classes or registers elements.
+- `src/version.js` owns the release version and editor DOM revision.
 - `dist/room-card.js` is the generated HACS artifact and must not be edited directly.
 - `dist/rooms/` contains the additional assets installed by HACS.
 - `tests/` contains automated regression tests.
@@ -43,6 +45,11 @@ byte with the committed distribution, and removes only its temporary output.
 It does not repair or overwrite a stale committed artifact. `dist/rooms/` stays
 alongside the bundle and is not transformed by esbuild.
 
+Build metadata enforces acyclic dependencies: entry → runtime/editor → shared
+presentation/lib/i18n. Libraries never import presentation or classes; shared
+presentation never imports classes; neither class imports the other or the
+entry. Registration remains in the entry point.
+
 Runtime/editor tests import the actual distribution. Direct helper assertions
 use explicit named ESM exports declared in the source, not exports appended to
 bundler-generated text. These internal test seams are not a supported consumer
@@ -52,7 +59,7 @@ API; they will move with their owning modules during the gated extraction.
 
 For a release, keep these values identical:
 
-- `const VERSION` in `src/room-card.js`
+- `const VERSION` in `src/version.js`
 - the generated `VERSION` value in `dist/room-card.js` (esbuild may emit `var`)
 - `version` in `package.json`
 - the newest version heading in `CHANGELOG.md`

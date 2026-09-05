@@ -78,7 +78,7 @@ test("all preset images resolve beside the real module URL and exist in the HACS
 });
 
 test("release metadata accepts the matching tag and rejects a mismatched tag clearly", async () => {
-  const source = await readFile(resolve(repositoryRoot, "src/room-card.js"), "utf8");
+  const source = await readFile(resolve(repositoryRoot, "src/version.js"), "utf8");
   const version = source.match(/const VERSION = "(\d+\.\d+\.\d+)";/)?.[1];
   assert.ok(version);
   const runCheck = (tag) => spawnSync(process.execPath, ["scripts/check-release.mjs"], {

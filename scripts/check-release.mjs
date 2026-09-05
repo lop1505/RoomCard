@@ -8,7 +8,7 @@ const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 const read = (path) => readFile(resolve(repositoryRoot, path), "utf8");
 const [source, distribution, readme, changelog, packageJson] = await Promise.all([
-  read("src/room-card.js"),
+  read("src/version.js"),
   read("dist/room-card.js"),
   read("README.md"),
   read("CHANGELOG.md"),
