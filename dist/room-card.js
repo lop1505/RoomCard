@@ -483,422 +483,7 @@ var isAlertSensorActive = (alertCfg, stateObj, normalize = normalizeAlertSensorC
   return activeStates.includes(current);
 };
 
-// src/room-card.js
-var VERSION = "1.4.0";
-var EDITOR_DOM_REVISION = "6";
-var LOG_FLAG = `customCards_RoomCard_Logged_${VERSION}`;
-var MEDIA_PLAYER_FEATURES = Object.freeze({
-  PAUSE: 1,
-  VOLUME_SET: 4,
-  VOLUME_MUTE: 8,
-  PREVIOUS_TRACK: 16,
-  NEXT_TRACK: 32,
-  PLAY: 16384
-});
-var IMAGE_UPLOAD_LIMITS = Object.freeze({
-  maxSourceBytes: 20 * 1024 * 1024,
-  maxDimension: 2560,
-  quality: 0.86,
-  supportedTypes: ["image/jpeg", "image/png", "image/webp"]
-});
-var parseImagePosition = (value) => {
-  const match = typeof value === "string" ? value.trim().match(/^(-?\d+(?:\.\d+)?)%\s+(-?\d+(?:\.\d+)?)%$/) : null;
-  if (!match) return { x: 50, y: 50, value: "50% 50%", isDefault: true };
-  const x = Math.max(0, Math.min(100, Number(match[1])));
-  const y = Math.max(0, Math.min(100, Number(match[2])));
-  return { x, y, value: `${x}% ${y}%`, isDefault: x === 50 && y === 50 };
-};
-var validateImageUpload = (file) => {
-  if (!file || !IMAGE_UPLOAD_LIMITS.supportedTypes.includes(String(file.type || "").toLowerCase())) return "upload_unsupported";
-  if (!Number.isFinite(file.size) || file.size <= 0) return "upload_decode_error";
-  if (file.size > IMAGE_UPLOAD_LIMITS.maxSourceBytes) return "upload_too_large";
-  return "";
-};
-var ROOM_IMAGE_PRESETS = Object.freeze([
-  { id: "living-room", file: "living-room.jpg", labelKey: "image_preset_living_room" },
-  { id: "kitchen", file: "kitchen.jpg", labelKey: "image_preset_kitchen" },
-  { id: "bedroom", file: "bedroom.jpg", labelKey: "image_preset_bedroom" },
-  { id: "bathroom", file: "bathroom.jpg", labelKey: "image_preset_bathroom" },
-  { id: "dining-room", file: "dining-room.jpg", labelKey: "image_preset_dining_room" },
-  { id: "home-office", file: "home-office.jpg", labelKey: "image_preset_home_office" },
-  { id: "childrens-room", file: "childrens-room.jpg", labelKey: "image_preset_childrens_room" },
-  { id: "hallway", file: "hallway.jpg", labelKey: "image_preset_hallway" },
-  { id: "guest-room", file: "guest-room.jpg", labelKey: "image_preset_guest_room" },
-  { id: "garage", file: "garage.jpg", labelKey: "image_preset_garage" },
-  { id: "garden-patio", file: "garden-patio.jpg", labelKey: "image_preset_garden_patio" },
-  { id: "balcony", file: "balcony.jpg", labelKey: "image_preset_balcony" },
-  { id: "basement", file: "basement.jpg", labelKey: "image_preset_basement" },
-  { id: "laundry-room", file: "laundry-room.jpg", labelKey: "image_preset_laundry_room" },
-  { id: "attic", file: "attic.jpg", labelKey: "image_preset_attic" },
-  { id: "workshop", file: "workshop.jpg", labelKey: "image_preset_workshop" }
-]);
-var ROOM_IMAGE_PRESET_MAP = new Map(ROOM_IMAGE_PRESETS.map((preset) => [preset.id, preset]));
-var getRoomImagePresetUrl = (presetId) => {
-  const preset = ROOM_IMAGE_PRESET_MAP.get(String(presetId || ""));
-  if (!preset) return "";
-  let url;
-  try {
-    url = new URL(`./rooms/${preset.file}`, import.meta.url);
-  } catch (_error) {
-    url = new URL(`./rooms/${preset.file}`, globalThis.location?.href || "http://localhost/");
-  }
-  url.searchParams.set("v", VERSION);
-  return url.href;
-};
-var resolveRoomImageUrl = (config) => {
-  const customImage = typeof config?.image === "string" ? config.image.trim() : "";
-  if (customImage) return customImage;
-  return getRoomImagePresetUrl(config?.image_preset);
-};
-var evaluateAdaptiveImageConditions2 = (conditions, hass, now = /* @__PURE__ */ new Date()) => evaluateAdaptiveImageConditions(conditions, hass, now, typeof window.matchMedia === "function" ? window.matchMedia.bind(window) : void 0);
-var resolveAdaptiveRoomImage = (config, hass, now = /* @__PURE__ */ new Date()) => {
-  const fallback = {
-    url: resolveRoomImageUrl(config),
-    position: parseImagePosition(config?.image_position).value,
-    ruleIndex: -1
-  };
-  const rules = Array.isArray(config?.adaptive_images) ? config.adaptive_images : [];
-  for (let index = 0; index < rules.length; index += 1) {
-    const rule = rules[index];
-    if (!rule || typeof rule !== "object") continue;
-    const condition = evaluateAdaptiveImageConditions2(rule.conditions, hass, now);
-    if (!condition.valid || !condition.active) continue;
-    const url = resolveRoomImageUrl(rule);
-    if (!url) continue;
-    return {
-      url,
-      position: parseImagePosition(rule.image_position || config?.image_position).value,
-      ruleIndex: index
-    };
-  }
-  return fallback;
-};
-var POWER_UNIT_FACTORS = Object.freeze({ mW: 1e-3, W: 1, kW: 1e3, MW: 1e6 });
-var getStatusGroupResult = (group, hass) => {
-  const empty = { visible: false, value: "", numericValue: 0, contributors: [], error: "" };
-  if (!group || typeof group !== "object") return empty;
-  if (Array.isArray(group.conditions) && group.conditions.length > 0) {
-    const gate = evaluateAdaptiveImageConditions2(group.conditions, hass);
-    if (!gate.valid || !gate.active) return empty;
-  }
-  const entries = (Array.isArray(group.entities) ? group.entities : []).map((item) => typeof item === "string" ? { entity: item } : item).filter((item) => item && typeof item.entity === "string" && item.entity.trim());
-  const numericMode = group.aggregate === "sum" || group.display === "value";
-  const contributors = [];
-  entries.forEach((entry) => {
-    const entityId = entry.entity.trim();
-    const stateObj = hass?.states?.[entityId];
-    if (!stateObj || isEntityOffline(stateObj)) return;
-    if (Array.isArray(entry.conditions) && entry.conditions.length > 0) {
-      const condition = evaluateAdaptiveImageConditions2(entry.conditions, hass);
-      if (!condition.valid || !condition.active) return;
-    }
-    const configuredStates = Array.isArray(entry.active_states) ? entry.active_states : Array.isArray(group.active_states) ? group.active_states : numericMode ? [] : ["on"];
-    const activeStates = configuredStates.map((state) => String(state).toLowerCase().trim()).filter(Boolean);
-    if (activeStates.length > 0 && !activeStates.includes(String(stateObj.state).toLowerCase().trim())) return;
-    const number = Number(stateObj.state);
-    if (numericMode && !Number.isFinite(number)) return;
-    contributors.push({
-      entity_id: entityId,
-      friendly_name: stateObj.attributes?.friendly_name || entityId,
-      icon: stateObj.attributes?.icon || "mdi:information-outline",
-      state: hass?.formatEntityState ? hass.formatEntityState(stateObj) : String(stateObj.state ?? ""),
-      number,
-      unit: trimStr(stateObj.attributes?.unit_of_measurement)
-    });
-  });
-  if (!numericMode) {
-    const count = contributors.length;
-    return {
-      visible: !(group.hide_when_zero === true && count === 0),
-      value: String(count),
-      numericValue: count,
-      contributors,
-      error: ""
-    };
-  }
-  const requestedUnit = trimStr(group.unit);
-  const units = contributors.map((item) => item.unit).filter(Boolean);
-  const targetUnit = requestedUnit || units[0] || "";
-  const allPower = units.length > 0 && units.every((unit) => POWER_UNIT_FACTORS[unit] !== void 0);
-  const hasMissingUnit = units.length !== contributors.length;
-  const compatible = !targetUnit && units.length === 0 || !hasMissingUnit && (units.every((unit) => unit === targetUnit) || allPower && POWER_UNIT_FACTORS[targetUnit] !== void 0);
-  if (!compatible) {
-    return { visible: true, value: "—", numericValue: NaN, contributors, error: "status_group_incompatible_units" };
-  }
-  const total = contributors.reduce((sum, item) => {
-    if (!item.unit || item.unit === targetUnit) return sum + item.number;
-    return sum + item.number * POWER_UNIT_FACTORS[item.unit] / POWER_UNIT_FACTORS[targetUnit];
-  }, 0);
-  const precision = Math.max(0, Math.min(4, Number.isFinite(Number(group.precision)) ? Number(group.precision) : 1));
-  const locale = hass?.locale?.language || hass?.language || void 0;
-  const formatted = new Intl.NumberFormat(locale, { maximumFractionDigits: precision }).format(total);
-  return {
-    visible: !(group.hide_when_zero === true && total === 0),
-    value: targetUnit ? `${formatted} ${targetUnit}` : formatted,
-    numericValue: total,
-    contributors,
-    error: ""
-  };
-};
-if (!window[LOG_FLAG]) {
-  console.info(
-    `%c ONELINE-ROOM-CARD %c ${VERSION} `,
-    "color: white; background: #2c3e50; font-weight: 700;",
-    "color: white; background: #c0392b; font-weight: 700;"
-  );
-  window[LOG_FLAG] = true;
-}
-var OneLineRoomCardTextField = class extends HTMLElement {
-  static get observedAttributes() {
-    return [
-      "label",
-      "placeholder",
-      "type",
-      "min",
-      "max",
-      "step",
-      "rows",
-      "multiline",
-      "disabled",
-      "readonly",
-      "required",
-      "icon"
-    ];
-  }
-  constructor() {
-    super();
-    this.attachShadow({ mode: "open", delegatesFocus: true });
-    this._value = this.getAttribute("value") || "";
-    this._committedValue = this._value;
-    this._control = null;
-    this._watchedDefinitions = false;
-  }
-  connectedCallback() {
-    this._renderControl();
-    this._watchForHomeAssistantInputs();
-  }
-  attributeChangedCallback() {
-    if (this.isConnected) this._renderControl();
-  }
-  get value() {
-    return this._value;
-  }
-  set value(value) {
-    this._value = value == null ? "" : String(value);
-    this._committedValue = this._value;
-    if (this._control && this._control.value !== this._value) {
-      this._control.value = this._value;
-    }
-  }
-  get hass() {
-    return this._hass;
-  }
-  set hass(hass) {
-    this._hass = hass;
-    if (this._control && "hass" in this._control) this._control.hass = hass;
-  }
-  get label() {
-    return this.getAttribute("label") || "";
-  }
-  set label(value) {
-    this._setStringAttribute("label", value);
-  }
-  get placeholder() {
-    return this.getAttribute("placeholder") || "";
-  }
-  set placeholder(value) {
-    this._setStringAttribute("placeholder", value);
-  }
-  get type() {
-    return this.getAttribute("type") || "text";
-  }
-  set type(value) {
-    this._setStringAttribute("type", value || "text");
-  }
-  get min() {
-    return this.getAttribute("min");
-  }
-  set min(value) {
-    this._setOptionalAttribute("min", value);
-  }
-  get max() {
-    return this.getAttribute("max");
-  }
-  set max(value) {
-    this._setOptionalAttribute("max", value);
-  }
-  get step() {
-    return this.getAttribute("step");
-  }
-  set step(value) {
-    this._setOptionalAttribute("step", value);
-  }
-  get rows() {
-    return Number(this.getAttribute("rows") || 3);
-  }
-  set rows(value) {
-    this._setOptionalAttribute("rows", value);
-  }
-  get multiline() {
-    return this.hasAttribute("multiline");
-  }
-  set multiline(value) {
-    this.toggleAttribute("multiline", Boolean(value));
-  }
-  get disabled() {
-    return this.hasAttribute("disabled");
-  }
-  set disabled(value) {
-    this.toggleAttribute("disabled", Boolean(value));
-  }
-  get readonly() {
-    return this.hasAttribute("readonly");
-  }
-  set readonly(value) {
-    this.toggleAttribute("readonly", Boolean(value));
-  }
-  get required() {
-    return this.hasAttribute("required");
-  }
-  set required(value) {
-    this.toggleAttribute("required", Boolean(value));
-  }
-  focus(options) {
-    this._control?.focus(options);
-  }
-  select() {
-    this._control?.select?.();
-  }
-  checkValidity() {
-    return this._control?.checkValidity?.() ?? true;
-  }
-  reportValidity() {
-    return this._control?.reportValidity?.() ?? true;
-  }
-  _setStringAttribute(name, value) {
-    this.setAttribute(name, value == null ? "" : String(value));
-  }
-  _setOptionalAttribute(name, value) {
-    if (value == null || value === "") this.removeAttribute(name);
-    else this.setAttribute(name, String(value));
-  }
-  _watchForHomeAssistantInputs() {
-    if (this._watchedDefinitions) return;
-    this._watchedDefinitions = true;
-    const tags = this.multiline ? ["ha-textarea", "ha-textfield"] : ["ha-input", "ha-textfield"];
-    Promise.race(tags.map((tag) => customElements.whenDefined(tag))).then(() => {
-      if (this.isConnected) this._renderControl();
-    });
-  }
-  _preferredControlTag() {
-    if (this.multiline) {
-      if (customElements.get("ha-textarea")) return "ha-textarea";
-      if (customElements.get("ha-textfield")) return "ha-textfield";
-      return "textarea";
-    }
-    if (customElements.get("ha-input")) return "ha-input";
-    if (customElements.get("ha-textfield")) return "ha-textfield";
-    return "input";
-  }
-  _renderControl() {
-    const tag = this._preferredControlTag();
-    if (this._control?.localName === tag) {
-      this._syncControlProperties();
-      return;
-    }
-    const style = document.createElement("style");
-    style.textContent = `
-      :host { display: block; box-sizing: border-box; width: 100%; }
-      *, *::before, *::after { box-sizing: border-box; }
-      .native-wrap { position: relative; width: 100%; }
-      .native-label {
-        position: absolute; z-index: 1; inset: 7px 12px auto 12px;
-        color: var(--secondary-text-color, #727272); font: 400 12px/16px sans-serif;
-        pointer-events: none;
-      }
-      input, textarea {
-        display: block; width: 100%; min-height: 56px; margin: 0; padding: 20px 12px 6px;
-        border: 0; border-bottom: 1px solid var(--divider-color, #9e9e9e); border-radius: 4px 4px 0 0;
-        outline: none; resize: vertical; font: inherit;
-        color: var(--mdc-text-field-ink-color, var(--primary-text-color, #212121));
-        background: var(--mdc-text-field-fill-color, var(--secondary-background-color, #f5f5f5));
-      }
-      .native-wrap.no-label input, .native-wrap.no-label textarea { padding-top: 6px; }
-      input:focus, textarea:focus { border-bottom: 2px solid var(--primary-color, #03a9f4); }
-      input:disabled, textarea:disabled { opacity: .55; cursor: not-allowed; }
-      ha-input, ha-textfield, ha-textarea { display: block; width: 100%; }
-    `;
-    const control = document.createElement(tag);
-    this._control = control;
-    this._syncControlProperties();
-    control.addEventListener("input", (event) => this._forwardValueEvent(event, "input"));
-    control.addEventListener("change", (event) => this._forwardValueEvent(event, "change"));
-    if (tag === "input" || tag === "textarea") {
-      control.addEventListener("blur", (event) => this._forwardValueEvent(event, "change"));
-    }
-    const fragment = document.createDocumentFragment();
-    fragment.appendChild(style);
-    if (tag === "input" || tag === "textarea") {
-      const wrap = document.createElement("div");
-      wrap.className = `native-wrap${this.label ? "" : " no-label"}`;
-      if (this.label) {
-        const label = document.createElement("label");
-        label.className = "native-label";
-        label.textContent = this.label;
-        wrap.appendChild(label);
-      }
-      wrap.appendChild(control);
-      fragment.appendChild(wrap);
-    } else {
-      if (this.getAttribute("icon") && tag === "ha-input") {
-        const icon = document.createElement("ha-icon");
-        icon.slot = "start";
-        icon.icon = this.getAttribute("icon");
-        control.appendChild(icon);
-      }
-      fragment.appendChild(control);
-    }
-    this.shadowRoot.replaceChildren(fragment);
-  }
-  _syncControlProperties() {
-    const control = this._control;
-    if (!control) return;
-    control.value = this._value;
-    control.label = this.label;
-    control.placeholder = this.placeholder;
-    if (control.localName !== "textarea" && control.localName !== "ha-textarea") {
-      control.type = this.type;
-    }
-    ["min", "max", "step"].forEach((name) => {
-      const value = this.getAttribute(name);
-      if (value == null) control.removeAttribute(name);
-      else control.setAttribute(name, value);
-    });
-    if (this.multiline) {
-      control.rows = this.rows;
-      if (control.localName === "ha-textfield") control.multiline = true;
-    }
-    control.disabled = this.disabled;
-    control.readonly = this.readonly;
-    control.required = this.required;
-    if (this._hass && "hass" in control) control.hass = this._hass;
-    if (this.getAttribute("icon") && control.localName === "ha-textfield") {
-      control.icon = this.getAttribute("icon");
-    }
-  }
-  _forwardValueEvent(event, type) {
-    event.stopPropagation();
-    this._value = this._control?.value == null ? "" : String(this._control.value);
-    if (type === "change") {
-      if (this._committedValue === this._value) return;
-      this._committedValue = this._value;
-    }
-    this.dispatchEvent(new Event(type, { bubbles: true, composed: true }));
-  }
-};
-if (!customElements.get("oneline-room-card-textfield")) {
-  customElements.define("oneline-room-card-textfield", OneLineRoomCardTextField);
-}
+// src/i18n/translations.js
 var TRANSLATIONS = {
   en: {
     empty: "Empty",
@@ -1865,6 +1450,423 @@ var getTranslation = (hass, key) => {
   const lang = hass?.language?.split("-")[0] || "en";
   return TRANSLATIONS[lang]?.[key] ?? TRANSLATIONS["en"]?.[key] ?? key;
 };
+
+// src/room-card.js
+var VERSION = "1.4.0";
+var EDITOR_DOM_REVISION = "6";
+var LOG_FLAG = `customCards_RoomCard_Logged_${VERSION}`;
+var MEDIA_PLAYER_FEATURES = Object.freeze({
+  PAUSE: 1,
+  VOLUME_SET: 4,
+  VOLUME_MUTE: 8,
+  PREVIOUS_TRACK: 16,
+  NEXT_TRACK: 32,
+  PLAY: 16384
+});
+var IMAGE_UPLOAD_LIMITS = Object.freeze({
+  maxSourceBytes: 20 * 1024 * 1024,
+  maxDimension: 2560,
+  quality: 0.86,
+  supportedTypes: ["image/jpeg", "image/png", "image/webp"]
+});
+var parseImagePosition = (value) => {
+  const match = typeof value === "string" ? value.trim().match(/^(-?\d+(?:\.\d+)?)%\s+(-?\d+(?:\.\d+)?)%$/) : null;
+  if (!match) return { x: 50, y: 50, value: "50% 50%", isDefault: true };
+  const x = Math.max(0, Math.min(100, Number(match[1])));
+  const y = Math.max(0, Math.min(100, Number(match[2])));
+  return { x, y, value: `${x}% ${y}%`, isDefault: x === 50 && y === 50 };
+};
+var validateImageUpload = (file) => {
+  if (!file || !IMAGE_UPLOAD_LIMITS.supportedTypes.includes(String(file.type || "").toLowerCase())) return "upload_unsupported";
+  if (!Number.isFinite(file.size) || file.size <= 0) return "upload_decode_error";
+  if (file.size > IMAGE_UPLOAD_LIMITS.maxSourceBytes) return "upload_too_large";
+  return "";
+};
+var ROOM_IMAGE_PRESETS = Object.freeze([
+  { id: "living-room", file: "living-room.jpg", labelKey: "image_preset_living_room" },
+  { id: "kitchen", file: "kitchen.jpg", labelKey: "image_preset_kitchen" },
+  { id: "bedroom", file: "bedroom.jpg", labelKey: "image_preset_bedroom" },
+  { id: "bathroom", file: "bathroom.jpg", labelKey: "image_preset_bathroom" },
+  { id: "dining-room", file: "dining-room.jpg", labelKey: "image_preset_dining_room" },
+  { id: "home-office", file: "home-office.jpg", labelKey: "image_preset_home_office" },
+  { id: "childrens-room", file: "childrens-room.jpg", labelKey: "image_preset_childrens_room" },
+  { id: "hallway", file: "hallway.jpg", labelKey: "image_preset_hallway" },
+  { id: "guest-room", file: "guest-room.jpg", labelKey: "image_preset_guest_room" },
+  { id: "garage", file: "garage.jpg", labelKey: "image_preset_garage" },
+  { id: "garden-patio", file: "garden-patio.jpg", labelKey: "image_preset_garden_patio" },
+  { id: "balcony", file: "balcony.jpg", labelKey: "image_preset_balcony" },
+  { id: "basement", file: "basement.jpg", labelKey: "image_preset_basement" },
+  { id: "laundry-room", file: "laundry-room.jpg", labelKey: "image_preset_laundry_room" },
+  { id: "attic", file: "attic.jpg", labelKey: "image_preset_attic" },
+  { id: "workshop", file: "workshop.jpg", labelKey: "image_preset_workshop" }
+]);
+var ROOM_IMAGE_PRESET_MAP = new Map(ROOM_IMAGE_PRESETS.map((preset) => [preset.id, preset]));
+var getRoomImagePresetUrl = (presetId) => {
+  const preset = ROOM_IMAGE_PRESET_MAP.get(String(presetId || ""));
+  if (!preset) return "";
+  let url;
+  try {
+    url = new URL(`./rooms/${preset.file}`, import.meta.url);
+  } catch (_error) {
+    url = new URL(`./rooms/${preset.file}`, globalThis.location?.href || "http://localhost/");
+  }
+  url.searchParams.set("v", VERSION);
+  return url.href;
+};
+var resolveRoomImageUrl = (config) => {
+  const customImage = typeof config?.image === "string" ? config.image.trim() : "";
+  if (customImage) return customImage;
+  return getRoomImagePresetUrl(config?.image_preset);
+};
+var evaluateAdaptiveImageConditions2 = (conditions, hass, now = /* @__PURE__ */ new Date()) => evaluateAdaptiveImageConditions(conditions, hass, now, typeof window.matchMedia === "function" ? window.matchMedia.bind(window) : void 0);
+var resolveAdaptiveRoomImage = (config, hass, now = /* @__PURE__ */ new Date()) => {
+  const fallback = {
+    url: resolveRoomImageUrl(config),
+    position: parseImagePosition(config?.image_position).value,
+    ruleIndex: -1
+  };
+  const rules = Array.isArray(config?.adaptive_images) ? config.adaptive_images : [];
+  for (let index = 0; index < rules.length; index += 1) {
+    const rule = rules[index];
+    if (!rule || typeof rule !== "object") continue;
+    const condition = evaluateAdaptiveImageConditions2(rule.conditions, hass, now);
+    if (!condition.valid || !condition.active) continue;
+    const url = resolveRoomImageUrl(rule);
+    if (!url) continue;
+    return {
+      url,
+      position: parseImagePosition(rule.image_position || config?.image_position).value,
+      ruleIndex: index
+    };
+  }
+  return fallback;
+};
+var POWER_UNIT_FACTORS = Object.freeze({ mW: 1e-3, W: 1, kW: 1e3, MW: 1e6 });
+var getStatusGroupResult = (group, hass) => {
+  const empty = { visible: false, value: "", numericValue: 0, contributors: [], error: "" };
+  if (!group || typeof group !== "object") return empty;
+  if (Array.isArray(group.conditions) && group.conditions.length > 0) {
+    const gate = evaluateAdaptiveImageConditions2(group.conditions, hass);
+    if (!gate.valid || !gate.active) return empty;
+  }
+  const entries = (Array.isArray(group.entities) ? group.entities : []).map((item) => typeof item === "string" ? { entity: item } : item).filter((item) => item && typeof item.entity === "string" && item.entity.trim());
+  const numericMode = group.aggregate === "sum" || group.display === "value";
+  const contributors = [];
+  entries.forEach((entry) => {
+    const entityId = entry.entity.trim();
+    const stateObj = hass?.states?.[entityId];
+    if (!stateObj || isEntityOffline(stateObj)) return;
+    if (Array.isArray(entry.conditions) && entry.conditions.length > 0) {
+      const condition = evaluateAdaptiveImageConditions2(entry.conditions, hass);
+      if (!condition.valid || !condition.active) return;
+    }
+    const configuredStates = Array.isArray(entry.active_states) ? entry.active_states : Array.isArray(group.active_states) ? group.active_states : numericMode ? [] : ["on"];
+    const activeStates = configuredStates.map((state) => String(state).toLowerCase().trim()).filter(Boolean);
+    if (activeStates.length > 0 && !activeStates.includes(String(stateObj.state).toLowerCase().trim())) return;
+    const number = Number(stateObj.state);
+    if (numericMode && !Number.isFinite(number)) return;
+    contributors.push({
+      entity_id: entityId,
+      friendly_name: stateObj.attributes?.friendly_name || entityId,
+      icon: stateObj.attributes?.icon || "mdi:information-outline",
+      state: hass?.formatEntityState ? hass.formatEntityState(stateObj) : String(stateObj.state ?? ""),
+      number,
+      unit: trimStr(stateObj.attributes?.unit_of_measurement)
+    });
+  });
+  if (!numericMode) {
+    const count = contributors.length;
+    return {
+      visible: !(group.hide_when_zero === true && count === 0),
+      value: String(count),
+      numericValue: count,
+      contributors,
+      error: ""
+    };
+  }
+  const requestedUnit = trimStr(group.unit);
+  const units = contributors.map((item) => item.unit).filter(Boolean);
+  const targetUnit = requestedUnit || units[0] || "";
+  const allPower = units.length > 0 && units.every((unit) => POWER_UNIT_FACTORS[unit] !== void 0);
+  const hasMissingUnit = units.length !== contributors.length;
+  const compatible = !targetUnit && units.length === 0 || !hasMissingUnit && (units.every((unit) => unit === targetUnit) || allPower && POWER_UNIT_FACTORS[targetUnit] !== void 0);
+  if (!compatible) {
+    return { visible: true, value: "—", numericValue: NaN, contributors, error: "status_group_incompatible_units" };
+  }
+  const total = contributors.reduce((sum, item) => {
+    if (!item.unit || item.unit === targetUnit) return sum + item.number;
+    return sum + item.number * POWER_UNIT_FACTORS[item.unit] / POWER_UNIT_FACTORS[targetUnit];
+  }, 0);
+  const precision = Math.max(0, Math.min(4, Number.isFinite(Number(group.precision)) ? Number(group.precision) : 1));
+  const locale = hass?.locale?.language || hass?.language || void 0;
+  const formatted = new Intl.NumberFormat(locale, { maximumFractionDigits: precision }).format(total);
+  return {
+    visible: !(group.hide_when_zero === true && total === 0),
+    value: targetUnit ? `${formatted} ${targetUnit}` : formatted,
+    numericValue: total,
+    contributors,
+    error: ""
+  };
+};
+if (!window[LOG_FLAG]) {
+  console.info(
+    `%c ONELINE-ROOM-CARD %c ${VERSION} `,
+    "color: white; background: #2c3e50; font-weight: 700;",
+    "color: white; background: #c0392b; font-weight: 700;"
+  );
+  window[LOG_FLAG] = true;
+}
+var OneLineRoomCardTextField = class extends HTMLElement {
+  static get observedAttributes() {
+    return [
+      "label",
+      "placeholder",
+      "type",
+      "min",
+      "max",
+      "step",
+      "rows",
+      "multiline",
+      "disabled",
+      "readonly",
+      "required",
+      "icon"
+    ];
+  }
+  constructor() {
+    super();
+    this.attachShadow({ mode: "open", delegatesFocus: true });
+    this._value = this.getAttribute("value") || "";
+    this._committedValue = this._value;
+    this._control = null;
+    this._watchedDefinitions = false;
+  }
+  connectedCallback() {
+    this._renderControl();
+    this._watchForHomeAssistantInputs();
+  }
+  attributeChangedCallback() {
+    if (this.isConnected) this._renderControl();
+  }
+  get value() {
+    return this._value;
+  }
+  set value(value) {
+    this._value = value == null ? "" : String(value);
+    this._committedValue = this._value;
+    if (this._control && this._control.value !== this._value) {
+      this._control.value = this._value;
+    }
+  }
+  get hass() {
+    return this._hass;
+  }
+  set hass(hass) {
+    this._hass = hass;
+    if (this._control && "hass" in this._control) this._control.hass = hass;
+  }
+  get label() {
+    return this.getAttribute("label") || "";
+  }
+  set label(value) {
+    this._setStringAttribute("label", value);
+  }
+  get placeholder() {
+    return this.getAttribute("placeholder") || "";
+  }
+  set placeholder(value) {
+    this._setStringAttribute("placeholder", value);
+  }
+  get type() {
+    return this.getAttribute("type") || "text";
+  }
+  set type(value) {
+    this._setStringAttribute("type", value || "text");
+  }
+  get min() {
+    return this.getAttribute("min");
+  }
+  set min(value) {
+    this._setOptionalAttribute("min", value);
+  }
+  get max() {
+    return this.getAttribute("max");
+  }
+  set max(value) {
+    this._setOptionalAttribute("max", value);
+  }
+  get step() {
+    return this.getAttribute("step");
+  }
+  set step(value) {
+    this._setOptionalAttribute("step", value);
+  }
+  get rows() {
+    return Number(this.getAttribute("rows") || 3);
+  }
+  set rows(value) {
+    this._setOptionalAttribute("rows", value);
+  }
+  get multiline() {
+    return this.hasAttribute("multiline");
+  }
+  set multiline(value) {
+    this.toggleAttribute("multiline", Boolean(value));
+  }
+  get disabled() {
+    return this.hasAttribute("disabled");
+  }
+  set disabled(value) {
+    this.toggleAttribute("disabled", Boolean(value));
+  }
+  get readonly() {
+    return this.hasAttribute("readonly");
+  }
+  set readonly(value) {
+    this.toggleAttribute("readonly", Boolean(value));
+  }
+  get required() {
+    return this.hasAttribute("required");
+  }
+  set required(value) {
+    this.toggleAttribute("required", Boolean(value));
+  }
+  focus(options) {
+    this._control?.focus(options);
+  }
+  select() {
+    this._control?.select?.();
+  }
+  checkValidity() {
+    return this._control?.checkValidity?.() ?? true;
+  }
+  reportValidity() {
+    return this._control?.reportValidity?.() ?? true;
+  }
+  _setStringAttribute(name, value) {
+    this.setAttribute(name, value == null ? "" : String(value));
+  }
+  _setOptionalAttribute(name, value) {
+    if (value == null || value === "") this.removeAttribute(name);
+    else this.setAttribute(name, String(value));
+  }
+  _watchForHomeAssistantInputs() {
+    if (this._watchedDefinitions) return;
+    this._watchedDefinitions = true;
+    const tags = this.multiline ? ["ha-textarea", "ha-textfield"] : ["ha-input", "ha-textfield"];
+    Promise.race(tags.map((tag) => customElements.whenDefined(tag))).then(() => {
+      if (this.isConnected) this._renderControl();
+    });
+  }
+  _preferredControlTag() {
+    if (this.multiline) {
+      if (customElements.get("ha-textarea")) return "ha-textarea";
+      if (customElements.get("ha-textfield")) return "ha-textfield";
+      return "textarea";
+    }
+    if (customElements.get("ha-input")) return "ha-input";
+    if (customElements.get("ha-textfield")) return "ha-textfield";
+    return "input";
+  }
+  _renderControl() {
+    const tag = this._preferredControlTag();
+    if (this._control?.localName === tag) {
+      this._syncControlProperties();
+      return;
+    }
+    const style = document.createElement("style");
+    style.textContent = `
+      :host { display: block; box-sizing: border-box; width: 100%; }
+      *, *::before, *::after { box-sizing: border-box; }
+      .native-wrap { position: relative; width: 100%; }
+      .native-label {
+        position: absolute; z-index: 1; inset: 7px 12px auto 12px;
+        color: var(--secondary-text-color, #727272); font: 400 12px/16px sans-serif;
+        pointer-events: none;
+      }
+      input, textarea {
+        display: block; width: 100%; min-height: 56px; margin: 0; padding: 20px 12px 6px;
+        border: 0; border-bottom: 1px solid var(--divider-color, #9e9e9e); border-radius: 4px 4px 0 0;
+        outline: none; resize: vertical; font: inherit;
+        color: var(--mdc-text-field-ink-color, var(--primary-text-color, #212121));
+        background: var(--mdc-text-field-fill-color, var(--secondary-background-color, #f5f5f5));
+      }
+      .native-wrap.no-label input, .native-wrap.no-label textarea { padding-top: 6px; }
+      input:focus, textarea:focus { border-bottom: 2px solid var(--primary-color, #03a9f4); }
+      input:disabled, textarea:disabled { opacity: .55; cursor: not-allowed; }
+      ha-input, ha-textfield, ha-textarea { display: block; width: 100%; }
+    `;
+    const control = document.createElement(tag);
+    this._control = control;
+    this._syncControlProperties();
+    control.addEventListener("input", (event) => this._forwardValueEvent(event, "input"));
+    control.addEventListener("change", (event) => this._forwardValueEvent(event, "change"));
+    if (tag === "input" || tag === "textarea") {
+      control.addEventListener("blur", (event) => this._forwardValueEvent(event, "change"));
+    }
+    const fragment = document.createDocumentFragment();
+    fragment.appendChild(style);
+    if (tag === "input" || tag === "textarea") {
+      const wrap = document.createElement("div");
+      wrap.className = `native-wrap${this.label ? "" : " no-label"}`;
+      if (this.label) {
+        const label = document.createElement("label");
+        label.className = "native-label";
+        label.textContent = this.label;
+        wrap.appendChild(label);
+      }
+      wrap.appendChild(control);
+      fragment.appendChild(wrap);
+    } else {
+      if (this.getAttribute("icon") && tag === "ha-input") {
+        const icon = document.createElement("ha-icon");
+        icon.slot = "start";
+        icon.icon = this.getAttribute("icon");
+        control.appendChild(icon);
+      }
+      fragment.appendChild(control);
+    }
+    this.shadowRoot.replaceChildren(fragment);
+  }
+  _syncControlProperties() {
+    const control = this._control;
+    if (!control) return;
+    control.value = this._value;
+    control.label = this.label;
+    control.placeholder = this.placeholder;
+    if (control.localName !== "textarea" && control.localName !== "ha-textarea") {
+      control.type = this.type;
+    }
+    ["min", "max", "step"].forEach((name) => {
+      const value = this.getAttribute(name);
+      if (value == null) control.removeAttribute(name);
+      else control.setAttribute(name, value);
+    });
+    if (this.multiline) {
+      control.rows = this.rows;
+      if (control.localName === "ha-textfield") control.multiline = true;
+    }
+    control.disabled = this.disabled;
+    control.readonly = this.readonly;
+    control.required = this.required;
+    if (this._hass && "hass" in control) control.hass = this._hass;
+    if (this.getAttribute("icon") && control.localName === "ha-textfield") {
+      control.icon = this.getAttribute("icon");
+    }
+  }
+  _forwardValueEvent(event, type) {
+    event.stopPropagation();
+    this._value = this._control?.value == null ? "" : String(this._control.value);
+    if (type === "change") {
+      if (this._committedValue === this._value) return;
+      this._committedValue = this._value;
+    }
+    this.dispatchEvent(new Event(type, { bubbles: true, composed: true }));
+  }
+};
+if (!customElements.get("oneline-room-card-textfield")) {
+  customElements.define("oneline-room-card-textfield", OneLineRoomCardTextField);
+}
 var isHeaderManualColorEnabled = (config) => !!trimStr(config?.color);
 var resolveLabelPosition = (btn, config) => {
   const globalPos = config?.global_label_position ?? config?.buttons_label_position ?? "right";

@@ -2,9 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { installDomEnvironment, importRoomCard } from "./support/dom-env.mjs";
-
-installDomEnvironment();
-const { TRANSLATIONS, getTranslation } = await importRoomCard();
+import { TRANSLATIONS, getTranslation } from "../src/i18n/translations.js";
 
 test("all supported languages have the same non-empty translation keys", () => {
   const keys = Object.keys(TRANSLATIONS.en).sort();
@@ -32,4 +30,15 @@ test("regional languages resolve localized editor labels and unknown languages f
   assert.equal(getTranslation({ language: "fr-CA" }, "visibility_cond"), "Visibilité conditionnelle");
   assert.equal(getTranslation({ language: "en-GB" }, "sparkline_average"), "Average");
   assert.equal(getTranslation({ language: "es" }, "room_modes"), TRANSLATIONS.en.room_modes);
+});
+
+test("the shipped artifact contains the exact source dictionaries and lookup behavior", async () => {
+  installDomEnvironment();
+  const artifact = await importRoomCard();
+  assert.deepEqual(artifact.TRANSLATIONS, TRANSLATIONS);
+  for (const language of ["en", "de-DE", "fr-CA", "unknown"]) {
+    for (const key of [...Object.keys(TRANSLATIONS.en), "unknown_key"]) {
+      assert.equal(artifact.getTranslation({ language }, key), getTranslation({ language }, key));
+    }
+  }
 });

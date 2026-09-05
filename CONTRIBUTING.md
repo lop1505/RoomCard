@@ -2,7 +2,7 @@
 
 ## Repository layout
 
-- `src/room-card.js` is the canonical source file.
+- `src/room-card.js` is the entry point and currently retains runtime/editor classes.
 - `src/lib/values.js` owns browser-independent number/string helpers.
 - `src/lib/formatting.js` owns HA state/attribute formatting and existing fallbacks.
 - `src/lib/temperature.js` owns temperature conversion and locale/precision handling.
@@ -10,13 +10,14 @@
 - `src/lib/states.js` owns shared state definitions, domain icons and state predicates.
 - `src/lib/conditions.js` keeps visibility, room-mode and adaptive-image policies separate; time and screen inputs are supplied by the runtime.
 - `src/lib/alerts.js` owns legacy alert normalization and activation rules.
+- `src/i18n/translations.js` owns the unchanged EN/DE/FR dictionaries and fallback lookup.
 - `dist/room-card.js` is the generated HACS artifact and must not be edited directly.
 - `dist/rooms/` contains the additional assets installed by HACS.
 - `tests/` contains automated regression tests.
 - `scripts/` contains build and release-consistency tooling.
 - `docs/` contains screenshots and supporting documentation.
 
-The current source intentionally remains a single file. Structural extraction should happen only in small, test-gated changes so existing Home Assistant behavior remains stable.
+Runtime and editor remain together during the initial helper extractions. Each module family is moved in its own test-gated PR so existing Home Assistant behavior remains stable.
 See [the modularization plan](docs/modularization-plan.md) and [manual Home Assistant smoke-test matrix](docs/manual-smoke-test.md) before changing the build pipeline or moving source code.
 
 ## Local checks
@@ -31,7 +32,7 @@ npm run build
 npm run check
 ```
 
-After changing `src/room-card.js`, always run `npm run build` and commit the matching `dist/room-card.js` artifact. CI rejects stale distribution output and inconsistent release versions.
+After changing anything under `src/`, always run `npm run build` and commit the matching `dist/room-card.js` artifact. CI rejects stale distribution output and inconsistent release versions.
 
 `scripts/build-config.mjs` owns the shared build options. `npm run check:dist`
 builds into an isolated temporary directory, compares that artifact byte for
