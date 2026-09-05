@@ -6,6 +6,7 @@
 - `src/lib/values.js` owns browser-independent number/string helpers.
 - `src/lib/formatting.js` owns HA state/attribute formatting and existing fallbacks.
 - `src/lib/temperature.js` owns temperature conversion and locale/precision handling.
+- `src/lib/colors.js` owns color parsing, contrast and picker conversion.
 - `dist/room-card.js` is the generated HACS artifact and must not be edited directly.
 - `dist/rooms/` contains the additional assets installed by HACS.
 - `tests/` contains automated regression tests.
