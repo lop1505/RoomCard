@@ -16,6 +16,7 @@
 - `src/i18n/translations.js` owns the unchanged EN/DE/FR dictionaries and fallback lookup.
 - `src/shared/presentation.js` holds unchanged shared image, template, status and layout support. It may use browser/DOM facilities, but never imports classes or registers elements.
 - `src/version.js` owns the release version and editor DOM revision.
+- `src/editor/text-field-compat.js` owns the intact native/HA input compatibility wrapper; its custom-element registration remains in the entry point.
 - `dist/room-card.js` is the generated HACS artifact and must not be edited directly.
 - `dist/rooms/` contains the additional assets installed by HACS.
 - `tests/` contains automated regression tests.
