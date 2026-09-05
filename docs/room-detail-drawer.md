@@ -65,6 +65,12 @@ position; the editor's existing deferred save remains the configuration boundary
 
 ## Test the prototype (release remains blocked)
 
+The owner confirmed the actual HA prototype gate on 2026-09-05 against
+`3bdbd2c780a39afed845970be0e68d61f8d4fe65`: HA details/history/status with
+Escape returning to the drawer, mobile use and opening from the editor preview
+worked. This permits control integration; it does not certify the not-yet-built
+full feature or authorize skipping its final manual release gate.
+
 Local browser fixture checks on 2026-09-05 passed: the desktop sidebar rendered
 outside a transformed, clipped card container; at 390×844 CSS pixels the bottom
 sheet measured 390px wide and ended at the viewport bottom. Light/dark rendering,
