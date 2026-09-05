@@ -9,12 +9,7 @@ const {
   SHARED_SPARKLINE_PENDING,
   normalizeSparklineSamples,
   getSparklineStats
-} = await importRoomCard([
-  "SHARED_SPARKLINE_CACHE",
-  "SHARED_SPARKLINE_PENDING",
-  "normalizeSparklineSamples",
-  "getSparklineStats"
-]);
+} = await importRoomCard();
 
 const createRenderedCard = (config, hass) => {
   const card = document.createElement("oneline-room-card");

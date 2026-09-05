@@ -4,7 +4,7 @@ import test from "node:test";
 import { installDomEnvironment, importRoomCard } from "./support/dom-env.mjs";
 
 installDomEnvironment();
-const { TRANSLATIONS, getTranslation } = await importRoomCard(["TRANSLATIONS", "getTranslation"]);
+const { TRANSLATIONS, getTranslation } = await importRoomCard();
 
 test("all supported languages have the same non-empty translation keys", () => {
   const keys = Object.keys(TRANSLATIONS.en).sort();

@@ -4,10 +4,7 @@ import test from "node:test";
 import { createHass, importRoomCard, installDomEnvironment } from "./support/dom-env.mjs";
 
 installDomEnvironment();
-const { getConditionEntityDependencies, getStatusGroupResult } = await importRoomCard([
-  "getConditionEntityDependencies",
-  "getStatusGroupResult"
-]);
+const { getConditionEntityDependencies, getStatusGroupResult } = await importRoomCard();
 
 const renderCard = (config, hass) => {
   const card = document.createElement("oneline-room-card");

@@ -5,18 +5,7 @@ import { createHass, importRoomCard, installDomEnvironment } from "./support/dom
 
 installDomEnvironment();
 
-const helpers = [
-  "clampNum",
-  "convertTemperatureValue",
-  "evalTemplateString",
-  "formatConvertedTemperature",
-  "formatEntityStateForDisplay",
-  "hexToRgba",
-  "normalizeTemperatureUnit",
-  "readableTextForHex",
-  "replaceTemplateExpressions"
-];
-const roomCardModule = await importRoomCard(helpers);
+const roomCardModule = await importRoomCard();
 const RoomCard = customElements.get("oneline-room-card");
 
 const createCard = (hass = createHass()) => {

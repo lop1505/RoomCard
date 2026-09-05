@@ -8,11 +8,7 @@ const {
   evaluateAdaptiveImageConditions,
   getConditionEntityDependencies,
   resolveAdaptiveRoomImage
-} = await importRoomCard([
-  "evaluateAdaptiveImageConditions",
-  "getConditionEntityDependencies",
-  "resolveAdaptiveRoomImage"
-]);
+} = await importRoomCard();
 
 test("adaptive image rules are strict, ordered, and fall back safely", () => {
   const hass = createHass({

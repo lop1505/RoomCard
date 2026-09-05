@@ -1,4 +1,3 @@
-import { readFile } from "node:fs/promises";
 import { Window } from "happy-dom";
 
 const browserGlobals = [
@@ -49,15 +48,9 @@ export const installDomEnvironment = () => {
   return window;
 };
 
-export const importRoomCard = async (extraExports = []) => {
-  const sourceUrl = new URL("../../dist/room-card.js", import.meta.url);
-  const source = await readFile(sourceUrl, "utf8");
-  const exportStatement = extraExports.length > 0
-    ? `\nexport { ${extraExports.join(", ")} };`
-    : "";
-  const moduleUrl = `data:text/javascript;base64,${Buffer.from(`${source}${exportStatement}`).toString("base64")}`;
-  return import(moduleUrl);
-};
+// Import the unchanged shipped artifact, including explicit named helper exports.
+// No source rewriting and no dependency on bundler-generated private names.
+export const importRoomCard = () => import("../../dist/room-card.js");
 
 export const createHass = (overrides = {}) => {
   const serviceCalls = [];

@@ -1,13 +1,14 @@
 # Test-gated modularization plan
 
-This note is the Phase 0 / first-deliverable decision for issue #100. It does
-not authorize a source split. The current single-file source and copy build
-remain the known-good rollback point until a separate Gate 1 pull request is
-reviewed and manually smoke-tested in Home Assistant.
+This note tracks the test-gated implementation of issue #100 for v1.5.0.
+The approved baseline is published v1.4.0 (`88b2314`), with 68 passing automated
+tests and the completed manual Home Assistant test. That single-file source and
+copy build remain the rollback point for the separate Gate 1 bundler PR.
+No helper extraction starts until Gate 1 passes CI and its manual HA smoke test.
 
 ## Build approach decision
 
-Use **esbuild**, pinned exactly to `0.28.2`, for the future Gate 1 experiment.
+Use **esbuild**, pinned exactly to `0.28.2`, for Gate 1.
 That version was reviewed on 2026-08-20 from the [official npm package](https://www.npmjs.com/package/esbuild).
 It is selected because it can bundle ESM into one readable, unminified ESM
 artifact without adding a browser/runtime dependency. Rollup remains the
@@ -25,16 +26,22 @@ The Gate 1 experiment must use these constraints:
 }
 ```
 
-The esbuild dependency is deliberately not installed by this planning change.
-Adding it, replacing the current copy build, or moving code requires its own
-reversible PR. That PR must compare the generated artifact against the current
-baseline and pass the manual matrix in `docs/manual-smoke-test.md`.
+The Gate 1 PR installs the dependency and replaces only the build pipeline.
+Runtime/editor bodies, translations, image resolution and registration order
+remain unchanged. The sole source addition is an explicit named-export block
+for internal tests; tests no longer append exports to the generated bundle.
+Tree shaking is disabled during this first step to avoid silently pruning
+existing code. The browser target is ES2022, retaining native `import.meta.url`.
+This reversible PR must pass the manual matrix in `docs/manual-smoke-test.md`
+before source extraction begins.
 
 ## Current baseline and artifact contract
 
 - `src/room-card.js` is the canonical, single-file source.
 - `dist/room-card.js` is the readable generated HACS artifact.
-- `scripts/build.mjs` currently performs a deterministic byte-for-byte copy.
+- `scripts/build.mjs` bundles using shared options in `scripts/build-config.mjs`.
+- `scripts/check-build.mjs` builds into a unique temporary directory, compares
+  bytes with the committed artifact, and cleans up without rewriting `dist/`.
 - `scripts/check-release.mjs` rejects stale output and version drift.
 - CI builds from a clean checkout, rejects a changed artifact, runs syntax and
   regression checks, then runs the HACS validator.
@@ -43,6 +50,19 @@ baseline and pass the manual matrix in `docs/manual-smoke-test.md`.
   Card/editor/`window.customCards` registration shares the final registration
   block; the compatibility input remains guarded directly after its class until
   a later gated move can preserve its cold-load order.
+- Tests assert the order input wrapper → editor → card and a single custom-card
+  registration after loading the artifact twice.
+- Build metadata rejects additional output files and runtime imports. Tests
+  resolve all 16 presets against the real bundle URL and check that every JPEG
+  exists under the adjacent `dist/rooms/` HACS directory.
+- A separate module probe evaluates the unchanged artifact with HACS, pinned
+  CDN and `/local/` URLs. It verifies that images resolve beside the module,
+  never relative to the dashboard page; it does not replace the real HA test.
+
+The initial generated bundle is 498,265 bytes versus the v1.4.0 artifact's
+499,441 bytes (about 0.24% smaller). This is a formatting/build comparison, not
+a claimed browser load-time improvement. Manual cold-load timing and behavior
+remain part of the HA gate.
 
 This establishes a known-good build/test baseline without changing runtime
 behavior. Automated coverage includes cold-load editor behavior, actions,

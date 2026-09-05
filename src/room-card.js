@@ -9555,3 +9555,38 @@ if (!window.customCards.some((card) => card?.type === "oneline-room-card")) {
     description: "Minimalist Room Card for Home Assistant"
   });
 }
+
+// Internal test seams: named ESM exports survive bundling without instrumenting
+// the shipped artifact. These are not a supported consumer configuration API.
+export {
+  EDITOR_DOM_REVISION,
+  OneLineRoomCardEditor,
+  ROOM_IMAGE_PRESETS,
+  SHARED_SPARKLINE_CACHE,
+  SHARED_SPARKLINE_PENDING,
+  TRANSLATIONS,
+  clampNum,
+  convertTemperatureValue,
+  evalTemplateString,
+  evaluateAdaptiveImageConditions,
+  evaluateRoomModeActiveWhen,
+  formatConvertedTemperature,
+  formatEntityStateForDisplay,
+  getConditionEntityDependencies,
+  getRoomImagePresetUrl,
+  getSparklineStats,
+  getStatusGroupResult,
+  getTemplateEntityDependencies,
+  getTranslation,
+  hexToRgba,
+  normalizeSparklineSamples,
+  normalizeTemperatureUnit,
+  parseImagePosition,
+  patchExistingEditor,
+  pruneSharedSparklineCache,
+  readableTextForHex,
+  replaceTemplateExpressions,
+  resolveAdaptiveRoomImage,
+  templateNeedsEveryHassUpdate,
+  validateImageUpload
+};
