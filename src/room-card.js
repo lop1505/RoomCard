@@ -10,6 +10,8 @@ import { STATE_DEFINITIONS, DOMAIN_STATE_ICON_MAPS, getEntityDomain, getEntitySt
 
 import { evaluateAdaptiveImageConditions as evaluateAdaptiveConditions, getConditionEntityDependencies, evaluateRoomModeActiveWhen, evaluateVisibilityCondition } from "./lib/conditions.js";
 
+import { normalizeAlertSensorConfig, isAlertSensorActive } from "./lib/alerts.js";
+
 const VERSION = "1.4.0";
 const EDITOR_DOM_REVISION = "6";
 const LOG_FLAG = `customCards_RoomCard_Logged_${VERSION}`;
@@ -1787,37 +1789,11 @@ class OneLineRoomCard extends HTMLElement {
   }
 
   _normalizeAlertSensorConfig(cfg) {
-    if (!cfg) return null;
-    if (typeof cfg === "string") return { entity: cfg };
-    if (typeof cfg === "object") {
-      const normalized = { ...cfg };
-      if (normalized.state && typeof normalized.state === "string") {
-        normalized.state = normalized.state.split(",").map(s => String(s).toLowerCase().trim()).filter(Boolean);
-      } else if (Array.isArray(normalized.state)) {
-        normalized.state = normalized.state.map(s => String(s).toLowerCase().trim()).filter(Boolean);
-      }
-      return normalized;
-    }
-    return null;
+    return normalizeAlertSensorConfig(cfg);
   }
 
   _isAlertSensorActive(alertCfg, stateObj) {
-    if (!alertCfg || !stateObj) return false;
-    const current = String(stateObj.state).toLowerCase().trim();
-    const normalized = this._normalizeAlertSensorConfig(alertCfg);
-    if (!normalized || !normalized.entity) return false;
-    if (Array.isArray(normalized.state) && normalized.state.length > 0) {
-      return normalized.state.includes(current);
-    }
-    const numeric = Number(stateObj.state);
-    const hasNumeric = Number.isFinite(numeric);
-    const compareNumber = (value) => Number.isFinite(Number(value)) ? Number(value) : NaN;
-    const above = compareNumber(normalized.above ?? normalized.min);
-    const below = compareNumber(normalized.below ?? normalized.max);
-    if (!Number.isNaN(above) && hasNumeric && numeric > above) return true;
-    if (!Number.isNaN(below) && hasNumeric && numeric < below) return true;
-    const activeStates = ["on", "open", "true", "active", "alarm", "warning", "detected", "triggered", "problem", "motion", "error"];
-    return activeStates.includes(current);
+    return isAlertSensorActive(alertCfg, stateObj, (config) => this._normalizeAlertSensorConfig(config));
   }
 
   _openDialog(container, panel, closeButton, previouslyFocused, onClose) {

@@ -9,6 +9,7 @@
 - `src/lib/colors.js` owns color parsing, contrast and picker conversion.
 - `src/lib/states.js` owns shared state definitions, domain icons and state predicates.
 - `src/lib/conditions.js` keeps visibility, room-mode and adaptive-image policies separate; time and screen inputs are supplied by the runtime.
+- `src/lib/alerts.js` owns legacy alert normalization and activation rules.
 - `dist/room-card.js` is the generated HACS artifact and must not be edited directly.
 - `dist/rooms/` contains the additional assets installed by HACS.
 - `tests/` contains automated regression tests.
