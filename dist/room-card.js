@@ -194,6 +194,35 @@ var formatTemperatureAttributeForDisplay = (hass, stateObj, attribute, value, ta
   return formatConvertedTemperature(hass, stateObj, value, source, target, 1) || formatEntityAttributeForDisplay(hass, stateObj, attribute, value, source || fallbackSourceUnit);
 };
 
+// src/lib/colors.js
+var hexToRgba = (hex, alpha = 0.35) => {
+  const m = /^#?([0-9a-f]{6})$/i.exec(trimStr(hex) || "");
+  if (!m) return "";
+  const raw = m[1];
+  const r = parseInt(raw.slice(0, 2), 16);
+  const g = parseInt(raw.slice(2, 4), 16);
+  const b = parseInt(raw.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
+var readableTextForHex = (hex) => {
+  const m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(trimStr(hex) || "");
+  if (!m) return "";
+  const raw = m[1].length === 3 ? m[1].split("").map((ch) => ch + ch).join("") : m[1];
+  const r = parseInt(raw.slice(0, 2), 16);
+  const g = parseInt(raw.slice(2, 4), 16);
+  const b = parseInt(raw.slice(4, 6), 16);
+  return (r * 299 + g * 587 + b * 114) / 1e3 >= 140 ? "#000000" : "#ffffff";
+};
+var parseColorToPickerHex = (color) => {
+  const value = trimStr(color) || "";
+  const hex = /^#([0-9a-f]{6})$/i.exec(value);
+  if (hex) return `#${hex[1]}`;
+  const rgba = /^rgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})(?:\s*,\s*(?:\d*\.?\d+))?\s*\)$/i.exec(value);
+  if (!rgba) return "#000000";
+  const clamp = (n) => Math.max(0, Math.min(255, Number(n) || 0)).toString(16).padStart(2, "0");
+  return `#${clamp(rgba[1])}${clamp(rgba[2])}${clamp(rgba[3])}`;
+};
+
 // src/room-card.js
 var VERSION = "1.4.0";
 var EDITOR_DOM_REVISION = "6";
@@ -1656,33 +1685,6 @@ var TRANSLATIONS = {
 var getTranslation = (hass, key) => {
   const lang = hass?.language?.split("-")[0] || "en";
   return TRANSLATIONS[lang]?.[key] ?? TRANSLATIONS["en"]?.[key] ?? key;
-};
-var hexToRgba = (hex, alpha = 0.35) => {
-  const m = /^#?([0-9a-f]{6})$/i.exec(trimStr(hex) || "");
-  if (!m) return "";
-  const raw = m[1];
-  const r = parseInt(raw.slice(0, 2), 16);
-  const g = parseInt(raw.slice(2, 4), 16);
-  const b = parseInt(raw.slice(4, 6), 16);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-};
-var readableTextForHex = (hex) => {
-  const m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(trimStr(hex) || "");
-  if (!m) return "";
-  const raw = m[1].length === 3 ? m[1].split("").map((ch) => ch + ch).join("") : m[1];
-  const r = parseInt(raw.slice(0, 2), 16);
-  const g = parseInt(raw.slice(2, 4), 16);
-  const b = parseInt(raw.slice(4, 6), 16);
-  return (r * 299 + g * 587 + b * 114) / 1e3 >= 140 ? "#000000" : "#ffffff";
-};
-var parseColorToPickerHex = (color) => {
-  const value = trimStr(color) || "";
-  const hex = /^#([0-9a-f]{6})$/i.exec(value);
-  if (hex) return `#${hex[1]}`;
-  const rgba = /^rgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})(?:\s*,\s*(?:\d*\.?\d+))?\s*\)$/i.exec(value);
-  if (!rgba) return "#000000";
-  const clamp = (n) => Math.max(0, Math.min(255, Number(n) || 0)).toString(16).padStart(2, "0");
-  return `#${clamp(rgba[1])}${clamp(rgba[2])}${clamp(rgba[3])}`;
 };
 var STATE_DEFINITIONS = Object.freeze({
   OFFLINE_STATES: /* @__PURE__ */ new Set(["unavailable", "unknown"]),
