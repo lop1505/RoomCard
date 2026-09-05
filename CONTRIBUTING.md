@@ -11,6 +11,7 @@
 - `src/lib/conditions.js` keeps visibility, room-mode and adaptive-image policies separate; time and screen inputs are supplied by the runtime.
 - `src/lib/alerts.js` owns legacy alert normalization and activation rules.
 - `src/lib/actions.js` builds HA action payloads; the card still owns availability checks and event dispatch.
+- `src/lib/history.js` owns shared cache primitives and history parsing/requests through an explicit HA callback. Per-card refresh timers, cache coordination and DOM updates stay in the runtime.
 - `src/i18n/translations.js` owns the unchanged EN/DE/FR dictionaries and fallback lookup.
 - `dist/room-card.js` is the generated HACS artifact and must not be edited directly.
 - `dist/rooms/` contains the additional assets installed by HACS.
