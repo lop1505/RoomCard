@@ -2,7 +2,12 @@
 
 ## Repository layout
 
-- `src/room-card.js` is the entry point and currently retains runtime/editor classes.
+- `src/room-card.js` is the entry point. It owns custom-element registration and
+  internal test seams; the card and editor classes live in their own modules.
+- `src/card/room-card.js` owns the `OneLineRoomCard` runtime class, including
+  rendering, state subscriptions, actions and lifecycle cleanup.
+- `src/editor/room-card-editor.js` owns the `OneLineRoomCardEditor` class and
+  its live-preview/save behavior.
 - `src/lib/values.js` owns browser-independent number/string helpers.
 - `src/lib/formatting.js` owns HA state/attribute formatting and existing fallbacks.
 - `src/lib/temperature.js` owns temperature conversion and locale/precision handling.
@@ -23,7 +28,9 @@
 - `scripts/` contains build and release-consistency tooling.
 - `docs/` contains screenshots and supporting documentation.
 
-Runtime and editor remain together during the initial helper extractions. Each module family is moved in its own test-gated PR so existing Home Assistant behavior remains stable.
+Runtime and editor are extracted as complete units after the helper and service
+families. Each module family remains a separate test-gated PR so existing Home
+Assistant behavior stays stable and every move has a safe rollback point.
 See [the modularization plan](docs/modularization-plan.md) and [manual Home Assistant smoke-test matrix](docs/manual-smoke-test.md) before changing the build pipeline or moving source code.
 
 ## Local checks
@@ -54,7 +61,8 @@ entry. Registration remains in the entry point.
 Runtime/editor tests import the actual distribution. Direct helper assertions
 use explicit named ESM exports declared in the source, not exports appended to
 bundler-generated text. These internal test seams are not a supported consumer
-API; they will move with their owning modules during the gated extraction.
+API. Registration stays in the entry module even though the implementations now
+live under `src/card/` and `src/editor/`.
 
 ## Release metadata
 

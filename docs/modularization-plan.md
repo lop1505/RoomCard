@@ -37,7 +37,10 @@ before source extraction begins.
 
 ## Current baseline and artifact contract
 
-- `src/room-card.js` is the canonical, single-file source.
+- `src/room-card.js` is the canonical entry source. Runtime and editor
+  implementations live in `src/card/room-card.js` and
+  `src/editor/room-card-editor.js`; the entry remains the only registration
+  module.
 - `dist/room-card.js` is the readable generated HACS artifact.
 - `scripts/build.mjs` bundles using shared options in `scripts/build-config.mjs`.
 - `scripts/check-build.mjs` builds into a unique temporary directory, compares
@@ -48,8 +51,8 @@ before source extraction begins.
 - The artifact contains no runtime imports or external browser dependencies.
 - All registration remains in the same entry artifact and is duplicate-safe.
   Card/editor/`window.customCards` registration shares the final registration
-  block; the compatibility input remains guarded directly after its class until
-  a later gated move can preserve its cold-load order.
+  block; the compatibility input remains guarded directly after its class so
+  its cold-load order is preserved.
 - Tests assert the order input wrapper → editor → card and a single custom-card
   registration after loading the artifact twice.
 - Build metadata rejects additional output files and runtime imports. Tests
@@ -102,7 +105,9 @@ risks:
 5. **Gates 4–5 — isolated services/runtime:** use explicit inputs and callbacks;
    keep DOM/listener ownership in the card until interfaces are proven.
 6. **Gate 6 — editor last:** first move the compatibility wrapper intact, then
-   the editor class intact. Section renderers are a later decision.
+   the editor class intact. Section renderers are a later decision. This gate is
+   complete on `main`; the runtime and editor moves landed as separate PRs
+   #147 and #148 after wrapper PR #146.
 
 Every gate is a separate PR and rollback point. A failed gate is reverted rather
 than repaired by stacking more structural changes on top.
