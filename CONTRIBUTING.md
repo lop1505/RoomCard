@@ -7,6 +7,7 @@
 - `src/lib/formatting.js` owns HA state/attribute formatting and existing fallbacks.
 - `src/lib/temperature.js` owns temperature conversion and locale/precision handling.
 - `src/lib/colors.js` owns color parsing, contrast and picker conversion.
+- `src/lib/states.js` owns shared state definitions, domain icons and state predicates.
 - `dist/room-card.js` is the generated HACS artifact and must not be edited directly.
 - `dist/rooms/` contains the additional assets installed by HACS.
 - `tests/` contains automated regression tests.
