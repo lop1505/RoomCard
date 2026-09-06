@@ -7,7 +7,7 @@ The browser confirmed the pinned bundle URL and loaded header images.
 The modularized baseline has 98 passing automated tests and green PR CI.
 No quantitative cold-load timing was recorded; no performance gain is claimed.
 
-## Integration candidate
+## Integrated implementation
 
 The prototype landed separately in #150 after the owner's manual confirmation.
 The integration uses `card/surface.js` for the static scaffold and
@@ -32,12 +32,22 @@ Automated integration coverage includes placement/defaults, ordering, visibility
 separate nodes, single actions/service calls, unavailable controls, state updates,
 shared history requests/timer, headers/status/modes, native-control focus,
 cleanup, editor roundtrip/duplication, area setup and preview/save boundaries.
-The suite currently passes 117 tests, including invalid `status_groups` YAML and the earlier prototype lifecycle
+The suite currently passes 119 tests, including pre-hass sparkline startup, card-size placement, invalid `status_groups` YAML and the earlier prototype lifecycle
 tests. Local browser checks verified the integrated desktop view and 390×844
 bottom sheet, plus history from a drawer control and Escape returning to it.
 These checks use simulated data and do not replace the final real-HA test.
 
-### Final manual integration gate — pending
+### Final manual integration gate — maintainer-reported pass
+
+The maintainer reported the integration working after updating the test resource
+and selecting controls for both locations. On 2026-09-06, live HA inspection
+confirmed three drawer controls, the Lights status group, and returning from its
+detail dialog. Earlier staged desktop/mobile and light/dark checks were reported
+successful; this is not a new instrumented run of every item below. The two final
+review fixes are regression-tested, without a separate physical-device retest.
+The maintainer supplied a real detail screenshot and waived the mobile screenshot.
+
+Retained manual checklist:
 
 - Assign one control to Card, one to Room details and one to Both; verify order,
   state updates, presets/sliders/actions and only one physical action per input.
@@ -47,8 +57,8 @@ These checks use simulated data and do not replace the final real-HA test.
   editor's Room details preview button on the actual HA frontend.
 - Recheck history/status/HA subdialogs, keyboard focus/Escape, route changes,
   multiple cards, desktop/mobile and light/dark after full integration.
-- Capture final desktop/mobile release screenshots from actual HA, not the
-  simulated fixture. Only then prepare the final v1.5.0 release gate.
+- Capture release imagery from actual HA, not the simulated fixture. The release
+  uses the supplied detail crop; it does not claim a full desktop/mobile capture.
 
 ## Primitive and ownership
 
@@ -107,7 +117,7 @@ position; the editor's existing deferred save remains the configuration boundary
 - Monkey-patching HA methods or polling for dialog visibility was rejected in
   favor of an isolated event adapter that can be verified on the actual HA build.
 
-## Archived prototype gate (passed; final integration gate still pending)
+## Archived prototype gate (passed)
 
 The owner confirmed the actual HA prototype gate on 2026-09-05 against
 `3bdbd2c780a39afed845970be0e68d61f8d4fe65`: HA details/history/status with

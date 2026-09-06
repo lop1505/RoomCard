@@ -2,11 +2,12 @@
 
 All notable changes to OneLine Room Card are documented here.
 
-## [Unreleased]
+## [1.5.0]
 
 * Build & architecture: Bundle with pinned esbuild 0.28.2 and separate helpers, translations, runtime, input compatibility and editor into test-gated modules. Keep the unminified single-file HACS artifact, registration order and relative room-image assets; check dependency direction, reproducibility and the shipped bundle. Ref #100.
-* Runtime & editor (v1.5 candidate): Add opt-in `detail_drawer.enabled` and per-control `display_in: card | drawer | both`. Share renderers, state and history cache while giving each location independent DOM and listeners. Preserve visibility conditions, existing actions, card collapse and disabled-drawer fallback. Add title, preview, placement and control duplication in EN/DE/FR; retain live-preview/deferred-save behavior. Ref #127; final HA integration test and release remain pending.
+* Runtime & editor: Add opt-in `detail_drawer.enabled` and per-control `display_in: card | drawer | both`. Share renderers, state and history cache while giving each location independent DOM and listeners. Preserve visibility conditions, existing actions, card collapse and disabled-drawer fallback. Add title, preview, placement and control duplication in EN/DE/FR; retain live-preview/deferred-save behavior. Ref #127.
 * Accessibility & lifecycle: Coordinate nested room/history/status/HA dialogs, restore focus into native controls after updates, close on navigation/disconnect/disable, and avoid history requests for closed drawer-only controls or a second polling timer.
+* Reliability: Guard conditional sparkline visibility before the first Home Assistant state snapshot, exclude drawer-only controls from dashboard card sizing, and normalize malformed status-group configuration. Validate the shipped artifact with 119 automated tests.
 
 ---
 
