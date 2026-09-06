@@ -19,8 +19,7 @@ export const createDetailDrawer = ({ title, closeLabel, trigger, onClose }) => {
       button:disabled { opacity:.5; cursor:default; }
       button:focus-visible { outline:2px solid var(--primary-color,#03a9f4); outline-offset:2px; }
       .content { flex:1; min-height:0; overflow:auto; overscroll-behavior:contain; padding:16px calc(16px + env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) calc(16px + env(safe-area-inset-left,0px)); }
-      .prototype-actions { display:flex; flex-wrap:wrap; gap:10px; }
-      .prototype-note { color:var(--secondary-text-color,#666); }
+      .drawer-actions { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:16px; }
       @keyframes enter { from { opacity:0; transform:translateX(24px); } to { opacity:1; transform:none; } }
       @media (max-width:767px) {
         .panel { inset:auto 0 0; width:100%; max-height:90vh; max-height:90dvh; border-radius:20px 20px 0 0; animation-name:enter-bottom; }

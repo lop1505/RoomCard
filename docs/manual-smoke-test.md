@@ -19,6 +19,9 @@ the Home Assistant version, browser, viewport, theme, commit SHA, and result.
 | Sparklines | Use two cards with the same sensor, scroll them off/on screen, and hide/show the tab | History is shared, polling pauses, and stale data refreshes on return |
 | Images | Select a preset, move focal point, and upload a valid/invalid image | Preview, validation, upload, and persisted configuration remain correct |
 | Navigation cleanup | Repeatedly enter/leave the dashboard and recreate editor previews | No orphan timers, observers, dialogs, or increasing history traffic remain |
+| Room details placement | Assign Card / Room details / Both, reorder/duplicate, collapse card, disable drawer | Correct independent controls and shared state; drawer remains expanded; disabled fallback returns controls to card |
+| Room details editor | Enable, change title/placement, use preview, save with live preview on/off | Existing HA preview opens; deferred changes apply only on Save; no duplicate card instance |
+| Room details nesting | Open history/status/HA more-info from drawer controls; use Escape/Tab/backdrop; navigate away | Only top dialog handles dismissal, focus and scroll return, no orphan modal; verify desktop/mobile and light/dark |
 
 Gate approval requires all rows to pass. Attach failures to the gate PR; do not
 continue to the next extraction phase while any result is unexplained.

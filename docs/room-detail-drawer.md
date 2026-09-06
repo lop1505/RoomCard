@@ -1,4 +1,4 @@
-# Room Detail Drawer — prototype decision
+# Room Detail Drawer — architecture and test gates
 
 Target: v1.5.0, issue #127. The source modularization passed its manual gate on
 2026-09-05 against commit `5756362111f9ce8952eab4871cd087c51302bc21`.
@@ -6,6 +6,49 @@ The user confirmed editor/save, existing controls, mobile and light/dark checks.
 The browser confirmed the pinned bundle URL and loaded header images.
 The modularized baseline has 98 passing automated tests and green PR CI.
 No quantitative cold-load timing was recorded; no performance gain is claimed.
+
+## Integration candidate
+
+The prototype landed separately in #150 after the owner's manual confirmation.
+The integration uses `card/surface.js` for the static scaffold and
+`_updateSurfaceState(surface)` for shared rendering. Each surface has its own
+root, controls and configuration signature. The drawer surface has a nested
+shadow root inside the modal host; it is not a second RoomCard instance.
+Image requests are tracked per image node so card/drawer loads cannot invalidate
+each other. Native control focus is restored within the correct surface.
+
+`lib/control-placement.js` defines fallback/placement semantics. Header state,
+images, information, status groups and modes are rendered from the owner's
+configuration. `both` controls have independent listeners but share state and
+history requests. Closed drawer-only or hidden controls do not request history;
+the owner retains at most one sparkline polling interval across both locations.
+
+`shared/drawer-preview.js` pairs the editor with its existing HA preview via
+their common `hui-dialog-edit-card` scope. It never creates another card. If HA
+has not mounted a unique preview, the UI explains how to open it from the saved
+dashboard instead. Live-preview-off changes remain pending until Save.
+
+Automated integration coverage includes placement/defaults, ordering, visibility,
+separate nodes, single actions/service calls, unavailable controls, state updates,
+shared history requests/timer, headers/status/modes, native-control focus,
+cleanup, editor roundtrip/duplication, area setup and preview/save boundaries.
+The suite currently passes 117 tests, including invalid `status_groups` YAML and the earlier prototype lifecycle
+tests. Local browser checks verified the integrated desktop view and 390×844
+bottom sheet, plus history from a drawer control and Escape returning to it.
+These checks use simulated data and do not replace the final real-HA test.
+
+### Final manual integration gate — pending
+
+- Assign one control to Card, one to Room details and one to Both; verify order,
+  state updates, presets/sliders/actions and only one physical action per input.
+- Collapse the card; drawer controls must remain accessible. Disable room details;
+  all non-hidden controls must return to the card. Save and reopen the editor.
+- Test live preview on/off, title changes, placement, duplicate/reorder and the
+  editor's Room details preview button on the actual HA frontend.
+- Recheck history/status/HA subdialogs, keyboard focus/Escape, route changes,
+  multiple cards, desktop/mobile and light/dark after full integration.
+- Capture final desktop/mobile release screenshots from actual HA, not the
+  simulated fixture. Only then prepare the final v1.5.0 release gate.
 
 ## Primitive and ownership
 
@@ -23,17 +66,18 @@ only the top modal's Tab, Escape and backdrop. All listeners disappear after
 the last modal closes. A document-scoped symbol also coordinates duplicate
 bundle evaluations. Only one RoomCard drawer can be open at once.
 
-The prototype does not clone or move active controls. Full integration will
-create independent DOM nodes through shared renderers, with the original
-`controls` list as the only configuration source. `display_in` handling and
-the visual editor section belong to the integration PR after this gate.
+The implementation does not clone or move active controls. It creates independent
+DOM nodes through shared renderers, with the original `controls` list as the only
+configuration source. Placement and the visual editor were added only after the
+prototype gate passed.
 
 ## Child dialogs and cleanup
 
 The existing history and status dialogs share the coordinator and render in
 the drawer's shadow root when the drawer owns them. Closing a child restores
-the triggering button without resetting the drawer scroll position. Opening
-the drawer itself does not fetch history or create polling timers.
+the triggering button without resetting the drawer scroll position. Opening an
+empty drawer does not fetch history; visible drawer sparkline controls reuse
+the owner's cache and polling interval.
 
 `ha-dialog-adapter.js` observes confirmed HA `opened` events from dialog
 primitives and matching owner `dialog-closed` events. A dispatched request
@@ -63,7 +107,7 @@ position; the editor's existing deferred save remains the configuration boundary
 - Monkey-patching HA methods or polling for dialog visibility was rejected in
   favor of an isolated event adapter that can be verified on the actual HA build.
 
-## Test the prototype (release remains blocked)
+## Archived prototype gate (passed; final integration gate still pending)
 
 The owner confirmed the actual HA prototype gate on 2026-09-05 against
 `3bdbd2c780a39afed845970be0e68d61f8d4fe65`: HA details/history/status with
@@ -87,8 +131,8 @@ detail_drawer:
   title: Wohnzimmer
 ```
 
-The new **Room details / Raumdetails** header button opens the prototype.
-Existing controls stay on the card during this phase. Optional explicit
+The **Room details / Raumdetails** header button opened the prototype.
+Existing controls stayed on the card during that phase. Optional explicit
 `tap_action`, `hold_action` and `double_tap_action` can use `action: room-details`.
 The preview contains three diagnostic entry points:
 
@@ -96,7 +140,7 @@ The preview contains three diagnostic entry points:
 - History uses a configured sensor sparkline or `temp_sensor`.
 - Status uses contributors from configured `status_groups`.
 
-Before full control integration, manually verify on the actual HA installation:
+The prototype manual checklist was:
 
 1. Desktop sidebar (480px), mobile bottom sheet (90dvh), light/dark, safe-area
    edges, fixed close header and content scroll.
@@ -106,7 +150,7 @@ Before full control integration, manually verify on the actual HA installation:
 4. Open a second card's drawer; navigate away; disable; remove the owner preview.
    No orphan host, stale focus trap or background requests should remain.
 5. Open from an editor preview and verify its interaction with HA's own editor
-   dialog and layering. This is a manual compatibility gate, not yet certified.
+   dialog and layering. The owner confirmed this prototype compatibility gate.
 
 Automated DOM tests verify event contracts and cleanup but cannot certify HA's
 native top-layer implementation, physical mobile interactions or theme visuals.
