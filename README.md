@@ -25,7 +25,17 @@ Developed with a focus on stability, simple design, and maximum flexibility.
 
 ---
 
-## 🆕 What's new in 1.4.0
+## 🆕 What's new in 1.5.0
+
+* 🚪 Open an opt-in Room Detail Drawer: a desktop sidebar or mobile bottom sheet.
+* 🎛️ Place each control on the card, in room details, or in both, using one configuration.
+* ♿ Keep nested history/status/more-info dialogs coordinated with focus restoration.
+* 🧩 Maintain modular source code while shipping one self-contained JavaScript file.
+* 🧪 Validate compatibility with 119 automated tests and reproducible build checks.
+
+No YAML migration is required. See the [illustrated v1.5.0 release notes](docs/releases/v1.5.0.md).
+
+### Previously in 1.4.0
 
 * 🔎 Open opt-in sparkline details with 6h / 24h / 7d history and Min / Max / Average
 * 🎬 Start scenes and scripts with Room Modes, including optional active-state highlighting
@@ -157,10 +167,10 @@ covers all settings — no YAML required.
 | `sparkline_refresh` | `300` | Auto-refresh cadence for all sparkline buttons in seconds (60–3600); configurable in the visual editor under **Buttons** |
 | `room_modes` | — | Ordered scene/script shortcuts shown between the header/info bar and controls |
 | `status_groups` | — | Informational header chips that count matching states or sum compatible numeric sensor values |
-| `detail_drawer.enabled` | `false` | Enable the opt-in Room Detail Drawer (v1.5 candidate) |
+| `detail_drawer.enabled` | `false` | Enable the opt-in Room Detail Drawer |
 | `detail_drawer.title` | Card name | Optional title of the drawer |
 
-#### Room Detail Drawer (v1.5 candidate)
+#### Room Detail Drawer
 
 Keep compact controls on the card and put additional controls in a responsive
 room-details panel. It opens as a 480px right sidebar on desktop (from 768px),
@@ -196,7 +206,7 @@ details / Both**. Reordering, duplication and area setup retain existing placeme
 The preview button opens HA's existing card preview; it requires live preview.
 With live preview off, changes apply through the existing Save workflow.
 
-This feature is a v1.5 candidate, not part of the published v1.4.0 release.
+Available since v1.5.0; disabled by default.
 See the [architecture and test gates](docs/room-detail-drawer.md).
 
 #### Room Modes
