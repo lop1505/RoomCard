@@ -2650,7 +2650,7 @@ class OneLineRoomCard extends HTMLElement {
   }
 
   _drawerStatusRows() {
-    return (this.config?.status_groups || []).flatMap(group => {
+    return (Array.isArray(this.config?.status_groups) ? this.config.status_groups : []).flatMap(group => {
       const result = getStatusGroupResult(group, this._hass);
       return result.visible ? result.contributors : [];
     });

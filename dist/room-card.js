@@ -4908,7 +4908,7 @@ var OneLineRoomCard = class extends HTMLElement {
     return (this.config?.controls || []).find((ctrl) => ctrl.entity?.startsWith("sensor.") && ctrl.show_sparkline === true)?.entity || (this.config?.temp_sensor?.startsWith("sensor.") ? this.config.temp_sensor : "");
   }
   _drawerStatusRows() {
-    return (this.config?.status_groups || []).flatMap((group) => {
+    return (Array.isArray(this.config?.status_groups) ? this.config.status_groups : []).flatMap((group) => {
       const result = getStatusGroupResult(group, this._hass);
       return result.visible ? result.contributors : [];
     });

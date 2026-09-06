@@ -17,6 +17,30 @@ const entities = controls => Array.from(controls.children, node => node.dataset.
 const drawer = card => card._detailDrawer.surface;
 const change = (node, value) => node.dispatchEvent(new CustomEvent("value-changed", { detail: { value }, bubbles: true }));
 
+test("drawer treats non-array status_groups as empty across opening, updates and cleanup", () => {
+  for (const status_groups of [{}, { entities: ["light.test"] }, "invalid", true, 42, false, 0, "", null, undefined, []]) {
+    const card = createCard({ status_groups });
+    try {
+      // Call directly so the DOM's event-error reporting cannot swallow a throw.
+      assert.doesNotThrow(() => card._showDetailDrawer());
+      assert.deepEqual(card._drawerStatusRows(), []);
+      const host = card._detailDrawer.host;
+      assert.equal(host.isConnected, true);
+      assert.equal(card._detailDrawer.root.querySelector('[data-drawer-action="status"]').disabled, true);
+      assert.doesNotThrow(() => { card.hass = createHass(); });
+      assert.doesNotThrow(() => card.setConfig({ ...card.config, name: "Updated" }));
+      assert.equal(card._detailDrawer.host, host);
+      card._detailDrawer.close();
+      assert.equal(host.isConnected, false);
+      assert.equal(card._detailDrawer, null);
+      assert.doesNotThrow(() => card._showDetailDrawer());
+    } finally {
+      card.remove();
+    }
+    assert.equal(document.querySelector("[data-room-card-drawer]"), null);
+  }
+});
+
 test("placement validates values and disabled drawer falls back to card", () => {
   for (const value of [undefined, null, "", "unknown", false]) assert.equal(getControlPlacement({ display_in: value }), "card");
   for (const placement of ["card", "drawer", "both"]) {

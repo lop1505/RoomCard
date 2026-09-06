@@ -32,7 +32,7 @@ Automated integration coverage includes placement/defaults, ordering, visibility
 separate nodes, single actions/service calls, unavailable controls, state updates,
 shared history requests/timer, headers/status/modes, native-control focus,
 cleanup, editor roundtrip/duplication, area setup and preview/save boundaries.
-The suite currently passes 116 tests, including the earlier prototype lifecycle
+The suite currently passes 117 tests, including invalid `status_groups` YAML and the earlier prototype lifecycle
 tests. Local browser checks verified the integrated desktop view and 390×844
 bottom sheet, plus history from a drawer control and Escape returning to it.
 These checks use simulated data and do not replace the final real-HA test.
