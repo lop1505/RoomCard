@@ -1,6 +1,9 @@
 const TRANSLATIONS = {
   en: {
-    room_details: "Room details", drawer_prototype_note: "Preview: test opening, focus and nested dialogs. Room controls follow after this prototype is validated.",
+    control_duplicate: "Duplicate control",
+    room_details: "Room details", drawer_enable: "Enable room details", drawer_title: "Title (optional)", drawer_preview: "Preview room details", drawer_placement: "Display in", drawer_card: "Card", drawer_both: "Both",
+    drawer_help: "Choose Card, Room details or Both for each control. With room details disabled, all controls return to the card. Preview requires live preview; otherwise changes apply on Save.",
+    drawer_preview_unavailable: "The HA card preview is not ready yet. Wait for the preview, or save and open Room details on the dashboard.",
     empty: "Empty", low: "Low", critical: "Critical", window: "Window", general: "General",
     sensors_manual: "Sensors (Manual)", buttons: "Buttons", button: "Button", add_button: "Add Button",
     main_climate: "Main Climate Device (Optional)", climate_info: "Fills Temp/Humidity automatically if empty below.",
@@ -100,7 +103,10 @@ const TRANSLATIONS = {
     a11y_activate: "Activate {name}", a11y_set_value: "Set {name}", a11y_select_option: "Select {name}"
   },
   de: {
-    room_details: "Raumdetails", drawer_prototype_note: "Vorschau: Öffnen, Fokus und Unterdialoge testen. Die Raumsteuerung folgt nach Prüfung dieses Prototyps.",
+    control_duplicate: "Control duplizieren",
+    room_details: "Raumdetails", drawer_enable: "Raumdetails aktivieren", drawer_title: "Titel (optional)", drawer_preview: "Raumdetails ansehen", drawer_placement: "Anzeigen in", drawer_card: "Karte", drawer_both: "Beide",
+    drawer_help: "Pro Control Karte, Raumdetails oder Beide wählen. Bei deaktivierten Raumdetails erscheinen alle Controls wieder auf der Karte. Die Vorschau benötigt Live-Vorschau; sonst gelten Änderungen erst nach dem Speichern.",
+    drawer_preview_unavailable: "Die HA-Kartenvorschau ist noch nicht bereit. Bitte kurz warten oder speichern und die Raumdetails im Dashboard öffnen.",
     empty: "Leer", low: "Niedrig", critical: "Kritisch", window: "Fenster", general: "Allgemein",
     sensors_manual: "Sensoren (Manuell)", buttons: "Buttons", button: "Button", add_button: "Button hinzufügen",
     main_climate: "Haupt-Klima-Gerät", climate_info: "Füllt Temp/Feuchtigkeit automatisch, wenn unten leer.",
@@ -204,7 +210,10 @@ const TRANSLATIONS = {
     a11y_activate: "{name} bedienen", a11y_set_value: "{name} einstellen", a11y_select_option: "{name} auswählen"
   },
   fr: {
-    room_details: "Détails de la pièce", drawer_prototype_note: "Aperçu : testez l’ouverture, le focus et les boîtes de dialogue imbriquées. Les commandes suivront après validation de ce prototype.",
+    control_duplicate: "Dupliquer la commande",
+    room_details: "Détails de la pièce", drawer_enable: "Activer les détails de la pièce", drawer_title: "Titre (facultatif)", drawer_preview: "Aperçu des détails", drawer_placement: "Afficher dans", drawer_card: "Carte", drawer_both: "Les deux",
+    drawer_help: "Pour chaque commande, choisissez Carte, Détails de la pièce ou Les deux. Si les détails sont désactivés, toutes les commandes reviennent sur la carte. L’aperçu nécessite l’aperçu en direct ; sinon les modifications s’appliquent à l’enregistrement.",
+    drawer_preview_unavailable: "L’aperçu de la carte HA n’est pas encore prêt. Patientez, ou enregistrez puis ouvrez les détails depuis le tableau de bord.",
     empty: "Vide", low: "Faible", critical: "Critique", window: "Fenêtre", general: "Général",
     sensors_manual: "Capteurs (Manuel)", buttons: "Boutons", button: "Bouton", add_button: "Ajouter un bouton",
     main_climate: "Appareil climatique principal (Optionnel)", climate_info: "Remplit automatiquement Temp/Humidité si vide ci-dessous.",

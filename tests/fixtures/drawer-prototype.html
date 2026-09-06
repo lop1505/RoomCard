@@ -1,14 +1,14 @@
 <!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>RoomCard drawer prototype — local fixture</title>
+<title>RoomCard drawer integration — local fixture</title>
 <style>
   body { margin:24px; font:16px system-ui; background:#f3f5f7; --primary-text-color:#20252c; --secondary-text-color:#616875; --ha-card-background:#fff; --divider-color:#d7dce2; --primary-color:#007fa8; }
   body.dark { background:#13171c; color:#e7edf6; --primary-text-color:#e7edf6; --secondary-text-color:#acb6c5; --ha-card-background:#222932; --divider-color:#414a58; --primary-color:#66cbed; }
   .layout { max-width:420px; transform:translateZ(0); overflow:hidden; }
   button { padding:12px; margin-bottom:16px; }
 </style>
-<h1>Drawer prototype</h1>
+<h1>Room Detail Drawer</h1>
 <p>Local rendering fixture only. Real HA dialog compatibility is tested separately.</p>
 <button id="theme">Switch light/dark</button>
 <div class="layout"><oneline-room-card></oneline-room-card></div>
@@ -19,13 +19,18 @@
     language:"en", locale:{language:"en"}, config:{unit_system:{temperature:"°C"}},
     states:{
       "sensor.temperature":{entity_id:"sensor.temperature",state:"22.1",attributes:{friendly_name:"Room temperature",unit_of_measurement:"°C"}},
-      "light.test":{entity_id:"light.test",state:"on",attributes:{friendly_name:"Reading light"}}
+      "light.test":{entity_id:"light.test",state:"on",attributes:{friendly_name:"Reading light",brightness:180,supported_color_modes:["brightness"]}},
+      "input_select.mode":{entity_id:"input_select.mode",state:"Relax",attributes:{friendly_name:"Room mode",options:["Relax","Movie","Reading"]}}
     },
     callWS:async () => ({"sensor.temperature":[{s:"21.2",lu:Date.now()/1000-7200},{s:"22.1",lu:Date.now()/1000}]}),
     formatEntityState: state => `${state.state} ${state.attributes.unit_of_measurement || ""}`,
-    entities:{},user:{id:"local-fixture"}
+    callService: () => {}, entities:{},user:{id:"local-fixture"}
   };
-  card.setConfig({name:"Living room",image_preset:"living-room",detail_drawer:{enabled:true},temp_sensor:"sensor.temperature",controls:[],status_groups:[{name:"Lights on",entities:["light.test"],type:"count",active_states:["on"],details:true}]});
+  card.setConfig({name:"Living room",image_preset:"living-room",detail_drawer:{enabled:true},temp_sensor:"sensor.temperature",controls:[
+    {entity:"light.test",display_in:"both",name:"Reading light",width:30,height:100,show_brightness_presets:true,brightness_presets:[25,50,100]},
+    {entity:"sensor.temperature",display_in:"both",name:"Temperature",width:30,height:100,show_sparkline:true,sparkline_detail:true},
+    {entity:"input_select.mode",display_in:"drawer",name:"Room mode",width:60,height:100,control_mode:"full"}
+  ],status_groups:[{name:"Lights on",entities:["light.test"],type:"count",active_states:["on"],details:true}]});
   card.hass = hass;
   document.querySelector("#theme").addEventListener("click", () => { document.body.classList.toggle("dark"); card.hass=hass; });
 </script>

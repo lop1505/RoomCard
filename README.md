@@ -157,6 +157,47 @@ covers all settings — no YAML required.
 | `sparkline_refresh` | `300` | Auto-refresh cadence for all sparkline buttons in seconds (60–3600); configurable in the visual editor under **Buttons** |
 | `room_modes` | — | Ordered scene/script shortcuts shown between the header/info bar and controls |
 | `status_groups` | — | Informational header chips that count matching states or sum compatible numeric sensor values |
+| `detail_drawer.enabled` | `false` | Enable the opt-in Room Detail Drawer (v1.5 candidate) |
+| `detail_drawer.title` | Card name | Optional title of the drawer |
+
+#### Room Detail Drawer (v1.5 candidate)
+
+Keep compact controls on the card and put additional controls in a responsive
+room-details panel. It opens as a 480px right sidebar on desktop (from 768px),
+or a full-width bottom sheet on smaller displays. The room image, header
+information, status and Room Modes use the same configuration in both places.
+
+```yaml
+detail_drawer:
+  enabled: true
+  title: Living room
+controls:
+  - entity: light.ceiling
+    display_in: both
+  - entity: light.reading
+    display_in: drawer
+  - entity: media_player.living_room
+    display_in: card
+```
+
+`display_in` accepts `card`, `drawer` and `both`; omitted or unknown values mean
+`card`. If room details are disabled, all controls return to the card regardless
+of placement. Existing `hide` and visibility conditions still apply. Order comes
+from the single `controls` list; there is no second list to maintain.
+
+Use the new **Room details** header button, or explicitly assign
+`action: room-details` to a tap, hold or double-tap action. Existing card actions
+and collapse behavior are not replaced; drawer controls remain expanded even
+when the card is collapsed. History and HA detail dialogs open above the drawer.
+
+In the visual editor, **Configuration → Room details** enables the drawer and
+sets its title. Under **Buttons**, each control has **Display in → Card / Room
+details / Both**. Reordering, duplication and area setup retain existing placement.
+The preview button opens HA's existing card preview; it requires live preview.
+With live preview off, changes apply through the existing Save workflow.
+
+This feature is a v1.5 candidate, not part of the published v1.4.0 release.
+See the [architecture and test gates](docs/room-detail-drawer.md).
 
 #### Room Modes
 

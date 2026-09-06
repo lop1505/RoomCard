@@ -10,6 +10,8 @@ import { buildHassActionDetail } from "../lib/actions.js";
 import { SHARED_SPARKLINE_CACHE, SHARED_SPARKLINE_PENDING, SHARED_SPARKLINE_CACHE_LIMIT, SHARED_SPARKLINE_MAX_AGE_MS, normalizeSparklineSamples, getSparklineStats, pruneSharedSparklineCache, fetchHistorySamples } from "../lib/history.js";
 import { MEDIA_PLAYER_FEATURES, getSliderCapabilities, getInlineButtons, supportsMediaFeature } from "../lib/capabilities.js";
 import { VERSION, EDITOR_DOM_REVISION } from "../version.js";
+import { getControlPlacement } from "../lib/control-placement.js";
+import { requestDrawerPreview } from "../shared/drawer-preview.js";
 import { IMAGE_UPLOAD_LIMITS, parseImagePosition, validateImageUpload, ROOM_IMAGE_PRESETS, ROOM_IMAGE_PRESET_MAP, getRoomImagePresetUrl, resolveRoomImageUrl, evaluateAdaptiveImageConditions, resolveAdaptiveRoomImage, POWER_UNIT_FACTORS, getStatusGroupResult, isHeaderManualColorEnabled, resolveLabelPosition, setAlignmentClass, applyLabelPosition, evalTemplateString, resolveTemplateCtrl, resolveSubChipPresentations, TEMPLATE_VALUE_KEYS, getTemplateEntityDependencies, templateNeedsEveryHassUpdate, formatLastChanged } from "../shared/presentation.js";
 
 class OneLineRoomCardEditor extends HTMLElement {
@@ -940,6 +942,14 @@ connectedCallback() {
       </div>
       </div>
       <div class="sec">
+        <h3>${getTranslation(h, "room_details")}</h3>
+        <ha-formfield label="${getTranslation(h, "drawer_enable")}"><ha-switch id="drawer-enabled"></ha-switch></ha-formfield>
+        <oneline-room-card-textfield id="drawer-title" label="${getTranslation(h, "drawer_title")}" style="display:block;margin-top:12px"></oneline-room-card-textfield>
+        <p>${getTranslation(h, "drawer_help")}</p>
+        <button type="button" id="drawer-preview">${getTranslation(h, "drawer_preview")}</button>
+        <p id="drawer-preview-status" role="status"></p>
+      </div>
+      <div class="sec">
         <div id="room-modes-head" class="sec-head" style="cursor:pointer;user-select:none;padding:4px 0">
           <h3>${getTranslation(h, "room_modes")}</h3>
           <ha-icon id="room-modes-chev" icon="mdi:chevron-right" style="--mdc-icon-size:18px;opacity:0.7;transition:transform 0.15s ease"></ha-icon>
@@ -1424,6 +1434,24 @@ connectedCallback() {
       });
     }
     const roomModesHead = this.shadowRoot.getElementById("room-modes-head");
+    const setDrawerOption = (key, value) => {
+      const drawer = { ...this._config.detail_drawer, [key]: value };
+      if (value === "") delete drawer[key];
+      this._fire({ ...this._config, detail_drawer: drawer });
+      this._updateDrawerUI();
+    };
+    this.shadowRoot.getElementById("drawer-enabled").addEventListener("change", event => {
+      event.stopPropagation(); setDrawerOption("enabled", event.target.checked === true);
+    });
+    this.shadowRoot.getElementById("drawer-title").addEventListener("input", event => {
+      event.stopPropagation(); setDrawerOption("title", event.target.value);
+    });
+    this.shadowRoot.getElementById("drawer-preview").addEventListener("click", event => {
+      event.preventDefault(); event.stopPropagation();
+      if (!this._livePreview || this._config.detail_drawer?.enabled !== true) return;
+      const opened = requestDrawerPreview(this, event.currentTarget);
+      this.shadowRoot.getElementById("drawer-preview-status").textContent = opened ? "" : getTranslation(this._hass, "drawer_preview_unavailable");
+    });
     if (roomModesHead) {
       roomModesHead.addEventListener("click", () => {
         this._roomModesSectionOpen = !this._roomModesSectionOpen;
@@ -2113,7 +2141,8 @@ connectedCallback() {
       });
     }
     const actOpts = [
-      { value: "more-info", label: getTranslation(h, "act_more") || "Details (Default)" },
+     { value: "more-info", label: getTranslation(h, "act_more") || "Details (Default)" },
+      { value: "room-details", label: getTranslation(h, "room_details") },
       { value: "toggle", label: getTranslation(h, "act_toggle") || "Toggle" },
       { value: "navigate", label: getTranslation(h, "act_navigate") || "Navigate" },
       { value: "none", label: getTranslation(h, "act_none") || "None" }
@@ -2408,6 +2437,7 @@ const updateActionFields = (action, serviceField, serviceDataField, targetField,
         const enabled = ev.target.checked !== false;
         const wasEnabled = this._livePreview !== false;
         this._livePreview = enabled;
+        this._updateDrawerUI();
         if (enabled && !wasEnabled) this._flushPendingConfig();
       });
     }
@@ -2760,6 +2790,20 @@ if (tmplSelect) {
     if (content) content.hidden = !this._actionsSectionOpen;
     if (section) section.classList.toggle("open", this._actionsSectionOpen);
     if (chev) chev.style.transform = this._actionsSectionOpen ? "rotate(90deg)" : "";
+  }
+
+  _updateDrawerUI() {
+    const enabled = this._config?.detail_drawer?.enabled === true;
+    const toggle = this.shadowRoot?.getElementById("drawer-enabled");
+    const title = this.shadowRoot?.getElementById("drawer-title");
+    const preview = this.shadowRoot?.getElementById("drawer-preview");
+    if (toggle) toggle.checked = enabled;
+    if (title) {
+      title.value = this._config?.detail_drawer?.title || "";
+      title.placeholder = this._config?.name || getTranslation(this._hass, "room_details");
+      title.disabled = !enabled;
+    }
+    if (preview) preview.disabled = !enabled || !this._livePreview;
   }
 
   _updateRoomModesUI() {
@@ -3898,6 +3942,7 @@ if (tmplSelect) {
     if (!h) return;
     this._syncControlIds();
     const actOpts = [
+      { value: "room-details", label: getTranslation(h, "room_details") },
       { value: "more-info", label: getTranslation(h, "act_more") || "Details (Default)" },
       { value: "toggle", label: getTranslation(h, "act_toggle") || "Toggle" },
       { value: "navigate", label: getTranslation(h, "act_navigate") || "Navigate" },
@@ -4090,6 +4135,36 @@ if (tmplSelect) {
 
       const keepOpen = () => { this._collapsedState[key] = false; };
       const upd = (k, v, skipRender = false) => { keepOpen(); const c = [...this._config.controls]; c[i] = { ...c[i], [k]: v }; if (skipRender) { this._lastRenderedControlsSig = JSON.stringify(c); } this._fire({ ...this._config, controls: c }); };
+      const placement = document.createElement("ha-selector");
+      placement.className = "display-in";
+      placement.label = getTranslation(h, "drawer_placement");
+      placement.hass = h;
+      placement.selector = { select: { mode: "dropdown", options: [
+        { value: "card", label: getTranslation(h, "drawer_card") },
+        { value: "drawer", label: getTranslation(h, "room_details") },
+        { value: "both", label: getTranslation(h, "drawer_both") }
+      ] } };
+      placement.value = getControlPlacement(ctrl);
+      placement.addEventListener("value-changed", event => {
+        event.stopPropagation();
+        const value = getControlPlacement({ display_in: event.detail?.value });
+        placement.value = value;
+        upd("display_in", value, true);
+      });
+      box.querySelector(".body").prepend(placement);
+      const duplicate = document.createElement("button");
+      duplicate.type = "button";
+      duplicate.className = "dup";
+      duplicate.textContent = getTranslation(h, "control_duplicate");
+      duplicate.addEventListener("click", event => {
+        event.preventDefault(); event.stopPropagation();
+        const controls = [...this._config.controls];
+        controls.splice(i + 1, 0, structuredClone(controls[i]));
+        this._controlIds.splice(i + 1, 0, this._makeControlId());
+        this._fire({ ...this._config, controls });
+        this.renBtn();
+      });
+      box.querySelector(".body").append(duplicate);
       const updAct = (type, val) => { keepOpen(); const c = [...this._config.controls]; const old = c[i][type] || {}; c[i] = { ...c[i], [type]: { ...old, action: val } }; this._fire({ ...this._config, controls: c }); this.renBtn(); };
       box.querySelector(".u").onclick = (e) => {
         e.preventDefault(); e.stopPropagation();
@@ -5050,6 +5125,7 @@ const cm = box.querySelector(".cm");
 
   updVal() {
     if (!this._config) return;
+    this._updateDrawerUI();
     this.shadowRoot.querySelectorAll(".i").forEach(e => {
       const k = e.getAttribute("cfg");
       let v = k === "nav_path" ? this._config.tap_action?.navigation_path || "" : this._config[k] ?? "";

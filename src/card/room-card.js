@@ -11,6 +11,9 @@ import { SHARED_SPARKLINE_CACHE, SHARED_SPARKLINE_PENDING, normalizeSparklineSam
 import { MEDIA_PLAYER_FEATURES, getSliderCapabilities, getInlineButtons, supportsMediaFeature } from "../lib/capabilities.js";
 import { VERSION, EDITOR_DOM_REVISION } from "../version.js";
 import { createDetailDrawer } from "./detail-drawer.js";
+import { getRoomSurfaceMarkup } from "./surface.js";
+import { isControlInContext } from "../lib/control-placement.js";
+import { registerDrawerPreview } from "../shared/drawer-preview.js";
 import { deepActiveElement, getDialogCoordinator } from "../shared/dialog-coordinator.js";
 import { IMAGE_UPLOAD_LIMITS, parseImagePosition, validateImageUpload, ROOM_IMAGE_PRESETS, ROOM_IMAGE_PRESET_MAP, getRoomImagePresetUrl, resolveRoomImageUrl, evaluateAdaptiveImageConditions, resolveAdaptiveRoomImage, getStatusGroupResult, isHeaderManualColorEnabled, resolveLabelPosition, setAlignmentClass, applyLabelPosition, evalTemplateString, resolveTemplateCtrl, resolveSubChipPresentations, TEMPLATE_VALUE_KEYS, getTemplateEntityDependencies, templateNeedsEveryHassUpdate, formatLastChanged } from "../shared/presentation.js";
 
@@ -36,10 +39,16 @@ class OneLineRoomCard extends HTMLElement {
     this._closeDialog = null;
     this._sparklineDialogRequest = 0;
     this._headerImageRequest = 0;
+    this._headerImageRequests = new WeakMap();
     this._adaptiveMediaQueries = [];
   }
 
   connectedCallback() {
+    this._stopDrawerPreview?.();
+    this._stopDrawerPreview = registerDrawerPreview(this, trigger => {
+      this._showDetailDrawer(trigger);
+      return !!this._detailDrawer;
+    });
     document.addEventListener("visibilitychange", this._boundPageVisibilityChange);
     this._setupSparklineVisibilityObserver();
     if (this.config) {
@@ -53,6 +62,8 @@ class OneLineRoomCard extends HTMLElement {
   }
 
   disconnectedCallback() {
+    this._stopDrawerPreview?.();
+    this._stopDrawerPreview = null;
     this._detailDrawer?.close(false);
     this._closeDialog?.();
     this._closeDialog = null;
@@ -94,7 +105,13 @@ class OneLineRoomCard extends HTMLElement {
   }
 
   _isSparklinePollingActive() {
-    return this.isConnected && this._sparklineVisible && document.hidden !== true;
+    return this.isConnected && (this._sparklineVisible || !!this._detailDrawer) && document.hidden !== true;
+  }
+
+  _isControlRendered(ctrl) {
+    if (ctrl.hide || !this._checkConditions(ctrl.visibility, this._hass)) return false;
+    return (this._sparklineVisible && isControlInContext(ctrl, this.config, "card"))
+      || (!!this._detailDrawer && isControlInContext(ctrl, this.config, "drawer"));
   }
 
   set hass(hass) {
@@ -188,7 +205,7 @@ class OneLineRoomCard extends HTMLElement {
   _hasSparklineControls() {
     return (this.config?.controls || []).some((ctrl) => {
       const domain = ctrl?.entity?.split?.(".")?.[0];
-      return domain === "sensor" && ctrl.show_sparkline === true;
+      return domain === "sensor" && ctrl.show_sparkline === true && this._isControlRendered(ctrl);
     });
   }
 
@@ -247,6 +264,7 @@ class OneLineRoomCard extends HTMLElement {
     if (!this._hasSparklineControls() || !this._hass || !this._isSparklinePollingActive()) return;
     const requests = [];
     for (const ctrl of this.config.controls || []) {
+      if (!this._isControlRendered(ctrl)) continue;
       if (ctrl?.show_sparkline !== true) continue;
       const domain = ctrl?.entity?.split?.(".")?.[0];
       if (domain !== "sensor") continue;
@@ -259,7 +277,8 @@ class OneLineRoomCard extends HTMLElement {
   }
 
   _updateSparklineElements(key, data) {
-    const wrappers = this.shadowRoot?.querySelectorAll?.(`.btn-sparkline[data-sparkline-key="${key}"]`) || [];
+    const wrappers = [this._cardSurface, this._detailDrawer?.surface].filter(Boolean)
+      .flatMap(surface => Array.from(surface.root.querySelectorAll(`.btn-sparkline[data-sparkline-key="${key}"]`)));
     wrappers.forEach(wrapper => {
       const btn = wrapper.closest(".btn");
       if (!btn) return;
@@ -360,7 +379,7 @@ class OneLineRoomCard extends HTMLElement {
       wrapper.style.display = "block";
       this._drawSparkline(wrapper, points, color || "currentColor");
     }
-    if (this._isSparklinePollingActive() && !this._sparklinePending.has(key) && !this._sparklineCache.has(key)) {
+    if (this._isSparklinePollingActive() && this._isControlRendered(ctrl) && !this._sparklinePending.has(key) && !this._sparklineCache.has(key)) {
       this._fetchSparklineData(entityId, hours);
     }
   }
@@ -510,183 +529,16 @@ class OneLineRoomCard extends HTMLElement {
     return { name: "", entity: "", collapsible: true, controls: [] };
   }
 
+  _createSurface(root, kind) {
+    root.innerHTML = getRoomSurfaceMarkup(this._hass);
+    const surface = { root, kind, controls: root.getElementById("ctrls"), signature: null };
+    surface.controls.dataset.renderContext = kind;
+    return surface;
+  }
+
   render() {
     if (!this.config) return;
-    const actOpts = [
-      { value: "more-info", label: getTranslation(this._hass, "act_more") || "Details (Default)" },
-      { value: "toggle", label: getTranslation(this._hass, "act_toggle") || "Toggle" },
-      { value: "navigate", label: getTranslation(this._hass, "act_navigate") || "Navigate" },
-      { value: "none", label: getTranslation(this._hass, "act_none") || "None" }
-    ];
-    // Static runtime scaffold: interpolations below are package-owned labels/options,
-    // never entity states, attributes, template output, or user-provided text.
-    this.shadowRoot.innerHTML = `
-      <style>
-        ha-card { position: relative; overflow: hidden; border-radius: 16px; background: none; border: none; cursor: default; }
-        ha-card.warning-battery { outline: 2px solid var(--error-color, #d32f2f); outline-offset: -2px; }
-        ha-card.warning-humidity { outline: 2px solid var(--info-color, #2196F3); outline-offset: -2px; box-shadow: 0 0 0 2px rgba(33,150,243,0.35), 0 0 12px rgba(33,150,243,0.35), 0 0 22px rgba(33,150,243,0.25); }
-        ha-card.alert-sensor { outline: 2px solid var(--rc-alert-border-color, var(--error-color, #d32f2d)); outline-offset: -2px; box-shadow: 0 0 0 2px rgba(211,47,47,0.15); }
-        .container { display: flex; flex-direction: column; background: var(--ha-card-background, rgba(255,255,255,0.1)); border-radius: 16px; }
-        .img-box { position: relative; width: 100%; height: 120px; overflow: hidden; border-radius: 16px 16px 0 0; background: #444; cursor: pointer; }
-        .img-box.no-image { background: transparent; }
-        .img-box.no-image .img { display: none; }
-        .img-box.no-image .overlay { background: none; position: relative; }
-        .img { width: 100%; height: 100%; object-fit: cover; display: block; transition: filter 0.8s ease; }
-        .img.grayscale { filter: grayscale(100%) brightness(0.6); }
-        .overlay { position: absolute; top: 0; left: 0; width: 100%; padding: 12px; box-sizing: border-box; background: linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%); display: flex; align-items: center; gap: 12px; }
-        .text { display: flex; flex: 1; min-width: 0; flex-direction: column; align-items: flex-start; color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
-        ha-card.no-header-text-shadow .text { text-shadow: none; }
-        ha-icon { color: var(--icon-color, white); }
-        .primary { display: block; max-width: 100%; font-weight: var(--rc-header-name-weight, bold); font-size: var(--rc-header-name-size, 14px); font-style: var(--rc-header-name-style, normal); color: var(--rc-header-name-color, white); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .secondary { max-width: 100%; min-width: 0; font-weight: var(--rc-header-info-weight, normal); font-size: var(--rc-header-info-size, 12px); font-style: var(--rc-header-info-style, normal); color: var(--rc-header-info-color, white); opacity: 0.9; display: flex; flex-wrap: nowrap; gap: 6px; align-items: center; overflow: hidden; }
-        .info-item { display: inline-flex; align-items: center; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .info-item.badge { padding: 2px 6px; border-radius: 999px; }
-        .chips { position: absolute; bottom: 8px; left: 8px; display: flex; gap: 6px; flex-wrap: wrap; z-index: 2; }
-        .chip { display: flex; align-items: center; gap: 4px; padding: 4px 8px; border: 0; border-radius: 8px; font-family: inherit; font-size: 11px; font-weight: bold; background: #FFF8E1; color: #FFA000; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
-        .chip.status-group-chip { background:rgba(var(--rgb-primary-color, 3,169,244),.14); color:var(--primary-color, #03a9f4); }
-        button.chip.status-group-chip { cursor:pointer; }
-        button.chip.status-group-chip:focus-visible { outline:2px solid var(--primary-color, #03a9f4); outline-offset:2px; }
-        .chip ha-icon { color: currentColor; }
-        ha-card.no-chip-shadow .chip { box-shadow: none; }
-        .chip.alert { background: #FFEBEE; color: #D32F2F; }
-        .chip.humidity { background: #E3F2FD; color: #1976D2; }
-        .chip.info { background: #E3F2FD; color: #1976D2; }
-        .chip.custom { background: var(--chip-bg); color: var(--chip-color); }
-        .controls { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px; }
-        .btn.has-sparkline { height: auto; align-items: stretch; overflow: visible; flex-wrap: wrap; padding-bottom: 6px; }
-        .btn-sparkline { width: 100%; flex: 0 0 100%; order: 99; align-self: stretch; min-height: 28px; margin-top: 6px; display: flex; align-items: center; padding: 4px 6px; border: 0; border-radius: 12px; color: inherit; font: inherit; background: rgba(255,255,255,0.06); box-sizing: border-box; }
-        button.btn-sparkline { cursor: pointer; }
-        button.btn-sparkline:focus-visible { outline: 2px solid var(--primary-color, #03a9f4); outline-offset: 2px; }
-        .btn-sparkline svg { width: 100%; height: 22px; display: block; overflow: visible; }
-        .btn-sparkline polyline { fill: none; vector-effect: non-scaling-stroke; }
-        .btn { position: relative; display: flex; align-items: center; gap: 10px; padding: 0 10px; border-radius: 12px; cursor: pointer; background: var(--rc-btn-bg, var(--btn-bg, var(--card-background-color, rgba(128,128,128,0.05)))); border: 1px solid transparent; flex-grow: 1; flex-shrink: 1; min-width: 0; overflow: hidden; box-sizing: border-box; transition: background 0.2s; user-select: none; -webkit-user-select: none; touch-action: manipulation; -webkit-tap-highlight-color: transparent; flex-basis: var(--btn-flex-basis, auto); height: var(--btn-height, 60px); justify-content: var(--btn-justify, center); }
-        .btn.label-right { flex-direction: row; align-items: center; justify-content: var(--btn-justify, center); gap: 10px; padding: 0 10px; }
-        .btn.label-left { flex-direction: row-reverse; align-items: center; justify-content: var(--btn-justify, center); gap: 10px; padding: 0 10px; }
-        .btn.label-bottom { flex-direction: column; justify-content: flex-start; align-items: center; gap: 1px; padding: 2px 4px; overflow: hidden; }
-        .btn.label-top { flex-direction: column-reverse; justify-content: center; gap: 4px; padding: 6px 8px; overflow: hidden; }
-        .btn.has-inline-ctrl.label-bottom,
-        .btn.has-inline-ctrl.label-top { align-items: center; }
-        .btn.has-inline-ctrl.label-bottom .btn-top,
-        .btn.has-inline-ctrl.label-top .btn-top { align-items: center; width: 100%; }
-        .btn.label-left .btn-txt { text-align: right; align-items: flex-end; }
-        .btn.label-bottom .icon-box,
-        .btn.label-top .icon-box { flex-shrink: 0; }
-        .btn.label-bottom .icon-box { width: 28px; height: 28px; margin-top: 1px; }
-        .btn.label-bottom ha-icon { --mdc-icon-size: 18px; }
-        .btn.label-bottom .btn-txt,
-        .btn.label-top .btn-txt { text-align: center; align-items: center; flex: 1; min-height: 0; max-width: 100%; overflow: hidden; }
-        .btn.label-bottom .btn-txt { flex: 0 0 auto; min-height: 22px; max-height: 22px; gap: 1px; }
-        .btn.label-bottom .btn-name,
-        .btn.label-bottom .btn-state,
-        .btn.label-top .btn-name,
-        .btn.label-top .btn-state { font-size: 11px; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-        .btn.label-bottom .btn-name { font-size: 11px; line-height: 11px; }
-        .btn.label-bottom .btn-state { font-size: 10px; line-height: 10px; margin-top: 0; }
-        .btn:hover { background: var(--rc-btn-bg-hover, rgba(128,128,128,0.1)); border-color: rgba(128,128,128,0.2); }
-        .btn:active { background: var(--rc-btn-bg-active, rgba(128,128,128,0.15)); }
-        .btn:focus-visible, button:focus-visible, select:focus-visible, input:focus-visible, .img-box:focus-visible { outline: 2px solid var(--primary-color, #03a9f4); outline-offset: 2px; }
-        .btn.state-unavailable { opacity: 0.56; }
-        .btn.state-unavailable:hover,
-        .btn.state-unavailable:active { background: var(--rc-btn-bg, var(--btn-bg, var(--card-background-color, rgba(128,128,128,0.05)))); border-color: transparent; }
-        .btn.state-unavailable .btn-name,
-        .btn.state-unavailable .btn-state,
-        .btn.state-unavailable ha-icon { color: var(--disabled-text-color, var(--secondary-text-color)); }
-        .icon-box { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0; background: var(--icon-bg, transparent); }
-        .btn-txt { display: flex; flex-direction: column; text-align: left; overflow: hidden; min-width: 0; flex: initial; max-width: 100%; }
-        .btn ha-icon { color: var(--rc-icon-color, var(--icon-color, grey)); --mdc-icon-size: 20px; }
-        .btn-name { font-size: 13px; font-weight: 600; color: var(--primary-text-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-        .btn-state { font-size: 11px; color: var(--secondary-text-color); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-        .warn { position: absolute; top: 4px; right: 4px; color: #d32f2f; --mdc-icon-size: 16px; background: rgba(255,255,255,0.8); border-radius: 50%; padding: 1px; }
-        .warn.warn-offline { color: var(--warning-color, var(--secondary-text-color)); background: var(--card-background-color, rgba(255,255,255,0.85)); }
-        .btn.has-inline-ctrl { flex-direction: column; align-items: stretch; padding: 6px 10px; gap: 4px; height: auto; min-height: var(--btn-height, 60px); }
-        .btn.has-inline-ctrl .btn-top { display: flex; align-items: center; gap: 10px; width: 100%; flex: 0 0 auto; }
-        .btn.has-inline-ctrl .btn-txt { flex: 1; min-width: 0; }
-        .btn-slider-wrap { width: 100%; flex: 0 0 auto; padding: 0 2px 4px; }
-        .btn-slider { -webkit-appearance: none; appearance: none; width: 100%; height: 4px; border-radius: 2px; outline: none; cursor: pointer; background: linear-gradient(to right, var(--icon-color, #ff9800) 0%, var(--icon-color, #ff9800) var(--slider-pct, 0%), rgba(128,128,128,0.3) var(--slider-pct, 0%), rgba(128,128,128,0.3) 100%); }
-        .btn-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--icon-color, #ff9800); cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
-        .btn-slider::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: var(--icon-color, #ff9800); cursor: pointer; border: none; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
-        .btn-cover-actions { display: flex; gap: 4px; width: 100%; flex: 0 0 auto; padding-bottom: 4px; }
-        .cover-action-btn { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; background: rgba(128,128,128,0.1); border: 0; color: inherit; font: inherit; border-radius: 6px; padding: 4px 6px; cursor: pointer; transition: background 0.15s; touch-action: manipulation; }
-        .cover-action-btn:hover { background: rgba(128,128,128,0.22); }
-        .cover-action-btn ha-icon { --mdc-icon-size: 16px; color: var(--primary-text-color); }
-        .media-transport-row, .media-volume-row { display: flex; align-items: center; gap: 6px; width: 100%; flex: 0 0 auto; }
-        .media-transport-row { justify-content: center; padding-top: 2px; }
-        .media-volume-row { padding: 2px 0 4px; }
-        .media-ctrl-btn { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: inherit; cursor: pointer; transition: background 0.15s; touch-action: manipulation; }
-        .media-ctrl-btn:hover { background: rgba(128,128,128,0.18); }
-        .media-ctrl-btn ha-icon { --mdc-icon-size: 19px; color: var(--primary-text-color); }
-        .media-ctrl-btn.muted ha-icon { color: var(--secondary-text-color); }
-        .media-volume-row .btn-slider-wrap { flex: 1; min-width: 0; padding: 0; }
-        .media-volume-row .btn-slider { height: 4px; }
-        .media-volume-row .vol-label { font-size: 10px; font-weight: 600; color: var(--secondary-text-color); min-width: 32px; text-align: center; flex: 0 0 auto; }
-        .media-thumb { width: 40px; height: 40px; border-radius: 4px; object-fit: cover; flex-shrink: 0; }
-        .media-full-layout { display: flex; gap: 10px; width: 100%; align-items: stretch; }
-        .media-full-layout .media-thumb { width: 72px; height: 72px; aspect-ratio: 1; border-radius: 6px; align-self: center; object-fit: cover; }
-        .media-full-layout .media-right { display: flex; flex-direction: column; flex: 1; min-width: 0; justify-content: center; gap: 2px; }
-        .btn-cover-presets { display: flex; gap: 4px; width: 100%; flex: 0 0 auto; padding-bottom: 4px; }
-        .preset-btn { flex: 1; display: flex; align-items: center; justify-content: center; background: rgba(128,128,128,0.1); border: 0; border-radius: 6px; padding: 3px 4px; cursor: pointer; transition: background 0.15s, color 0.15s; font: inherit; font-size: 11px; font-weight: 600; color: var(--secondary-text-color); white-space: nowrap; touch-action: manipulation; }
-        .preset-btn:hover { background: rgba(128,128,128,0.22); color: var(--primary-text-color); }
-        .preset-btn.active { background: var(--icon-color, var(--primary-color, #ff9800)); color: #fff; }
-        .btn-select-dropdown { width: 100%; padding-bottom: 4px; }
-        .btn-select-dropdown select { width: 100%; padding: 4px 8px; border-radius: 6px; border: none; background: rgba(128,128,128,0.12); color: var(--primary-text-color); font-size: 12px; font-weight: 500; cursor: pointer; appearance: auto; outline: none; touch-action: manipulation; }
-        .btn-select-dropdown select:focus { box-shadow: 0 0 0 1px var(--icon-color, var(--primary-color, #ff9800)); }
-        .btn-select-options { flex-wrap: wrap; }
-        .btn-select-options .preset-btn { flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-        .btn-color-favorites { display: flex; gap: 6px; width: 100%; flex: 0 0 auto; padding-bottom: 4px; flex-wrap: wrap; }
-        .color-swatch { width: 20px; height: 20px; padding: 0; border-radius: 50%; cursor: pointer; flex-shrink: 0; border: 2px solid transparent; transition: transform 0.15s, border-color 0.15s; box-shadow: 0 1px 3px rgba(0,0,0,0.25); touch-action: manipulation; }
-        .color-swatch:hover { transform: scale(1.2); }
-        .color-swatch.active { border-color: var(--primary-text-color); transform: scale(1.15); }
-        .controls { transition: max-height 0.35s ease, padding 0.35s ease; overflow: hidden; max-height: 2000px; }
-        .controls.collapsed { max-height: 0 !important; padding-top: 0 !important; padding-bottom: 0 !important; }
-        .collapse-btn { position: absolute; bottom: 8px; right: 8px; z-index: 3; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 50%; background: rgba(0,0,0,0.38); display: none; align-items: center; justify-content: center; cursor: pointer; }
-        .collapse-btn ha-icon { --mdc-icon-size: 18px; color: white; transition: transform 0.35s ease; }
-        .collapse-btn.open ha-icon { transform: rotate(180deg); }
-        .details-btn { position:absolute; top:8px; right:8px; z-index:3; min-width:44px; min-height:44px; padding:8px 12px; border:0; border-radius:12px; background:rgba(0,0,0,.55); color:white; font:inherit; cursor:pointer; }
-        .details-btn[hidden] { display:none; }
-        .details-btn:focus-visible { outline:2px solid var(--primary-color,#03a9f4); outline-offset:2px; }
-        .btn-chips { display: flex; flex-direction: row; flex-wrap: wrap; gap: 2px; align-items: center; max-width: 100%; margin-top: 2px; }
-        .btn-chips.chips-top { margin-top: 0; margin-bottom: 2px; }
-        .btn.has-inline-ctrl .btn-chips { margin-top: 4px; padding-bottom: 2px; }
-        .btn.has-inline-ctrl .btn-chips.chips-top { margin-top: 0; margin-bottom: 4px; padding-bottom: 0; padding-top: 2px; }
-        .btn-chip { display: inline-flex; align-items: center; gap: 2px; padding: 2px 5px; background: rgba(var(--rgb-primary-text-color, 0, 0, 0), 0.12); color: var(--secondary-text-color, rgba(0,0,0,0.6)); border-radius: 6px; max-width: 100%; box-sizing: border-box; }
-        .btn-chip span { font-size: 9px; line-height: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .btn-chip ha-icon { --mdc-icon-size: 11px; }
-        .info-bar { display: none; flex-wrap: nowrap; gap: 6px; padding: 4px 12px 6px; align-items: center; overflow: hidden; font-size: var(--rc-header-info-size, 12px); font-weight: var(--rc-header-info-weight, normal); font-style: var(--rc-header-info-style, normal); color: var(--rc-header-info-color, var(--secondary-text-color)); }
-        .info-bar.active { display: flex; }
-        .room-modes { display: flex; gap: 7px; padding: 8px 10px; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; overscroll-behavior-inline: contain; border-top: 1px solid var(--divider-color, rgba(128,128,128,.18)); }
-        .room-modes:empty { display: none; }
-        .room-mode { flex: 0 0 auto; min-height: 34px; display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px; border: 1px solid var(--divider-color, rgba(128,128,128,.25)); border-radius: 999px; color: var(--primary-text-color); background: rgba(128,128,128,.08); font: inherit; font-size: 12px; font-weight: 600; white-space: nowrap; cursor: pointer; touch-action: manipulation; }
-        .room-mode ha-icon { --mdc-icon-size: 18px; color: var(--room-mode-color, var(--primary-color)); }
-        .room-mode.active { color: var(--text-primary-color, #fff); background: var(--room-mode-color, var(--primary-color)); border-color: var(--room-mode-color, var(--primary-color)); }
-        .room-mode.active ha-icon { color: currentColor; }
-        .room-mode:disabled { opacity: .45; cursor: not-allowed; }
-        .room-mode:focus-visible { outline: 2px solid var(--primary-color, #03a9f4); outline-offset: 2px; }
-        @media (max-width: 480px) {
-          .media-full-layout { gap: 8px; }
-          .media-full-layout .media-thumb { width: 60px; height: 60px; }
-          .media-ctrl-btn { width: 30px; height: 30px; }
-        }
-      </style>
-      <ha-card>
-        <div class="container">
-          <div class="img-box">
-            <img id="bg" class="img">
-            <div class="overlay">
-              <ha-icon id="icon"></ha-icon>
-              <div class="text">
-                <span id="name" class="primary"></span>
-                <span id="info" class="secondary"></span>
-              </div>
-            </div>
-            <div id="chips" class="chips"></div>
-            <button id="collapse-btn" class="collapse-btn" type="button"><ha-icon icon="mdi:chevron-down"></ha-icon></button>
-            <button id="details-btn" class="details-btn" type="button" hidden></button>
-          </div>
-          <div id="info-bar" class="info-bar"></div>
-          <div id="room-modes" class="room-modes" role="group" aria-label="${getTranslation(this._hass, "room_modes")}"></div>
-          <div id="ctrls" class="controls"></div>
-        </div>
-      </ha-card>`;
+    this._cardSurface = this._createSurface(this.shadowRoot, "card");
 
     this.content = this.shadowRoot.querySelector(".container");
     this.controls = this.shadowRoot.getElementById("ctrls");
@@ -1105,12 +957,13 @@ class OneLineRoomCard extends HTMLElement {
     const targetUrl = selection?.url || "/static/images/card_media/cover.png";
     image.style.objectPosition = selection?.position || "50% 50%";
     if (image.dataset.roomImageUrl === targetUrl) {
-      this._headerImageRequest += 1;
+      this._headerImageRequests.set(image, null);
       return;
     }
-    const request = ++this._headerImageRequest;
+    const request = {};
+    this._headerImageRequests.set(image, request);
     const commit = () => {
-      if (request !== this._headerImageRequest || !image.isConnected) return;
+      if (request !== this._headerImageRequests.get(image) || !image.isConnected) return;
       image.src = targetUrl;
       image.dataset.roomImageUrl = targetUrl;
     };
@@ -1127,6 +980,15 @@ class OneLineRoomCard extends HTMLElement {
   _updateContentState() {
     if (!this.config || !this._hass || !this.content) return;
     this._syncDetailDrawer();
+    this._updateSurfaceState(this._cardSurface);
+    if (this._detailDrawer?.surface) this._updateSurfaceState(this._detailDrawer.surface);
+    this._configChanged = false;
+    const shouldPoll = this._hasSparklineControls() && this._isSparklinePollingActive();
+    if (shouldPoll !== !!this._sparklineInterval) this._setupSparklineInterval();
+  }
+
+  _updateSurfaceState(surface) {
+    if (!this.config || !this._hass || !this.content) return;
     const h = this._hass, c = this.config;
     const effectiveEntity = c.entity;
     const effectiveTempSensor = c.temp_sensor;
@@ -1136,7 +998,7 @@ class OneLineRoomCard extends HTMLElement {
     const systemTempUnit = normalizeTemperatureUnit(h.config.unit_system.temperature) || "°C";
     const configuredTempUnit = normalizeTemperatureUnit(c.temp_unit);
 
-    const bgEl = this.shadowRoot.getElementById("bg");
+    const bgEl = surface.root.getElementById("bg");
     this._applyHeaderImage(bgEl, resolveAdaptiveRoomImage(c, h));
     if (c.image_entity && h.states[c.image_entity]) {
       const isOff = !isEntityActive(h.states[c.image_entity], c.image_entity);
@@ -1144,7 +1006,7 @@ class OneLineRoomCard extends HTMLElement {
     } else {
       bgEl.classList.remove("grayscale");
     }
-    const imgBox = this.shadowRoot.querySelector(".img-box");
+    const imgBox = surface.root.querySelector(".img-box");
     if (imgBox) {
       const hh = c.header_height !== undefined ? Number(c.header_height) : NaN;
       const hideImg = c.show_image === false;
@@ -1153,10 +1015,10 @@ class OneLineRoomCard extends HTMLElement {
       else imgBox.style.height = "120px";
       imgBox.classList.toggle("no-image", hideImg);
     }
-    const nameEl = this.shadowRoot.getElementById("name");
+    const nameEl = surface.root.getElementById("name");
     nameEl.innerText = c.name || "Room";
     nameEl.style.display = c.show_name === false ? "none" : "";
-    const ico = this.shadowRoot.getElementById("icon");
+    const ico = surface.root.getElementById("icon");
     ico.icon = c.icon || "mdi:home";
     // Priority: force/manual > dynamic state color > default/theme fallback.
     const headerManualColor = isHeaderManualColorEnabled(c);
@@ -1192,8 +1054,8 @@ class OneLineRoomCard extends HTMLElement {
     }
 
     const infoPos = c.info_line_position || "header";
-    const infoEl = this.shadowRoot.getElementById("info");
-    const infoBarEl = this.shadowRoot.getElementById("info-bar");
+    const infoEl = surface.root.getElementById("info");
+    const infoBarEl = surface.root.getElementById("info-bar");
     const infoParts = [];
     const standardHeaderBadgeBackground = trimStr(c.header_info_background);
     if (t != null && t !== "-" && !isNaN(parseFloat(t))) {
@@ -1275,7 +1137,7 @@ class OneLineRoomCard extends HTMLElement {
 
     if (infoBarEl) infoBarEl.classList.toggle("active", infoPos === "below_header" && infoParts.length > 0);
 
-    const textEl = this.shadowRoot.querySelector(".text");
+    const textEl = surface.root.querySelector(".text");
     const nameOffset = Number(c.header_name_offset ?? 0);
     const infoOffset = infoPos === "header" ? Number(c.header_info_offset ?? 0) : 0;
     if (textEl) textEl.style.flex = (nameOffset > 0 || infoOffset > 0) ? "1" : "";
@@ -1286,7 +1148,7 @@ class OneLineRoomCard extends HTMLElement {
     // Info line horizontal offset (only relevant when inside the header)
     if (infoPos === "header") this._applyHeaderOffset(infoEl, infoOffset, textEl);
 
-    const ch = this.shadowRoot.getElementById("chips");
+    const ch = surface.root.getElementById("chips");
     ch.replaceChildren();
     const createHeaderChip = (className, iconName, text, tagName = "div") => {
       const chip = document.createElement(tagName);
@@ -1422,7 +1284,7 @@ class OneLineRoomCard extends HTMLElement {
 
     this._renderStatusGroups(ch, c, h);
 
-    const cardEl = this.shadowRoot.querySelector("ha-card");
+    const cardEl = surface.root.querySelector("ha-card");
     if (cardEl) {
       const showStatusBorder = c.show_status_border !== false;
       cardEl.classList.toggle("no-header-text-shadow", c.show_header_text_shadow === false);
@@ -1452,10 +1314,11 @@ class OneLineRoomCard extends HTMLElement {
       setStrProp("--rc-header-info-color", c.header_info_color, "white");
     }
 
-    this._renderRoomModes(c, h);
-    this._syncCollapseUI();
+    this._renderRoomModes(c, h, surface.root);
+    if (surface.kind === "card") this._syncCollapseUI();
 
     let visibleCtrls = (c.controls || []).filter(ctrl => {
+      if (!isControlInContext(ctrl, c, surface.kind)) return false;
       if (ctrl.hide) return false;
       if (Array.isArray(ctrl.visibility) && ctrl.visibility.length > 0) {
         if (!this._checkConditions(ctrl.visibility, h)) return false;
@@ -1463,7 +1326,7 @@ class OneLineRoomCard extends HTMLElement {
       return (ctrl.entity || ctrl.type === "template");
     });
 
-    if (c.auto_climate_button && c.entity && getEntityDomain(c.entity) === "climate") {
+    if (surface.kind === "card" && c.auto_climate_button && c.entity && getEntityDomain(c.entity) === "climate") {
       const alreadyPresent = visibleCtrls.some(ctrl => ctrl.entity === c.entity);
       if (!alreadyPresent) {
         const climateState = h.states[c.entity];
@@ -1471,20 +1334,20 @@ class OneLineRoomCard extends HTMLElement {
       }
     }
 
-    const controlsSig = JSON.stringify(visibleCtrls.map(ct => ct.entity + (ct.type || "")));
+    const controlsSig = JSON.stringify(visibleCtrls);
 
-    if (this._configChanged || this._lastControlsSig !== controlsSig) {
-      this._lastControlsSig = controlsSig;
-      this.controls.replaceChildren();
+    if (this._configChanged || surface.signature !== controlsSig) {
+      surface.signature = controlsSig;
+      for (const node of surface.controls.children) node._disposeActions?.();
+      surface.controls.replaceChildren();
       visibleCtrls.forEach(ctrl => {
         const btn = this._createBtn(ctrl);
-        this.controls.appendChild(btn);
+        surface.controls.appendChild(btn);
         this._updateBtnState(btn, ctrl, h);
       });
-      this._configChanged = false;
     } else {
       visibleCtrls.forEach((ctrl, i) => {
-        const btn = this.controls.children[i];
+        const btn = surface.controls.children[i];
         if (btn) this._updateBtnState(btn, ctrl, h);
       });
     }
@@ -1576,8 +1439,8 @@ class OneLineRoomCard extends HTMLElement {
     requestAnimationFrame(() => requestAnimationFrame(apply));
   }
 
-  _renderRoomModes(config, hass) {
-    const container = this.shadowRoot.getElementById("room-modes");
+  _renderRoomModes(config, hass, root = this.shadowRoot) {
+    const container = root.getElementById("room-modes");
     if (!container) return;
     const modes = (Array.isArray(config?.room_modes) ? config.room_modes : [])
       .filter((mode) => ["scene", "script"].includes(getEntityDomain(mode?.entity)));
@@ -1589,7 +1452,8 @@ class OneLineRoomCard extends HTMLElement {
       active_when: mode.active_when || null
     })));
     if (container.dataset.configSignature !== signature) {
-      const focusedEntity = this.shadowRoot.activeElement?.closest?.(".room-mode")?.dataset?.entity;
+      const active = deepActiveElement();
+      const focusedEntity = container.contains(active) ? active?.closest?.(".room-mode")?.dataset?.entity : null;
       const buttons = modes.map((mode) => {
         const domain = getEntityDomain(mode.entity);
         const button = document.createElement("button");
@@ -1666,7 +1530,7 @@ class OneLineRoomCard extends HTMLElement {
     const domain = ctrl.entity ? ctrl.entity.split(".")[0] : "";
     const isTemplate = ctrl.type === "template";
     const subChipPresentations = resolveSubChipPresentations(ctrl, h);
-    const activeElement = this.shadowRoot.activeElement;
+    const activeElement = deepActiveElement();
     const focusedControlKey = activeElement && btn.contains(activeElement)
       ? activeElement.dataset?.rcFocusKey || ""
       : "";
@@ -2502,7 +2366,10 @@ class OneLineRoomCard extends HTMLElement {
     } else {
       btn.classList.remove("has-inline-ctrl");
     }
-    if (focusedControlKey && !this.controls?.hasAttribute("inert")) {
+    Array.from(btn.querySelectorAll("button,input,select,textarea,a[href],[tabindex]")).forEach((element, index) => {
+      element.dataset.rcFocusKey ||= `${element.localName}:${index}`;
+    });
+    if (focusedControlKey && !btn.closest(".controls")?.hasAttribute("inert")) {
       const replacement = Array.from(btn.querySelectorAll("[data-rc-focus-key]"))
         .find((element) => element.dataset.rcFocusKey === focusedControlKey);
       replacement?.focus();
@@ -2526,11 +2393,12 @@ class OneLineRoomCard extends HTMLElement {
     let timer = null, held = false, holdTimer = null;
     let startX = 0, isDragging = false;
     const trackTimeout = (fn, ms) => {
-      const id = setTimeout(() => { this._activeTimers.delete(id); fn(); }, ms);
+      const id = setTimeout(() => { this._activeTimers.delete(id); if (node.isConnected) fn(); }, ms);
       this._activeTimers.add(id);
       return id;
     };
     const cancelTimeout = (id) => { clearTimeout(id); this._activeTimers.delete(id); };
+    node._disposeActions = () => { cancelTimeout(timer); cancelTimeout(holdTimer); timer = null; holdTimer = null; };
     const triggerTap = () => {
       if (this._isEntityUnavailable(ctrl.entity) || held) return;
       if (config.double_tap_action.action !== "none") {
@@ -2630,7 +2498,7 @@ class OneLineRoomCard extends HTMLElement {
     node.addEventListener("blur", cancel);
   }
 
-  _attachHeaderActions(node) {
+  _attachHeaderActions(node, context = "card") {
     const getActionContext = () => {
       const config = this.config || {};
       return {
@@ -2647,19 +2515,21 @@ class OneLineRoomCard extends HTMLElement {
     node.style.touchAction = "manipulation";
     let timer = null, held = false, holdTimer = null;
     const trackTimeout = (fn, ms) => {
-      const id = setTimeout(() => { this._activeTimers.delete(id); fn(); }, ms);
+      const id = setTimeout(() => { this._activeTimers.delete(id); if (node.isConnected) fn(); }, ms);
       this._activeTimers.add(id);
       return id;
     };
     const cancelTimeout = (id) => { clearTimeout(id); this._activeTimers.delete(id); };
     const handleTap = () => {
       const { cardConfig, actionConfig, hasExplicitTap } = getActionContext();
+      if (context === "drawer" && !hasExplicitTap) return;
       if (!hasExplicitTap && cardConfig.collapsible === true) { this._toggleCollapse(); return; }
       this._fireAction("tap", actionConfig);
     };
     const cancel = () => {
       if (holdTimer) { cancelTimeout(holdTimer); holdTimer = null; }
     };
+    node._disposeActions = () => { cancelTimeout(timer); cancelTimeout(holdTimer); timer = null; holdTimer = null; };
     node.addEventListener("pointerdown", () => {
       held = false;
       const { actionConfig } = getActionContext();
@@ -2741,14 +2611,15 @@ class OneLineRoomCard extends HTMLElement {
       closeLabel: t("a11y_close"), trigger,
       onClose: () => {
         this._closeDialog?.(false);
+        for (const node of this._detailDrawer?.surface?.controls.children || []) node._disposeActions?.();
+        this._detailDrawer?.surface?.root.querySelector(".img-box")?._disposeActions?.();
         this._detailDrawer = null;
         this.shadowRoot.getElementById("details-btn")?.setAttribute("aria-expanded", "false");
+        this._setupSparklineInterval();
       }
     });
-    const note = document.createElement("p");
-    note.className = "prototype-note";
     const actions = document.createElement("div");
-    actions.className = "prototype-actions";
+    actions.className = "drawer-actions";
     for (const [name, action] of [
       ["more", event => {
         event.currentTarget.focus({ preventScroll: true });
@@ -2763,8 +2634,14 @@ class OneLineRoomCard extends HTMLElement {
       button.addEventListener("click", action);
       actions.append(button);
     }
-    this._detailDrawer.content.append(note, actions);
+    const surfaceHost = document.createElement("div");
+    surfaceHost.dataset.roomSurface = "drawer";
+    this._detailDrawer.content.append(actions, surfaceHost);
+    this._detailDrawer.surface = this._createSurface(surfaceHost.attachShadow({ mode: "open" }), "drawer");
+    this._attachHeaderActions(this._detailDrawer.surface.root.querySelector(".img-box"), "drawer");
     this._syncDetailDrawer();
+    this._updateSurfaceState(this._detailDrawer.surface);
+    this._setupSparklineInterval();
   }
 
   _drawerHistoryEntity() {
@@ -2791,7 +2668,14 @@ class OneLineRoomCard extends HTMLElement {
     }
     if (!this._detailDrawer) return;
     this._detailDrawer.update({ title: this.config.detail_drawer.title || this.config.name || t("room_details"), closeLabel: t("a11y_close"), themeSource: this });
-    this._detailDrawer.content.querySelector(".prototype-note").textContent = t("drawer_prototype_note");
+    const header = this._detailDrawer.surface?.root.querySelector(".img-box");
+    const hasAction = [this.config.tap_action, this.config.hold_action, this.config.double_tap_action].some(action => action?.action && action.action !== "none");
+    if (header) {
+      header.tabIndex = hasAction ? 0 : -1;
+      if (hasAction) header.setAttribute("role", "button");
+      else header.removeAttribute("role");
+      header.setAttribute("aria-label", this.config.name || t("room_details"));
+    }
     const more = this._detailDrawer.content.querySelector('[data-drawer-action="more"]');
     more.textContent = t("act_more");
     more.disabled = !this.config.entity || !this._hass?.states?.[this.config.entity] || this._isEntityUnavailable(this.config.entity);

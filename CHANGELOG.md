@@ -4,7 +4,9 @@ All notable changes to OneLine Room Card are documented here.
 
 ## [Unreleased]
 
-* Build: Introduce pinned esbuild 0.28.2 as the first isolated step toward #100. Keep runtime/editor behavior and the single-file HACS delivery unchanged; verify a fresh reproducible build, registration order, explicit helper test imports, and adjacent room-image assets. Source extraction and the Room Detail Drawer remain gated follow-up work for v1.5.0.
+* Build & architecture: Bundle with pinned esbuild 0.28.2 and separate helpers, translations, runtime, input compatibility and editor into test-gated modules. Keep the unminified single-file HACS artifact, registration order and relative room-image assets; check dependency direction, reproducibility and the shipped bundle. Ref #100.
+* Runtime & editor (v1.5 candidate): Add opt-in `detail_drawer.enabled` and per-control `display_in: card | drawer | both`. Share renderers, state and history cache while giving each location independent DOM and listeners. Preserve visibility conditions, existing actions, card collapse and disabled-drawer fallback. Add title, preview, placement and control duplication in EN/DE/FR; retain live-preview/deferred-save behavior. Ref #127; final HA integration test and release remain pending.
+* Accessibility & lifecycle: Coordinate nested room/history/status/HA dialogs, restore focus into native controls after updates, close on navigation/disconnect/disable, and avoid history requests for closed drawer-only controls or a second polling timer.
 
 ---
 
