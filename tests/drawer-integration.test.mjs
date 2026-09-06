@@ -17,6 +17,49 @@ const entities = controls => Array.from(controls.children, node => node.dataset.
 const drawer = card => card._detailDrawer.surface;
 const change = (node, value) => node.dispatchEvent(new CustomEvent("value-changed", { detail: { value }, bubbles: true }));
 
+test("conditional sparklines wait for hass before evaluating visibility or polling", () => {
+  for (const condition of [
+    { condition: "state", entity: "sensor.test", state: "20" },
+    { condition: "numeric_state", entity: "sensor.test", above: 10 },
+    { condition: "user", users: ["test-user"] }
+  ]) {
+    const card = document.createElement("oneline-room-card");
+    let refreshes = 0;
+    card._refreshSparklineData = () => { refreshes++; };
+    try {
+      assert.doesNotThrow(() => card.setConfig({ controls: [
+        { entity: "sensor.test", show_sparkline: true, visibility: [condition] }
+      ] }));
+      document.body.append(card);
+      assert.doesNotThrow(() => card._setupSparklineInterval());
+      assert.equal(card._sparklineInterval, null);
+      assert.equal(refreshes, 0);
+      card.hass = createHass({ states: { "sensor.test": state("20") } });
+      assert.ok(card._sparklineInterval, "polling starts on the first hass update");
+      assert.equal(refreshes, 1);
+      card.hass = createHass({ states: { "sensor.test": state("0") }, user: { id: "other" } });
+      assert.equal(card._sparklineInterval, null, "hidden controls stop polling");
+    } finally {
+      card.remove();
+    }
+    assert.equal(card._sparklineInterval, null);
+  }
+});
+
+test("card size excludes drawer-only controls and restores disabled-drawer fallback", () => {
+  const card = document.createElement("oneline-room-card");
+  const controls = [undefined, "card", "both", "invalid", ...Array(8).fill("drawer")]
+    .map(display_in => ({ entity: "light.test", display_in }));
+  card.setConfig({ controls, detail_drawer: { enabled: true } });
+  assert.equal(card.getCardSize(), 5);
+  card.setConfig({ ...card.config, room_modes: [{ entity: "scene.movie" }] });
+  assert.equal(card.getCardSize(), 6);
+  card.setConfig({ controls, detail_drawer: { enabled: false } });
+  assert.equal(card.getCardSize(), 8);
+  card.setConfig({ controls: controls.slice(4), detail_drawer: { enabled: true } });
+  assert.equal(card.getCardSize(), 3);
+});
+
 test("drawer treats non-array status_groups as empty across opening, updates and cleanup", () => {
   for (const status_groups of [{}, { entities: ["light.test"] }, "invalid", true, 42, false, 0, "", null, undefined, []]) {
     const card = createCard({ status_groups });

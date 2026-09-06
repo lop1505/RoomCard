@@ -109,7 +109,8 @@ class OneLineRoomCard extends HTMLElement {
   }
 
   _isControlRendered(ctrl) {
-    if (ctrl.hide || !this._checkConditions(ctrl.visibility, this._hass)) return false;
+    // HA can configure/connect a card before providing its first state snapshot.
+    if (!this._hass || ctrl.hide || !this._checkConditions(ctrl.visibility, this._hass)) return false;
     return (this._sparklineVisible && isControlInContext(ctrl, this.config, "card"))
       || (!!this._detailDrawer && isControlInContext(ctrl, this.config, "drawer"));
   }
@@ -519,10 +520,11 @@ class OneLineRoomCard extends HTMLElement {
   }
 
   getCardSize() {
-    const c = this.config?.controls;
+    const c = (Array.isArray(this.config?.controls) ? this.config.controls : [])
+      .filter(ctrl => isControlInContext(ctrl, this.config, "card"));
     const hasRoomModes = (Array.isArray(this.config?.room_modes) ? this.config.room_modes : [])
       .some((mode) => ["scene", "script"].includes(getEntityDomain(mode?.entity)));
-    return 3 + (hasRoomModes ? 1 : 0) + Math.ceil((Array.isArray(c) ? c.length : 0) / 2.5);
+    return 3 + (hasRoomModes ? 1 : 0) + Math.ceil(c.length / 2.5);
   }
 
   static getStubConfig(hass) {
