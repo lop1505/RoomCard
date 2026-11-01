@@ -126,6 +126,7 @@ connectedCallback() {
           label.textContent = config?.entity ? getEntityDisplayName(hass, config.entity) : getTranslation(hass, "alert_sensor_entity");
         });
       }
+      this._updateStatusGroupValueSources();
       this.updPreview();
       if (this._config && (!this.shadowRoot.getElementById("show-name-toggle") || !this.shadowRoot.getElementById("typo-sec"))) {
         this.shadowRoot.replaceChildren();
@@ -2926,6 +2927,56 @@ if (tmplSelect) {
     });
   }
 
+  _getStatusGroupValueSources(group) {
+    const ids = [...new Set((Array.isArray(group?.entities) ? group.entities : [])
+      .map(entry => typeof entry === "string" ? entry : entry?.entity).filter(Boolean))];
+    const states = ids.map(id => this._hass?.states?.[id]).filter(Boolean);
+    const isNumber = value => (typeof value === "number" || (typeof value === "string" && value.trim() !== "")) && Number.isFinite(Number(value));
+    const keys = states.length > 0 ? Object.keys(states[0].attributes || {}).filter(key =>
+      key !== "supported_features" && states.every(state => isNumber(state.attributes?.[key]))) : [];
+    const allCovers = ids.length > 0 && ids.length === states.length && ids.every(id => getEntityDomain(id) === "cover");
+    const current = trimStr(group?.attribute);
+    if (current && !keys.includes(current)) keys.push(current);
+    const attributes = keys.map(key => {
+      let label = key.replace(/_/g, " ");
+      if (key === "current_position") label = getTranslation(this._hass, "status_group_source_position");
+      else if (key === "current_tilt_position") label = getTranslation(this._hass, "status_group_source_tilt");
+      else {
+        try {
+          const name = this._hass?.formatEntityAttributeName?.(states[0], key);
+          if (typeof name === "string" && name.trim()) label = name;
+        } catch (_error) { }
+      }
+      const available = states.length > 0 && states.every(state => isNumber(state.attributes?.[key]));
+      return { value: key, label, available, recommended: allCovers && key === "current_position" && available };
+    }).sort((a, b) => Number(b.recommended) - Number(a.recommended) || a.label.localeCompare(b.label));
+    return [{ value: "", label: getTranslation(this._hass, "status_group_source_state"), available: true }, ...attributes];
+  }
+
+  _updateStatusGroupValueSources() {
+    this.shadowRoot?.querySelectorAll(".status-group-value-source").forEach(select => {
+      const group = this._config?.status_groups?.[Number(select.dataset.statusGroupIndex)];
+      const options = this._getStatusGroupValueSources(group);
+      const value = trimStr(group?.attribute);
+      const signature = JSON.stringify([options, value]);
+      if (select.dataset.sourceSignature === signature) return;
+      select.dataset.sourceSignature = signature;
+      select.replaceChildren(...options.map(source => {
+        const option = document.createElement("option");
+        option.value = source.value;
+        const suffix = source.recommended ? getTranslation(this._hass, "status_group_source_recommended")
+          : (!source.available ? getTranslation(this._hass, "status_group_source_unavailable") : "");
+        option.textContent = suffix ? `${source.label} (${suffix})` : source.label;
+        return option;
+      }));
+      select.value = value;
+      const help = select.parentElement.querySelector(".status-group-source-help");
+      if (help) help.textContent = getTranslation(this._hass,
+        ["current_position", "current_tilt_position"].includes(value) || options.some(source => source.recommended)
+          ? "status_group_position_help" : "status_group_attribute_help");
+    });
+  }
+
   _updateStatusGroupsUI() {
     const content = this.shadowRoot?.getElementById("status-groups-content");
     const chev = this.shadowRoot?.getElementById("status-groups-chev");
@@ -2947,6 +2998,11 @@ if (tmplSelect) {
       updater(nextGroups[index]);
       this._fire({ ...this._config, status_groups: nextGroups });
       if (rerender) this._updateStatusGroupsUI();
+    };
+    const suggestValueSource = group => {
+      if (trimStr(group.attribute)) return;
+      const source = this._getStatusGroupValueSources(group).find(source => source.recommended);
+      if (source) { group.attribute = source.value; group.unit = "%"; }
     };
     const moveGroup = (from, to) => {
       if (to < 0 || to >= groups.length) return;
@@ -3025,7 +3081,14 @@ if (tmplSelect) {
       entities.addEventListener("value-changed", (event) => {
         event.stopPropagation();
         const value = Array.isArray(event.detail?.value) ? event.detail.value.filter(Boolean) : [];
-        updateGroup(index, (nextGroup) => { nextGroup.entities = value; });
+        updateGroup(index, (nextGroup) => {
+          const wasEmpty = !Array.isArray(nextGroup.entities) || nextGroup.entities.length === 0;
+          nextGroup.entities = value;
+          if (wasEmpty && (nextGroup.aggregate === "sum" || nextGroup.display === "value")) suggestValueSource(nextGroup);
+        });
+        this._updateStatusGroupValueSources();
+        const unit = box.querySelector(".status-group-unit");
+        if (unit) unit.value = this._config.status_groups[index].unit || "";
       });
 
       const displayLabel = document.createElement("label");
@@ -3045,7 +3108,7 @@ if (tmplSelect) {
         event.stopPropagation();
         updateGroup(index, (nextGroup) => {
           nextGroup.display = event.target.value;
-          if (event.target.value === "value") nextGroup.aggregate = "sum";
+          if (event.target.value === "value") { nextGroup.aggregate = "sum"; suggestValueSource(nextGroup); }
           else delete nextGroup.aggregate;
         }, true);
       });
@@ -3065,27 +3128,34 @@ if (tmplSelect) {
 
       const numericFields = document.createElement("div");
       numericFields.style.display = display.value === "value" ? "" : "none";
-      const attribute = document.createElement("oneline-room-card-textfield");
-      attribute.className = "status-group-attribute";
-      attribute.label = getTranslation(this._hass, "chip_attribute");
-      attribute.placeholder = "current_position";
-      attribute.value = group.attribute || "";
-      attribute.style.width = "100%";
+      const sourceLabel = document.createElement("label");
+      sourceLabel.className = "image-preset-help";
+      sourceLabel.htmlFor = `status-group-value-source-${index}`;
+      sourceLabel.textContent = getTranslation(this._hass, "status_group_source");
+      const attribute = document.createElement("select");
+      attribute.id = sourceLabel.htmlFor;
+      attribute.className = "status-group-value-source";
+      attribute.dataset.statusGroupIndex = String(index);
+      attribute.setAttribute("aria-label", sourceLabel.textContent);
+      attribute.style.cssText = display.style.cssText;
       attribute.addEventListener("change", (event) => {
         event.stopPropagation();
         updateGroup(index, (nextGroup) => {
           const value = trimStr(event.target.value);
-          if (value) nextGroup.attribute = value;
+          if (value) {
+            nextGroup.attribute = value;
+            if (["current_position", "current_tilt_position"].includes(value)) nextGroup.unit = "%";
+          }
           else delete nextGroup.attribute;
-        });
+        }, true);
       });
       const attributeHelp = document.createElement("p");
-      attributeHelp.className = "image-preset-help";
-      attributeHelp.textContent = getTranslation(this._hass, "status_group_attribute_help");
+      attributeHelp.className = "image-preset-help status-group-source-help";
       const numericRow = document.createElement("div");
       numericRow.className = "row";
       numericRow.style.display = display.value === "value" ? "" : "none";
       const unit = document.createElement("oneline-room-card-textfield");
+      unit.className = "status-group-unit";
       unit.label = getTranslation(this._hass, "status_group_unit");
       unit.value = group.unit || "";
       unit.addEventListener("change", (event) => {
@@ -3107,7 +3177,7 @@ if (tmplSelect) {
         updateGroup(index, (nextGroup) => { nextGroup.precision = Math.max(0, Math.min(4, Number(event.target.value) || 0)); });
       });
       numericRow.append(unit, precision);
-      numericFields.append(attribute, attributeHelp, numericRow);
+      numericFields.append(sourceLabel, attribute, attributeHelp, numericRow);
 
       const color = document.createElement("oneline-room-card-textfield");
       color.label = getTranslation(this._hass, "color");
@@ -3154,6 +3224,7 @@ if (tmplSelect) {
       box.append(header, textRow, entities, displayLabel, display, activeStates, numericFields, color, toggles, conditionTitle, conditions);
       list.appendChild(box);
     });
+    this._updateStatusGroupValueSources();
   }
 
   _updateHeaderSectionUI() {

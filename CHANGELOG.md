@@ -4,6 +4,7 @@ All notable changes to OneLine Room Card are documented here.
 
 ## [Unreleased]
 
+* Editor: Replace the numeric status-attribute text field with a translated Value source dropdown. Offer State, readable cover Position/Tilt choices and shared numeric attributes using HA attribute labels. Suggest cover position and `%` on user actions, retain existing/unavailable YAML attributes, and refresh options without rebuilding the entity picker or changing saved configuration. Follow-up to #159.
 * Room status: Add an optional numeric `attribute` field in the visual editor/YAML, including direct cover-position summaries via `current_position`. Refresh on selected-attribute changes and show an unavailable result when no valid numbers exist instead of a misleading zero. Reject empty/malformed values while preserving real zero and compatible unit handling. Follow-up to #159.
 * Runtime & editor: Resolve default entity labels through `hass.formatEntityName()` with a safe legacy fallback. Preserve explicit labels (including intentionally empty control names), update when relevant entity/device/area/floor names change, and keep newly added controls dynamic instead of copying a name into saved YAML. Fixes #156.
 * Editor: Move translated switch labels into the controls' default slots for Home Assistant 2026.11, including dynamically created badge and status-group toggles. Retain layout hooks, config events and live/deferred preview behavior; refresh already-open editor markup. Fixes #155.

@@ -353,6 +353,12 @@ instead of an incorrect total.
 
 Numeric mode can also sum an explicitly selected `attribute`, such as
 `current_position` on cover entities. Leave it unset to sum entity states.
+In the visual editor, select **Value source → State**, **Position (%)**, or another
+shared numeric attribute instead of typing an internal attribute name. Cover groups
+suggest Position when switching to Numeric sum or adding covers to a new empty
+numeric group, and fill the output unit with `%`. Existing configuration is retained
+when opening the editor; configured attributes remain selectable if temporarily
+unavailable. Other attribute names use Home Assistant's translated labels when available.
 Attribute values use `unit` as a display label; the entity state's measurement
 unit is not applied or converted. Cover positions follow Home Assistant:
 `0` means closed and `100` means open. A position of `94 %` therefore corresponds

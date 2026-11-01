@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createHass, importRoomCard, installDomEnvironment } from "./support/dom-env.mjs";
+import { createHass, importRoomCard, installDomEnvironment, wait } from "./support/dom-env.mjs";
 
 installDomEnvironment();
 const { getConditionEntityDependencies, getStatusGroupResult } = await importRoomCard();
@@ -165,9 +165,9 @@ test("attribute-based status chips update when only the selected attribute chang
 test("status editor round-trips the numeric attribute through mode changes and removal", () => {
   const editor = document.createElement("oneline-room-card-editor");
   document.body.appendChild(editor);
-  editor.hass = createHass();
+  editor.hass = createHass({ states: { "cover.shutter": { state: "open", attributes: { current_position: 94, custom_reading: 42 } } } });
   editor.setConfig({ controls: [], status_groups: [{ entities: ["cover.shutter"], display: "value", attribute: "current_position", unit: "%" }] });
-  const field = () => editor.shadowRoot.querySelector(".status-group-attribute");
+  const field = () => editor.shadowRoot.querySelector(".status-group-value-source");
   assert.equal(field().value, "current_position");
   const selectMode = mode => {
     const select = editor.shadowRoot.querySelector(".status-group-editor select");
@@ -179,12 +179,98 @@ test("status editor round-trips the numeric attribute through mode changes and r
   assert.equal(field().parentElement.style.display, "none");
   selectMode("value");
   assert.equal(field().value, "current_position");
-  field().value = " custom_reading ";
+  field().value = "custom_reading";
   field().dispatchEvent(new Event("change", { bubbles: true }));
   assert.equal(editor._config.status_groups[0].attribute, "custom_reading");
   field().value = "";
   field().dispatchEvent(new Event("change", { bubbles: true }));
   assert.equal("attribute" in editor._config.status_groups[0], false);
+  editor.remove();
+});
+
+test("the editor suggests Position for covers on user actions and shows readable source labels", () => {
+  const hass = createHass({ language: "de", states: {
+    "cover.shutter": { state: "open", attributes: { current_position: 94, current_tilt_position: 50, supported_features: 15 } }
+  } });
+  const editor = document.createElement("oneline-room-card-editor");
+  document.body.appendChild(editor);
+  editor.hass = hass;
+  editor.setConfig({ controls: [], status_groups: [{ entities: ["cover.shutter"], display: "count" }] });
+  assert.equal("attribute" in editor._config.status_groups[0], false, "opening the editor does not rewrite existing config");
+  const display = editor.shadowRoot.querySelector(".status-group-editor select");
+  display.value = "value";
+  display.dispatchEvent(new Event("change", { bubbles: true }));
+  let source = editor.shadowRoot.querySelector(".status-group-value-source");
+  assert.equal(source.getAttribute("aria-label"), "Wertequelle");
+  assert.equal(source.value, "current_position");
+  assert.ok(Array.from(source.options).some(option => option.textContent === "Position (%) (empfohlen)"));
+  assert.ok(Array.from(source.options).some(option => option.textContent === "Neigung (%)"));
+  assert.equal(source.textContent.includes("current_position"), false);
+  assert.equal(source.textContent.includes("supported features"), false);
+  assert.equal(editor._config.status_groups[0].unit, "%");
+  assert.equal(getStatusGroupResult(editor._config.status_groups[0], hass).value, "94 %");
+  assert.match(editor.shadowRoot.querySelector(".status-group-source-help").textContent, /6% geschlossen/);
+
+  editor.setConfig({ controls: [], status_groups: [{ entities: [], display: "value" }] });
+  const picker = editor.shadowRoot.querySelector(".status-group-editor ha-selector");
+  picker.dispatchEvent(new CustomEvent("value-changed", { detail: { value: ["cover.shutter"] }, bubbles: true }));
+  assert.equal(editor.shadowRoot.querySelector(".status-group-editor ha-selector"), picker, "updating source choices preserves the open entity picker");
+  source = editor.shadowRoot.querySelector(".status-group-value-source");
+  assert.equal(source.value, "current_position");
+  assert.equal(editor.shadowRoot.querySelector(".status-group-unit").value, "%");
+  editor.remove();
+});
+
+test("source choices use HA attribute labels, offer shared numeric attributes and refresh without config edits", () => {
+  const makeStates = (extra = {}) => Object.fromEntries(["sensor.a", "sensor.b"].map(entity_id => [entity_id, {
+    entity_id, state: "10", attributes: { measurement: 12, zero: 0, supported_features: 15, text: "hello", empty: "", flag: false,
+      ...(entity_id === "sensor.a" ? { only_a: 3 } : {}), ...extra }
+  }]));
+  const hass = createHass({ states: makeStates(), formatEntityAttributeName(state, key) {
+    assert.ok(state.entity_id);
+    return `${this.language}: ${key}`;
+  } });
+  const editor = document.createElement("oneline-room-card-editor");
+  document.body.appendChild(editor);
+  editor.hass = hass;
+  editor.setConfig({ controls: [], status_groups: [{ entities: ["sensor.a", "sensor.b"], display: "value" }] });
+  const source = editor.shadowRoot.querySelector(".status-group-value-source");
+  assert.deepEqual(Array.from(source.options, option => option.value), ["", "measurement", "zero"]);
+  assert.equal(source.options[1].textContent, "en: measurement");
+  const snapshot = JSON.stringify(editor._config);
+  editor.hass = { ...hass, states: makeStates({ added: 42 }) };
+  assert.equal(editor.shadowRoot.querySelector(".status-group-value-source"), source);
+  assert.ok(Array.from(source.options).some(option => option.value === "added"));
+  assert.equal(JSON.stringify(editor._config), snapshot);
+  source.value = "added";
+  source.dispatchEvent(new Event("change", { bubbles: true }));
+  assert.equal(editor._config.status_groups[0].attribute, "added");
+  assert.equal(getStatusGroupResult(editor._config.status_groups[0], editor._hass).numericValue, 84);
+  editor.remove();
+});
+
+test("unavailable YAML attributes remain selectable and source changes honor deferred saving", async () => {
+  const editor = document.createElement("oneline-room-card-editor");
+  document.body.appendChild(editor);
+  editor.hass = createHass();
+  editor.setConfig({ controls: [], status_groups: [{ entities: ["sensor.missing"], display: "value", attribute: "custom_reading" }] });
+  let source = editor.shadowRoot.querySelector(".status-group-value-source");
+  assert.equal(source.value, "custom_reading");
+  assert.match(source.options[1].textContent, /not available for all selected entities/);
+  assert.equal(editor._config.status_groups[0].attribute, "custom_reading");
+  const received = [];
+  editor.addEventListener("config-changed", event => received.push(event.detail.config));
+  editor._livePreview = false;
+  source.value = "";
+  source.dispatchEvent(new Event("change", { bubbles: true }));
+  await wait(120);
+  assert.equal(received.length, 0);
+  assert.equal("attribute" in editor._pendingConfig.status_groups[0], false);
+  editor._flushPendingConfig();
+  assert.equal(received.length, 1);
+  assert.equal("attribute" in received[0].status_groups[0], false);
+  source = editor.shadowRoot.querySelector(".status-group-value-source");
+  assert.equal(source.value, "");
   editor.remove();
 });
 
