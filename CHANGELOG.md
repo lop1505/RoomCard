@@ -2,6 +2,17 @@
 
 All notable changes to OneLine Room Card are documented here.
 
+## [1.5.1]
+
+* Room status: Correct numeric sums for unitless template sensors with a configured display unit, and ignore count-only active-state filters in numeric mode. Show `—` with an explanation when no valid numeric inputs exist instead of a false zero; retain real zero and compatible power-unit conversion. Fixes #159.
+* Editor & room status: Add the Value source dropdown with State, Position (%), Tilt and other shared numeric attributes. Suggest cover position and `%` on user actions, so direct cover summaries need no template sensor or typed attribute name. Preserve existing/custom YAML attributes and deferred saving; update on selected-attribute changes. Ref #159.
+* Sensor icons: Honor custom entity icons and use the correct open/closed window, door or garage icons for contact chips. Fixes #154.
+* Home Assistant compatibility: Move translated static/dynamic switch labels into the controls' default slots for HA 2026.11. Preserve editor behavior and refresh labels on language changes and already-open editors after upgrades. Fixes #155.
+* Entity names: Use `hass.formatEntityName()` for default labels, with safe legacy fallbacks. Reflect relevant entity/device/area/floor name changes, preserve explicit labels, and keep newly added controls' default names dynamic. Fixes #156.
+* Validation & documentation: Pass 138 automated tests and reproducible bundle/release checks. The maintainer confirmed the tested changes work on HA 2026.10.4. Document Marketplace installation and remaining live HA 2026.11 checks under #157.
+
+---
+
 ## [1.5.0]
 
 * Build & architecture: Bundle with pinned esbuild 0.28.2 and separate helpers, translations, runtime, input compatibility and editor into test-gated modules. Keep the unminified single-file HACS artifact, registration order and relative room-image assets; check dependency direction, reproducibility and the shipped bundle. Ref #100.

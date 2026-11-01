@@ -1,5 +1,5 @@
 import { clampNum, replaceTemplateExpressions, trimStr } from "../lib/values.js";
-import { formatEntityStateForDisplay, formatEntityAttributeForDisplay } from "../lib/formatting.js";
+import { getEntityDisplayName, formatEntityStateForDisplay, formatEntityAttributeForDisplay } from "../lib/formatting.js";
 import { normalizeTemperatureUnit, convertTemperatureValue, temperatureNumberLocale, formatConvertedTemperature, formatTemperatureStateForDisplay, formatTemperatureAttributeForDisplay } from "../lib/temperature.js";
 import { hexToRgba, readableTextForHex, parseColorToPickerHex } from "../lib/colors.js";
 import { STATE_DEFINITIONS, DOMAIN_STATE_ICON_MAPS, getEntityDomain, getEntityStateValue, isOfflineStateValue, isEntityOffline, isEntityOn, isEntityOff, isEntityActive } from "../lib/states.js";
@@ -108,11 +108,25 @@ connectedCallback() {
   set hass(hass) {
     const upd = this._hass?.language !== hass?.language;
     this._hass = hass;
-    if (upd) { this._controlTemplatesCache = null; this._navOptionsLoaded = false; this.render(); return; }
+    if (upd) { this._controlTemplatesCache = null; this._navOptionsLoaded = false; this.shadowRoot.replaceChildren(); this.render(); return; }
+    const nameSignature = this._getEntityNameSignature(hass);
+    const namesChanged = this._lastEntityNameSignature !== nameSignature;
+    this._lastEntityNameSignature = nameSignature;
     if (this.shadowRoot) {
       this.shadowRoot.querySelectorAll("ha-selector,ha-entity-picker,ha-icon-picker,oneline-room-card-textfield,ha-switch,ha-card-conditions-editor").forEach(e => {
         if (e.hass !== hass) e.hass = hass;
       });
+      if (namesChanged) {
+        this.renBtn();
+        this._updateBadgesUI();
+        this._updateWindowLabelsUI();
+        this._updateRoomModesUI();
+        this.shadowRoot.querySelectorAll("#alert-sensors-list .badge-entity-label").forEach((label, index) => {
+          const config = normalizeAlertSensorConfig(this._config?.alert_sensors?.[index]);
+          label.textContent = config?.entity ? getEntityDisplayName(hass, config.entity) : getTranslation(hass, "alert_sensor_entity");
+        });
+      }
+      this._updateStatusGroupValueSources();
       this.updPreview();
       if (this._config && (!this.shadowRoot.getElementById("show-name-toggle") || !this.shadowRoot.getElementById("typo-sec"))) {
         this.shadowRoot.replaceChildren();
@@ -120,6 +134,15 @@ connectedCallback() {
         return;
       }
     }
+  }
+
+  _getEntityNameSignature(hass) {
+    const config = this._config || {};
+    const list = key => Array.isArray(config[key]) ? config[key] : [];
+    const ids = [config.entity, ...list("window_sensors"),
+      ...["controls", "header_badges", "room_modes", "alert_sensors"].flatMap(key =>
+        list(key).map(item => typeof item === "string" ? item : item?.entity))];
+    return JSON.stringify([...new Set(ids.filter(Boolean))].map(id => [id, getEntityDisplayName(hass, id)]));
   }
 
   _fire(config) {
@@ -472,7 +495,6 @@ connectedCallback() {
 
   _buildControlFromTemplate(template, entityId) {
     const st = this._hass?.states?.[entityId];
-    const name = st?.attributes?.friendly_name || "";
     const domain = entityId?.split(".")[0] || "";
     const defaults = template?.defaults || {};
     const iconField = DOMAIN_STATE_ICON_MAPS[domain]
@@ -480,7 +502,6 @@ connectedCallback() {
       : { icon: st?.attributes?.icon || template?.defaults?.icon || this._iconForEntity(entityId) };
     return {
       entity: entityId || "",
-      name,
       ...iconField,
       width: defaults.width ?? 15,
       height: defaults.height ?? 60,
@@ -898,12 +919,10 @@ connectedCallback() {
         </div>
         <div id="card-beh-content">
         <div class="editor-stack">
-          <ha-formfield label="${getTranslation(h, "live_preview")}">
-            <ha-switch id="live-preview-toggle" checked></ha-switch>
-          </ha-formfield>
+          <ha-switch id="live-preview-toggle" checked>${getTranslation(h, "live_preview")}</ha-switch>
           <div class="field-with-inline-control">
             <oneline-room-card-textfield label="${getTranslation(h, "name")}" cfg="name" class="i" style="width: 100%;"></oneline-room-card-textfield>
-            <ha-switch id="show-name-toggle" checked title="${getTranslation(h, "show_name")}"
+            <ha-switch id="show-name-toggle" checked title="${getTranslation(h, "show_name")}" aria-label="${getTranslation(h, "show_name")}"
                        class="field-inline-switch" style="--mdc-switch-size: 20px;"></ha-switch>
           </div>
           <div style="width:100%;">
@@ -943,7 +962,7 @@ connectedCallback() {
       </div>
       <div class="sec">
         <h3>${getTranslation(h, "room_details")}</h3>
-        <ha-formfield label="${getTranslation(h, "drawer_enable")}"><ha-switch id="drawer-enabled"></ha-switch></ha-formfield>
+        <ha-switch id="drawer-enabled">${getTranslation(h, "drawer_enable")}</ha-switch>
         <oneline-room-card-textfield id="drawer-title" label="${getTranslation(h, "drawer_title")}" style="display:block;margin-top:12px"></oneline-room-card-textfield>
         <p>${getTranslation(h, "drawer_help")}</p>
         <button type="button" id="drawer-preview">${getTranslation(h, "drawer_preview")}</button>
@@ -1012,9 +1031,7 @@ connectedCallback() {
             <div class="image-title" style="margin-bottom:8px">${getTranslation(h, "main_climate")}</div>
             <ha-entity-picker label="${getTranslation(h, "entity")}" cfg="entity" class="i" include-domains='["climate"]' style="width:100%"></ha-entity-picker>
             <div class="row" style="margin-top:8px; align-items:center;">
-              <ha-formfield label="${getTranslation(h, "badge_auto_climate_btn")}">
-                <ha-switch id="auto-climate-btn-toggle"></ha-switch>
-              </ha-formfield>
+              <ha-switch id="auto-climate-btn-toggle">${getTranslation(h, "badge_auto_climate_btn")}</ha-switch>
             </div>
             
             <div style="margin-bottom:8px; width:100%;">
@@ -1037,9 +1054,7 @@ connectedCallback() {
 
             <div class="image-title" style="margin:12px 0 8px">${getTranslation(h, "last_activity_title")}</div>
             <div class="row" style="margin-bottom: 8px; align-items:center;">
-              <ha-formfield label="${getTranslation(h, "last_activity_show")}">
-                <ha-switch id="hla-show"></ha-switch>
-              </ha-formfield>
+              <ha-switch id="hla-show">${getTranslation(h, "last_activity_show")}</ha-switch>
             </div>
 
 
@@ -1068,9 +1083,7 @@ connectedCallback() {
               <input id="focal-y" type="range" min="0" max="100" step="1"><span id="focal-y-value">50%</span>
               <mwc-button id="focal-center" label="${getTranslation(h, "image_center")}"></mwc-button>
             </div>
-            <ha-formfield label="${getTranslation(h, "show_image")}" style="display:flex;align-items:center;margin-bottom:8px">
-              <ha-switch id="show-image-toggle"></ha-switch>
-            </ha-formfield>
+            <div style="display:flex;align-items:center;margin-bottom:8px"><ha-switch id="show-image-toggle">${getTranslation(h, "show_image")}</ha-switch></div>
             <div class="image-preset-heading">${getTranslation(h, "image_preset_title")}</div>
             <div class="image-preset-help">${getTranslation(h, "image_preset_help")}</div>
             <div id="image-presets" class="image-presets"></div>
@@ -1150,9 +1163,7 @@ connectedCallback() {
                 </div>
               </div>
             </div>
-            <ha-formfield label="${getTranslation(h, "show_header_text_shadow")}" style="display:flex;align-items:center;margin-top:10px">
-              <ha-switch id="header-text-shadow-toggle"></ha-switch>
-            </ha-formfield>
+            <div style="display:flex;align-items:center;margin-top:10px"><ha-switch id="header-text-shadow-toggle">${getTranslation(h, "show_header_text_shadow")}</ha-switch></div>
           </div>
         </div>
         <div id="layout-sec" class="manual-sec" style="margin-top:12px">
@@ -1162,9 +1173,7 @@ connectedCallback() {
           </div>
           <div id="layout-content" class="manual-content" hidden>
             <div class="row" style="margin-top:4px; align-items:center; margin-bottom: 4px;">
-              <ha-formfield label="${getTranslation(h, "header_sync_offsets")}">
-                <ha-switch id="sync-offsets-toggle"></ha-switch>
-              </ha-formfield>
+              <ha-switch id="sync-offsets-toggle">${getTranslation(h, "header_sync_offsets")}</ha-switch>
             </div>
             <div style="margin-top:10px">
               <div class="image-title" style="margin-bottom:4px">${getTranslation(h, "header_name_offset")}</div>
@@ -1198,18 +1207,12 @@ connectedCallback() {
           </div>
           <div id="sensors-content" class="manual-content" hidden>
             <div class="image-title" style="font-size:11px;font-weight:600;opacity:0.6;margin-bottom:6px">${getTranslation(h, "sensors_manual")}</div>
-            <ha-formfield label="${getTranslation(h, "show_chip_shadow")}" style="display:flex;align-items:center;margin:4px 0 8px">
-              <ha-switch id="chip-shadow-toggle"></ha-switch>
-            </ha-formfield>
-            <ha-formfield label="${getTranslation(h, "show_status_border")}" style="display:flex;align-items:center;margin:4px 0 2px">
-              <ha-switch id="status-border-toggle"></ha-switch>
-            </ha-formfield>
+            <div style="display:flex;align-items:center;margin:4px 0 8px"><ha-switch id="chip-shadow-toggle">${getTranslation(h, "show_chip_shadow")}</ha-switch></div>
+            <div style="display:flex;align-items:center;margin:4px 0 2px"><ha-switch id="status-border-toggle">${getTranslation(h, "show_status_border")}</ha-switch></div>
             <div style="font-size:11px;opacity:0.65;margin:0 0 8px 42px">${getTranslation(h, "show_status_border_help")}</div>
             <ha-entity-picker label="${getTranslation(h, "presence_sensor")}" cfg="presence_sensor" class="i" allow-custom-entity include-domains='["person", "binary_sensor", "device_tracker"]'></ha-entity-picker>
             <div class="sensor-label-wrap"><label class="window-label-field-label">${getTranslation(h, "window_custom_label")}</label><input class="window-label-input sensor-label-input" data-cfg="presence_sensor_label" type="text" placeholder="${getTranslation(h, "presence_sensor")}"></div>
-            <ha-formfield label="${getTranslation(h, "presence_solid_background")}" style="display:flex;align-items:center;margin:8px 0 4px">
-              <ha-switch id="presence-solid-bg"></ha-switch>
-            </ha-formfield>
+            <div style="display:flex;align-items:center;margin:8px 0 4px"><ha-switch id="presence-solid-bg">${getTranslation(h, "presence_solid_background")}</ha-switch></div>
             <div id="presence-chip-color-row" style="position:relative;display:flex;align-items:flex-end;margin-bottom:8px">
               <oneline-room-card-textfield id="presence-chip-color" label="${getTranslation(h, "presence_chip_color")}" placeholder="#4CAF50" style="width:100%"></oneline-room-card-textfield>
               <div class="color-container" style="position:absolute;right:8px;bottom:8px;z-index:1">
@@ -1228,12 +1231,8 @@ connectedCallback() {
             <div class="sensor-label-wrap"><label class="window-label-field-label">${getTranslation(h, "window_custom_label")}</label><input class="window-label-input sensor-label-input" data-cfg="humid_sensor_label" type="text" placeholder="${getTranslation(h, "humid_label")}"></div>
             <oneline-room-card-textfield label="${getTranslation(h, "humid_warn_threshold")}" cfg="humidity_warning_threshold" class="i" type="number"></oneline-room-card-textfield>
             <ha-selector cfg="window_sensors" class="i" label="${getTranslation(h, "window_label")}"></ha-selector>
-            <ha-formfield id="window-always-show-field" label="${getTranslation(h, "window_always_show")}" style="display:flex;align-items:center;margin:4px 0">
-              <ha-switch id="window-always-show"></ha-switch>
-            </ha-formfield>
-            <ha-formfield id="window-solid-bg-field" label="${getTranslation(h, "window_solid_background")}" style="display:flex;align-items:center;margin:4px 0">
-              <ha-switch id="window-solid-bg"></ha-switch>
-            </ha-formfield>
+            <div id="window-always-show-field" style="display:flex;align-items:center;margin:4px 0"><ha-switch id="window-always-show">${getTranslation(h, "window_always_show")}</ha-switch></div>
+            <div id="window-solid-bg-field" style="display:flex;align-items:center;margin:4px 0"><ha-switch id="window-solid-bg">${getTranslation(h, "window_solid_background")}</ha-switch></div>
             <div id="window-open-color-row" style="position: relative; display: flex; align-items: flex-end; margin-top: 8px;">
               <oneline-room-card-textfield label="${getTranslation(h, "window_open_color")}" id="window-open-color" cfg="window_open_color" style="width: 100%"></oneline-room-card-textfield>
               <div class="color-container" style="position: absolute; right: 8px; bottom: 8px; z-index: 1;">
@@ -1279,8 +1278,7 @@ connectedCallback() {
                 <ha-icon icon="mdi:plus" slot="icon"></ha-icon>
               </mwc-button>
               <div style="margin-top:12px;padding:8px;background:rgba(0,0,0,0.1);border-radius:6px;display:flex;align-items:center;justify-content:space-between">
-                <div style="font-size:12px;font-weight:500">${getTranslation(h, "alert_chip_collapsed")}</div>
-                <ha-switch id="alert-chip-mode-toggle"></ha-switch>
+                <ha-switch id="alert-chip-mode-toggle" style="width:100%;font-size:12px;font-weight:500">${getTranslation(h, "alert_chip_collapsed")}</ha-switch>
               </div>
               <div style="margin-top:8px">
                 <oneline-room-card-textfield label="${getTranslation(h, "alert_border_color")}" id="alert-border-color" cfg="alert_border_color" class="i" placeholder="#d32f2d" style="width:100%"></oneline-room-card-textfield>
@@ -1940,7 +1938,7 @@ connectedCallback() {
         const entityLabel = document.createElement("span");
         entityLabel.className = "badge-entity-label";
         entityLabel.textContent = cfg.entity
-          ? (h.states[cfg.entity]?.attributes?.friendly_name || cfg.entity)
+          ? getEntityDisplayName(h, cfg.entity)
           : getTranslation(h, "alert_sensor_entity");
         const deleteBtn = document.createElement("button");
         deleteBtn.type = "button";
@@ -2726,15 +2724,12 @@ if (tmplSelect) {
     this.shadowRoot.getElementById("add").addEventListener("click", () => {
       const c = [...(this._config.controls || [])];
       let w = 15; if (c.length > 0) w = c[c.length - 1].width || 15;
-      let ent = "", n = "";
+      let ent = "";
       if (c.length === 0 && this._config.entity) {
         ent = this._config.entity;
-        if (this._hass?.states[ent]) {
-          n = this._hass.states[ent].attributes.friendly_name || "";
-        }
       }
       const addDomain = ent.split(".")[0];
-      const newCtrl = { entity: ent, name: n, width: w, height: 60 };
+      const newCtrl = { entity: ent, width: w, height: 60 };
       if (!DOMAIN_STATE_ICON_MAPS[addDomain]) {
         newCtrl.icon = this._hass?.states[ent]?.attributes?.icon || this._iconForEntity(ent) || "mdi:lightbulb";
       }
@@ -2837,7 +2832,7 @@ if (tmplSelect) {
       header.className = "badge-head-row";
       const label = document.createElement("span");
       label.className = "badge-entity-label";
-      label.textContent = `${index + 1}. ${mode.name || this._hass?.states?.[mode.entity]?.attributes?.friendly_name || mode.entity || getTranslation(this._hass, "room_modes")}`;
+      label.textContent = `${index + 1}. ${getEntityDisplayName(this._hass, mode.entity, mode.name || undefined) || getTranslation(this._hass, "room_modes")}`;
       const actions = document.createElement("div");
       actions.className = "room-mode-editor-actions";
       const makeAction = (iconName, ariaLabel, disabled, action) => {
@@ -2932,6 +2927,56 @@ if (tmplSelect) {
     });
   }
 
+  _getStatusGroupValueSources(group) {
+    const ids = [...new Set((Array.isArray(group?.entities) ? group.entities : [])
+      .map(entry => typeof entry === "string" ? entry : entry?.entity).filter(Boolean))];
+    const states = ids.map(id => this._hass?.states?.[id]).filter(Boolean);
+    const isNumber = value => (typeof value === "number" || (typeof value === "string" && value.trim() !== "")) && Number.isFinite(Number(value));
+    const keys = states.length > 0 ? Object.keys(states[0].attributes || {}).filter(key =>
+      key !== "supported_features" && states.every(state => isNumber(state.attributes?.[key]))) : [];
+    const allCovers = ids.length > 0 && ids.length === states.length && ids.every(id => getEntityDomain(id) === "cover");
+    const current = trimStr(group?.attribute);
+    if (current && !keys.includes(current)) keys.push(current);
+    const attributes = keys.map(key => {
+      let label = key.replace(/_/g, " ");
+      if (key === "current_position") label = getTranslation(this._hass, "status_group_source_position");
+      else if (key === "current_tilt_position") label = getTranslation(this._hass, "status_group_source_tilt");
+      else {
+        try {
+          const name = this._hass?.formatEntityAttributeName?.(states[0], key);
+          if (typeof name === "string" && name.trim()) label = name;
+        } catch (_error) { }
+      }
+      const available = states.length > 0 && states.every(state => isNumber(state.attributes?.[key]));
+      return { value: key, label, available, recommended: allCovers && key === "current_position" && available };
+    }).sort((a, b) => Number(b.recommended) - Number(a.recommended) || a.label.localeCompare(b.label));
+    return [{ value: "", label: getTranslation(this._hass, "status_group_source_state"), available: true }, ...attributes];
+  }
+
+  _updateStatusGroupValueSources() {
+    this.shadowRoot?.querySelectorAll(".status-group-value-source").forEach(select => {
+      const group = this._config?.status_groups?.[Number(select.dataset.statusGroupIndex)];
+      const options = this._getStatusGroupValueSources(group);
+      const value = trimStr(group?.attribute);
+      const signature = JSON.stringify([options, value]);
+      if (select.dataset.sourceSignature === signature) return;
+      select.dataset.sourceSignature = signature;
+      select.replaceChildren(...options.map(source => {
+        const option = document.createElement("option");
+        option.value = source.value;
+        const suffix = source.recommended ? getTranslation(this._hass, "status_group_source_recommended")
+          : (!source.available ? getTranslation(this._hass, "status_group_source_unavailable") : "");
+        option.textContent = suffix ? `${source.label} (${suffix})` : source.label;
+        return option;
+      }));
+      select.value = value;
+      const help = select.parentElement.querySelector(".status-group-source-help");
+      if (help) help.textContent = getTranslation(this._hass,
+        ["current_position", "current_tilt_position"].includes(value) || options.some(source => source.recommended)
+          ? "status_group_position_help" : "status_group_attribute_help");
+    });
+  }
+
   _updateStatusGroupsUI() {
     const content = this.shadowRoot?.getElementById("status-groups-content");
     const chev = this.shadowRoot?.getElementById("status-groups-chev");
@@ -2953,6 +2998,11 @@ if (tmplSelect) {
       updater(nextGroups[index]);
       this._fire({ ...this._config, status_groups: nextGroups });
       if (rerender) this._updateStatusGroupsUI();
+    };
+    const suggestValueSource = group => {
+      if (trimStr(group.attribute)) return;
+      const source = this._getStatusGroupValueSources(group).find(source => source.recommended);
+      if (source) { group.attribute = source.value; group.unit = "%"; }
     };
     const moveGroup = (from, to) => {
       if (to < 0 || to >= groups.length) return;
@@ -3031,7 +3081,14 @@ if (tmplSelect) {
       entities.addEventListener("value-changed", (event) => {
         event.stopPropagation();
         const value = Array.isArray(event.detail?.value) ? event.detail.value.filter(Boolean) : [];
-        updateGroup(index, (nextGroup) => { nextGroup.entities = value; });
+        updateGroup(index, (nextGroup) => {
+          const wasEmpty = !Array.isArray(nextGroup.entities) || nextGroup.entities.length === 0;
+          nextGroup.entities = value;
+          if (wasEmpty && (nextGroup.aggregate === "sum" || nextGroup.display === "value")) suggestValueSource(nextGroup);
+        });
+        this._updateStatusGroupValueSources();
+        const unit = box.querySelector(".status-group-unit");
+        if (unit) unit.value = this._config.status_groups[index].unit || "";
       });
 
       const displayLabel = document.createElement("label");
@@ -3051,7 +3108,7 @@ if (tmplSelect) {
         event.stopPropagation();
         updateGroup(index, (nextGroup) => {
           nextGroup.display = event.target.value;
-          if (event.target.value === "value") nextGroup.aggregate = "sum";
+          if (event.target.value === "value") { nextGroup.aggregate = "sum"; suggestValueSource(nextGroup); }
           else delete nextGroup.aggregate;
         }, true);
       });
@@ -3069,10 +3126,36 @@ if (tmplSelect) {
         });
       });
 
+      const numericFields = document.createElement("div");
+      numericFields.style.display = display.value === "value" ? "" : "none";
+      const sourceLabel = document.createElement("label");
+      sourceLabel.className = "image-preset-help";
+      sourceLabel.htmlFor = `status-group-value-source-${index}`;
+      sourceLabel.textContent = getTranslation(this._hass, "status_group_source");
+      const attribute = document.createElement("select");
+      attribute.id = sourceLabel.htmlFor;
+      attribute.className = "status-group-value-source";
+      attribute.dataset.statusGroupIndex = String(index);
+      attribute.setAttribute("aria-label", sourceLabel.textContent);
+      attribute.style.cssText = display.style.cssText;
+      attribute.addEventListener("change", (event) => {
+        event.stopPropagation();
+        updateGroup(index, (nextGroup) => {
+          const value = trimStr(event.target.value);
+          if (value) {
+            nextGroup.attribute = value;
+            if (["current_position", "current_tilt_position"].includes(value)) nextGroup.unit = "%";
+          }
+          else delete nextGroup.attribute;
+        }, true);
+      });
+      const attributeHelp = document.createElement("p");
+      attributeHelp.className = "image-preset-help status-group-source-help";
       const numericRow = document.createElement("div");
       numericRow.className = "row";
       numericRow.style.display = display.value === "value" ? "" : "none";
       const unit = document.createElement("oneline-room-card-textfield");
+      unit.className = "status-group-unit";
       unit.label = getTranslation(this._hass, "status_group_unit");
       unit.value = group.unit || "";
       unit.addEventListener("change", (event) => {
@@ -3094,6 +3177,7 @@ if (tmplSelect) {
         updateGroup(index, (nextGroup) => { nextGroup.precision = Math.max(0, Math.min(4, Number(event.target.value) || 0)); });
       });
       numericRow.append(unit, precision);
+      numericFields.append(sourceLabel, attribute, attributeHelp, numericRow);
 
       const color = document.createElement("oneline-room-card-textfield");
       color.label = getTranslation(this._hass, "color");
@@ -3110,16 +3194,14 @@ if (tmplSelect) {
       const toggles = document.createElement("div");
       toggles.className = "editor-stack";
       const makeToggle = (labelKey, key) => {
-        const formfield = document.createElement("ha-formfield");
-        formfield.label = getTranslation(this._hass, labelKey);
         const toggle = document.createElement("ha-switch");
+        toggle.textContent = getTranslation(this._hass, labelKey);
         toggle.checked = group[key] === true;
         toggle.addEventListener("change", (event) => {
           event.stopPropagation();
           updateGroup(index, (nextGroup) => { nextGroup[key] = event.target.checked === true; });
         });
-        formfield.appendChild(toggle);
-        return formfield;
+        return toggle;
       };
       toggles.append(makeToggle("status_group_hide_zero", "hide_when_zero"), makeToggle("status_group_details", "details"));
 
@@ -3139,9 +3221,10 @@ if (tmplSelect) {
         });
       });
 
-      box.append(header, textRow, entities, displayLabel, display, activeStates, numericRow, color, toggles, conditionTitle, conditions);
+      box.append(header, textRow, entities, displayLabel, display, activeStates, numericFields, color, toggles, conditionTitle, conditions);
       list.appendChild(box);
     });
+    this._updateStatusGroupValueSources();
   }
 
   _updateHeaderSectionUI() {
@@ -3603,7 +3686,7 @@ if (tmplSelect) {
       const labelField = document.createElement("input");
       labelField.type = "text";
       labelField.className = "window-label-input";
-      labelField.placeholder = h?.states?.[entity]?.attributes?.friendly_name || getTranslation(h, "window");
+      labelField.placeholder = getEntityDisplayName(h, entity);
       labelField.value = label || "";
       labelField.addEventListener("change", (ev) => {
         ev.stopPropagation();
@@ -3756,7 +3839,7 @@ if (tmplSelect) {
 
       const lf = document.createElement("oneline-room-card-textfield");
       lf.label = getTranslation(h, "badge_label");
-      lf.placeholder = h?.states[badge.entity]?.attributes?.friendly_name || "";
+      lf.placeholder = getEntityDisplayName(h, badge.entity);
       lf.value = badge.label || "";
       lf.style.width = "100%";
       lf.addEventListener("change", (ev) => {
@@ -3768,27 +3851,23 @@ if (tmplSelect) {
       const toggleRow = document.createElement("div");
       toggleRow.style.cssText = "display: flex; gap: 16px; align-items: center; padding-left: 4px;";
 
-      const nameFormfield = document.createElement("ha-formfield");
-      nameFormfield.label = getTranslation(h, "show_name");
       const nameSwitch = document.createElement("ha-switch");
+      nameSwitch.textContent = getTranslation(h, "show_name");
       nameSwitch.checked = badge.show_name !== false;
       nameSwitch.addEventListener("change", (ev) => {
         ev.stopPropagation();
         updBadge(idx, "show_name", ev.target.checked !== false);
       });
-      nameFormfield.appendChild(nameSwitch);
-      toggleRow.appendChild(nameFormfield);
+      toggleRow.appendChild(nameSwitch);
 
-      const lcFormfield = document.createElement("ha-formfield");
-      lcFormfield.label = getTranslation(h, "show_last_changed");
       const lcSwitch = document.createElement("ha-switch");
+      lcSwitch.textContent = getTranslation(h, "show_last_changed");
       lcSwitch.checked = badge.show_last_changed === true;
       lcSwitch.addEventListener("change", (ev) => {
         ev.stopPropagation();
         updBadge(idx, "show_last_changed", ev.target.checked === true);
       });
-      lcFormfield.appendChild(lcSwitch);
-      toggleRow.appendChild(lcFormfield);
+      toggleRow.appendChild(lcSwitch);
 
       labelRow.appendChild(toggleRow);
       box.appendChild(labelRow);
@@ -3940,6 +4019,7 @@ if (tmplSelect) {
     const div = this.shadowRoot.getElementById("b"); if (!div) return;
     const h = this._hass;
     if (!h) return;
+    this._lastEntityNameSignature = this._getEntityNameSignature(h);
     this._syncControlIds();
     const actOpts = [
       { value: "room-details", label: getTranslation(h, "room_details") },
@@ -3971,7 +4051,7 @@ if (tmplSelect) {
       const showMode = (ctrl.control_mode === "slider" && r_dom === "light" && r_hasColorTemp) ? "block" : "none";
       box.open = this._collapsedState[key] !== true;
       box.addEventListener("toggle", () => { this._collapsedState[key] = !box.open; this._updateBulkToggleButton(); });
-      const summaryText = ctrl.name || ctrl.entity || (isTemplate ? (ctrl.content || "Template") : "Button");
+      const summaryText = isTemplate ? (ctrl.name || ctrl.content || "Template") : (getEntityDisplayName(h, ctrl.entity, ctrl.name) || "Button");
       // Static per-control editor scaffold. summaryText is assigned with textContent below.
       box.innerHTML = `
         <summary class="head">
@@ -4030,7 +4110,7 @@ if (tmplSelect) {
           <oneline-room-card-textfield class="ts" label="${getTranslation(h, "tmpl_state")}"></oneline-room-card-textfield>
           <div class="tmpl-preview"><span>${getTranslation(h, "tmpl_preview")}:</span> <ha-icon class="tp-ic"></ha-icon> <span class="tp-tx"></span></div>
         </details>
-        <div class="row" style="margin-top:8px; align-items:center"><ha-selector class="al" label="${getTranslation(h, "align")}"></ha-selector><ha-selector class="lp" label="${getTranslation(h, "label_position")}"></ha-selector><ha-selector class="tl" label="${getTranslation(h, "text_layout")}"></ha-selector><ha-formfield label="${getTranslation(h, "show_state")}"><ha-switch class="ss" checked></ha-switch></ha-formfield><ha-formfield label="${getTranslation(h, "show_label")}"><ha-switch class="sl" checked></ha-switch></ha-formfield><ha-formfield label="${getTranslation(h, "show_icon")}"><ha-switch class="si" checked></ha-switch></ha-formfield><ha-formfield label="${getTranslation(h, "show_last_changed")}"><ha-switch class="slc"></ha-switch></ha-formfield><ha-formfield label="${getTranslation(h, "show_sparkline")}"><ha-switch class="sps"></ha-switch></ha-formfield><oneline-room-card-textfield class="sh" label="${getTranslation(h, "sparkline_hours")}" type="number" placeholder="24" style="max-width:120px"></oneline-room-card-textfield><ha-formfield class="spd-wrap" label="${getTranslation(h, "sparkline_detail")}" style="display:${r_dom === "sensor" && ctrl.show_sparkline === true ? "inline-flex" : "none"}"><ha-switch class="spd"></ha-switch></ha-formfield><ha-formfield label="${getTranslation(h, "visible")}"><ha-switch class="hd" checked></ha-switch></ha-formfield></div>
+        <div class="row" style="margin-top:8px; align-items:center"><ha-selector class="al" label="${getTranslation(h, "align")}"></ha-selector><ha-selector class="lp" label="${getTranslation(h, "label_position")}"></ha-selector><ha-selector class="tl" label="${getTranslation(h, "text_layout")}"></ha-selector><ha-switch class="ss" checked>${getTranslation(h, "show_state")}</ha-switch><ha-switch class="sl" checked>${getTranslation(h, "show_label")}</ha-switch><ha-switch class="si" checked>${getTranslation(h, "show_icon")}</ha-switch><ha-switch class="slc">${getTranslation(h, "show_last_changed")}</ha-switch><ha-switch class="sps">${getTranslation(h, "show_sparkline")}</ha-switch><oneline-room-card-textfield class="sh" label="${getTranslation(h, "sparkline_hours")}" type="number" placeholder="24" style="max-width:120px"></oneline-room-card-textfield><div class="spd-wrap" style="display:${r_dom === "sensor" && ctrl.show_sparkline === true ? "inline-flex" : "none"}"><ha-switch class="spd">${getTranslation(h, "sparkline_detail")}</ha-switch></div><ha-switch class="hd" checked>${getTranslation(h, "visible")}</ha-switch></div>
         <div class="entity-only ${hideEntity}" style="margin-top:12px; border-top:1px solid var(--divider-color); padding-top:12px">
            <oneline-room-card-textfield class="isz" label="${getTranslation(h, "icon_size")}" type="number" style="max-width:120px" placeholder="20"></oneline-room-card-textfield>
            <ha-selector class="cm" label="${getTranslation(h, "control_mode")}"></ha-selector>
@@ -4047,28 +4127,28 @@ if (tmplSelect) {
         </div>
         <div class="entity-only cover-only ${hideEntity}" style="margin-top:8px; border-top:1px solid var(--divider-color); padding-top:8px">
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-            <ha-formfield label="${getTranslation(h, "show_cover_presets")}"><ha-switch class="scp"></ha-switch></ha-formfield>
+            <ha-switch class="scp">${getTranslation(h, "show_cover_presets")}</ha-switch>
             <oneline-room-card-textfield class="cpv" label="${getTranslation(h, "cover_presets_label")}" placeholder="0, 25, 50, 75, 100" style="flex:1;min-width:160px"></oneline-room-card-textfield>
           </div>
         </div>
         <div class="entity-only climate-only ${hideEntity}" style="margin-top:8px; border-top:1px solid var(--divider-color); padding-top:8px">
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-            <ha-formfield label="${getTranslation(h, "show_climate_presets")}"><ha-switch class="sctp"></ha-switch></ha-formfield>
+            <ha-switch class="sctp">${getTranslation(h, "show_climate_presets")}</ha-switch>
             <oneline-room-card-textfield class="ctpv" label="${getTranslation(h, "climate_presets_label")}" placeholder="0, 18, 20, auto, max" style="flex:1;min-width:160px"></oneline-room-card-textfield>
           </div>
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px">
-            <ha-formfield label="${getTranslation(h, "show_hvac_modes")}"><ha-switch class="shvac"></ha-switch></ha-formfield>
-            <ha-formfield label="${getTranslation(h, "show_fan_modes")}"><ha-switch class="sfan"></ha-switch></ha-formfield>
+            <ha-switch class="shvac">${getTranslation(h, "show_hvac_modes")}</ha-switch>
+            <ha-switch class="sfan">${getTranslation(h, "show_fan_modes")}</ha-switch>
           </div>
         </div>
         <div class="entity-only light-only ${hideEntity}" style="margin-top:8px; border-top:1px solid var(--divider-color); padding-top:8px">
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
-            <ha-formfield label="${getTranslation(h, "show_brightness_value")}"><ha-switch class="sbv"></ha-switch></ha-formfield>
-            <ha-formfield label="${getTranslation(h, "show_brightness_presets")}"><ha-switch class="sbp"></ha-switch></ha-formfield>
+            <ha-switch class="sbv">${getTranslation(h, "show_brightness_value")}</ha-switch>
+            <ha-switch class="sbp">${getTranslation(h, "show_brightness_presets")}</ha-switch>
             <oneline-room-card-textfield class="bpv" label="${getTranslation(h, "brightness_presets_label")}" placeholder="25, 50, 75, 100" style="flex:1;min-width:160px"></oneline-room-card-textfield>
           </div>
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-            <ha-formfield label="${getTranslation(h, "show_color_favorites")}"><ha-switch class="scf"></ha-switch></ha-formfield>
+            <ha-switch class="scf">${getTranslation(h, "show_color_favorites")}</ha-switch>
             <div class="cfv-swatches" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-height:28px"></div>
           </div>
         </div>
@@ -4232,7 +4312,6 @@ if (tmplSelect) {
           const val = e.detail.value; const st = h.states[val]; const c = [...this._config.controls];
           const epDomain = val?.split(".")[0] || "";
           let next = { ...c[i], entity: val };
-          if (st?.attributes?.friendly_name) next.name = st.attributes.friendly_name;
           if (DOMAIN_STATE_ICON_MAPS[epDomain]) {
             delete next.icon;
           } else {
@@ -4259,15 +4338,17 @@ if (tmplSelect) {
             if (ent) {
               next.entity = ent;
               next.icon = this._iconForEntity(ent);
-              const st = h.states[ent];
-              if (st?.attributes?.friendly_name) next.name = st.attributes.friendly_name;
             }
           }
           keepOpen(); c[i] = next; this._fire({ ...this._config, controls: c }); this.renBtn();
         });
         dvWrap.appendChild(dv);
       }
-      const nm = box.querySelector(".nm"); if (nm) { nm.value = ctrl.name || ""; nm.addEventListener("change", e => upd("name", e.target.value)); }
+      const nm = box.querySelector(".nm"); if (nm) {
+        nm.value = ctrl.name || "";
+        nm.placeholder = getEntityDisplayName(h, ctrl.entity);
+        nm.addEventListener("change", e => upd("name", e.target.value));
+      }
 
       const clPop = box.querySelector(".cl-pop");
       const clp = box.querySelector(".cl-p");

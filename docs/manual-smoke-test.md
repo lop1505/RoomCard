@@ -15,6 +15,10 @@ the Home Assistant version, browser, viewport, theme, commit SHA, and result.
 | Actions | Exercise tap, hold, double tap, navigation, toggle, and service actions | Exactly one expected HA action/service call occurs |
 | Controls | Exercise climate slider/presets, cover actions/presets, light brightness/colors, media transport/volume, and select options; leave keyboard focus on a media transport button during a state update | UI state and service payloads are correct; focus stays on the corresponding media control |
 | Sensors | Trigger battery, humidity, presence, window, and configured alerts | Chips, optional status border, and alert dialog update correctly |
+| HA 2026.11 editor labels | On HA 2026.10 and 2026.11, click the text of static switches, button toggles, badge toggles and status-group toggles; repeat in EN/DE/FR with live preview on/off | Correct labels remain visible; clicking each label changes its switch once; preview and saved YAML reflect the change |
+| Entity names | Rename a configured entity, device, area or floor without changing entity state; include custom and empty control names | Default labels match HA and update on card/drawer/editor; explicit names stay intact; legacy HA falls back safely |
+| Window icons | Test open/closed window, door and garage contacts, with and without a custom entity icon | Device-class-aware icons are used; custom icons take precedence; configured colors and visibility are retained |
+| Numeric room status | Sum a unitless template sensor with state `65` and output unit `%`; switch a cover group from Count to Numeric sum; choose State/Position/another numeric attribute in Value source; reopen an unavailable custom YAML attribute | Chip shows `65 %`; hidden count filters do not discard numbers; covers suggest Position (%) without typing attribute names; position `94` shows `94 %` (6% closed); unavailable selections survive; missing/nonnumeric inputs show `—`; incompatible measured units remain rejected |
 | Templates | Test static, inferred/declared dependency-tracked, arbitrary-attribute, sub-chip, and trusted-HTML template examples | Output and sub-chips update for relevant state or attribute changes only and follow the documented trust model |
 | Sparklines | Use two cards with the same sensor, scroll them off/on screen, and hide/show the tab | History is shared, polling pauses, and stale data refreshes on return |
 | Images | Select a preset, move focal point, and upload a valid/invalid image | Preview, validation, upload, and persisted configuration remain correct |
@@ -25,3 +29,7 @@ the Home Assistant version, browser, viewport, theme, commit SHA, and result.
 
 Gate approval requires all rows to pass. Attach failures to the gate PR; do not
 continue to the next extraction phase while any result is unexplained.
+
+For HA 2026.11 Marketplace installation, migration and update checks, record results
+in [the release validation report](ha-2026.11-validation.md). Automated checks do not
+replace the live HA matrix.

@@ -25,7 +25,18 @@ Developed with a focus on stability, simple design, and maximum flexibility.
 
 ---
 
-## 🆕 What's new in 1.5.0
+## 🆕 What's new in 1.5.1
+
+* 📊 Show correct numeric room-status sums, including unitless template sensors with a configured display unit.
+* 🎛️ Choose **State**, **Position (%)**, or another numeric attribute from the new **Value source** dropdown. Cover positions need no extra template sensor or typed attribute name.
+* 🪟 Use matching open/closed contact icons and respect custom entity icons.
+* 🏷️ Follow Home Assistant entity naming while retaining your custom labels.
+* 🖱️ Keep translated editor switch labels working with the HA 2026.11 component changes.
+* 🧪 Validate the release with 138 automated tests, reproducible build checks and maintainer-confirmed testing on HA 2026.10.4.
+
+Existing YAML remains supported. See the [v1.5.1 release notes](docs/releases/v1.5.1.md).
+
+### Previously in 1.5.0
 
 * 🚪 Open an opt-in Room Detail Drawer: a desktop sidebar or mobile bottom sheet.
 * 🎛️ Place each control on the card, in room details, or in both, using one configuration.
@@ -120,10 +131,17 @@ See the [illustrated v1.4.0 release notes](docs/releases/v1.4.0.md) for screensh
 
 ## 📥 Installation
 
-### Via HACS (Recommended)
+### Via Marketplace / HACS (Recommended)
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=lop1505&repository=RoomCard&category=plugin)
 
-Or manually: HACS → Frontend → ⋮ → Custom repositories → paste URL → Category: Lovelace.
+On Home Assistant 2026.11, open **Settings → Marketplace** and search for Room Card.
+On earlier versions, open **HACS → Dashboard**. If needed, add
+[lop1505/RoomCard](https://github.com/lop1505/RoomCard) as a custom repository of type Dashboard.
+The existing HACS button above also opens the repository in Marketplace.
+
+See the [Home Assistant Marketplace documentation](https://contributors.home-assistant.io/marketplace/how-it-works/)
+for HACS migration behavior. The remaining RoomCard installation/update checks are tracked in
+[#157](https://github.com/lop1505/RoomCard/issues/157) and the [validation report](docs/ha-2026.11-validation.md).
 
 ### Manual
 1. Download the [latest release](https://github.com/lop1505/RoomCard/releases) and open its `dist` directory.
@@ -329,15 +347,38 @@ window_labels:
 window_solid_background: true
 ```
 
+Window chips honor the entity's custom icon first. Otherwise, they use open/closed
+icons for its `device_class` (`door`, `garage_door`, or window icons as the fallback).
+
 #### Aggregate room status
 
 `status_groups` create neutral informational chips; they do not affect alerts,
 warning borders, or badge priority. Groups only watch their explicitly configured
-entities. Count mode matches `active_states`; numeric mode ignores unavailable,
+entities. Count mode matches `active_states`; numeric mode ignores that filter and skips unavailable,
 unknown, and non-numeric values. Power sensors using `mW`, `W`, `kW`, or `MW`
 are converted into the configured output unit before summing. Other units must
-match exactly—an incompatible combination displays a clear unavailable result
+match exactly. When every contributing sensor is unitless, `unit` is used only as a display label
+(for example, `%` for a template sensor containing a cover position). Mixing unitless and
+measured sensors is incompatible—an incompatible combination displays a clear unavailable result
 instead of an incorrect total.
+
+Numeric mode can also sum an explicitly selected `attribute`, such as
+`current_position` on cover entities. Leave it unset to sum entity states.
+In the visual editor, select **Value source → State**, **Position (%)**, or another
+shared numeric attribute instead of typing an internal attribute name. Cover groups
+suggest Position when switching to Numeric sum or adding covers to a new empty
+numeric group, and fill the output unit with `%`. Existing configuration is retained
+when opening the editor; configured attributes remain selectable if temporarily
+unavailable. Other attribute names use Home Assistant's translated labels when available.
+Attribute values use `unit` as a display label; the entity state's measurement
+unit is not applied or converted. Cover positions follow Home Assistant:
+`0` means closed and `100` means open. A position of `94 %` therefore corresponds
+to `6 %` closed on a shutter control.
+
+If no configured entity supplies a valid number, the chip shows `—` with an
+explanation instead of reporting a false zero. Empty strings, missing attributes,
+booleans and unavailable values do not contribute. A real numeric zero still
+honors `hide_when_zero`.
 
 Set `details: true` to make the chip keyboard-accessible and open a list of the
 contributing entities. Selecting a row opens Home Assistant more-info. The visual
@@ -365,13 +406,22 @@ status_groups:
     unit: W
     precision: 0
     details: true
+  - name: Shutter position
+    icon: mdi:window-shutter
+    entities:
+      - cover.living_room
+    aggregate: sum
+    display: value
+    attribute: current_position
+    unit: "%"
+    details: true
 ```
 
 #### Buttons (`controls`)
 | Option | Default | Description |
 |---|---|---|
 | `entity` | — | Entity ID |
-| `name` | — | Display label |
+| `name` | — | Display label override; otherwise use Home Assistant's entity name |
 | `width` | `15` | Relative width (1–60) |
 | `height` | `60` | Height in px |
 | `control_mode` | — | `slider` · `buttons` · `full` (media player `full` combines volume slider and transport controls) |
