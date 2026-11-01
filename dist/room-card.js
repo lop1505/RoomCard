@@ -1725,7 +1725,7 @@ var supportsMediaFeature = (stateObj, feature) => {
 };
 
 // src/version.js
-var VERSION = "1.5.0";
+var VERSION = "1.5.1";
 var EDITOR_DOM_REVISION = "10";
 
 // src/shared/dialog-coordinator.js

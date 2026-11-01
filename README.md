@@ -25,7 +25,18 @@ Developed with a focus on stability, simple design, and maximum flexibility.
 
 ---
 
-## 🆕 What's new in 1.5.0
+## 🆕 What's new in 1.5.1
+
+* 📊 Show correct numeric room-status sums, including unitless template sensors with a configured display unit.
+* 🎛️ Choose **State**, **Position (%)**, or another numeric attribute from the new **Value source** dropdown. Cover positions need no extra template sensor or typed attribute name.
+* 🪟 Use matching open/closed contact icons and respect custom entity icons.
+* 🏷️ Follow Home Assistant entity naming while retaining your custom labels.
+* 🖱️ Keep translated editor switch labels working with the HA 2026.11 component changes.
+* 🧪 Validate the release with 138 automated tests, reproducible build checks and maintainer-confirmed testing on HA 2026.10.4.
+
+Existing YAML remains supported. See the [v1.5.1 release notes](docs/releases/v1.5.1.md).
+
+### Previously in 1.5.0
 
 * 🚪 Open an opt-in Room Detail Drawer: a desktop sidebar or mobile bottom sheet.
 * 🎛️ Place each control on the card, in room details, or in both, using one configuration.

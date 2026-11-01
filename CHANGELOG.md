@@ -2,14 +2,16 @@
 
 All notable changes to OneLine Room Card are documented here.
 
-## [Unreleased]
+## [1.5.1]
 
-* Editor: Replace the numeric status-attribute text field with a translated Value source dropdown. Offer State, readable cover Position/Tilt choices and shared numeric attributes using HA attribute labels. Suggest cover position and `%` on user actions, retain existing/unavailable YAML attributes, and refresh options without rebuilding the entity picker or changing saved configuration. Follow-up to #159.
-* Room status: Add an optional numeric `attribute` field in the visual editor/YAML, including direct cover-position summaries via `current_position`. Refresh on selected-attribute changes and show an unavailable result when no valid numbers exist instead of a misleading zero. Reject empty/malformed values while preserving real zero and compatible unit handling. Follow-up to #159.
-* Runtime & editor: Resolve default entity labels through `hass.formatEntityName()` with a safe legacy fallback. Preserve explicit labels (including intentionally empty control names), update when relevant entity/device/area/floor names change, and keep newly added controls dynamic instead of copying a name into saved YAML. Fixes #156.
-* Editor: Move translated switch labels into the controls' default slots for Home Assistant 2026.11, including dynamically created badge and status-group toggles. Retain layout hooks, config events and live/deferred preview behavior; refresh already-open editor markup. Fixes #155.
-* Bugfix: Honor custom entity icons and use device-class-aware open/closed window, door and garage icons for window-sensor chips. Fixes #154.
-* Bugfix: Sum unitless template-sensor states with a configured display unit in room-status groups. Numeric mode ignores the count-only active-state filter, including filters retained when switching an editor preset to Numeric sum. Keep incompatible mixed units rejected. Fixes #159.
+* Room status: Correct numeric sums for unitless template sensors with a configured display unit, and ignore count-only active-state filters in numeric mode. Show `—` with an explanation when no valid numeric inputs exist instead of a false zero; retain real zero and compatible power-unit conversion. Fixes #159.
+* Editor & room status: Add the Value source dropdown with State, Position (%), Tilt and other shared numeric attributes. Suggest cover position and `%` on user actions, so direct cover summaries need no template sensor or typed attribute name. Preserve existing/custom YAML attributes and deferred saving; update on selected-attribute changes. Ref #159.
+* Sensor icons: Honor custom entity icons and use the correct open/closed window, door or garage icons for contact chips. Fixes #154.
+* Home Assistant compatibility: Move translated static/dynamic switch labels into the controls' default slots for HA 2026.11. Preserve editor behavior and refresh labels on language changes and already-open editors after upgrades. Fixes #155.
+* Entity names: Use `hass.formatEntityName()` for default labels, with safe legacy fallbacks. Reflect relevant entity/device/area/floor name changes, preserve explicit labels, and keep newly added controls' default names dynamic. Fixes #156.
+* Validation & documentation: Pass 138 automated tests and reproducible bundle/release checks. The maintainer confirmed the tested changes work on HA 2026.10.4. Document Marketplace installation and remaining live HA 2026.11 checks under #157.
+
+---
 
 ## [1.5.0]
 
