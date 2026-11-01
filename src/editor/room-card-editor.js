@@ -3063,6 +3063,25 @@ if (tmplSelect) {
         });
       });
 
+      const numericFields = document.createElement("div");
+      numericFields.style.display = display.value === "value" ? "" : "none";
+      const attribute = document.createElement("oneline-room-card-textfield");
+      attribute.className = "status-group-attribute";
+      attribute.label = getTranslation(this._hass, "chip_attribute");
+      attribute.placeholder = "current_position";
+      attribute.value = group.attribute || "";
+      attribute.style.width = "100%";
+      attribute.addEventListener("change", (event) => {
+        event.stopPropagation();
+        updateGroup(index, (nextGroup) => {
+          const value = trimStr(event.target.value);
+          if (value) nextGroup.attribute = value;
+          else delete nextGroup.attribute;
+        });
+      });
+      const attributeHelp = document.createElement("p");
+      attributeHelp.className = "image-preset-help";
+      attributeHelp.textContent = getTranslation(this._hass, "status_group_attribute_help");
       const numericRow = document.createElement("div");
       numericRow.className = "row";
       numericRow.style.display = display.value === "value" ? "" : "none";
@@ -3088,6 +3107,7 @@ if (tmplSelect) {
         updateGroup(index, (nextGroup) => { nextGroup.precision = Math.max(0, Math.min(4, Number(event.target.value) || 0)); });
       });
       numericRow.append(unit, precision);
+      numericFields.append(attribute, attributeHelp, numericRow);
 
       const color = document.createElement("oneline-room-card-textfield");
       color.label = getTranslation(this._hass, "color");
@@ -3131,7 +3151,7 @@ if (tmplSelect) {
         });
       });
 
-      box.append(header, textRow, entities, displayLabel, display, activeStates, numericRow, color, toggles, conditionTitle, conditions);
+      box.append(header, textRow, entities, displayLabel, display, activeStates, numericFields, color, toggles, conditionTitle, conditions);
       list.appendChild(box);
     });
   }

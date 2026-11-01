@@ -26,7 +26,7 @@ class OneLineRoomCard extends HTMLElement {
     this._lastStates = new Map();
     this._lastRenderMetaSig = "";
     this._cachedEntityIds = null;
-    this._templateDependencyEntityIds = null;
+    this._fullStateDependencyEntityIds = null;
     this._activeTimers = new Set();
     this._lastChangedInterval = null;
     this._sparklineCache = new Map();
@@ -147,7 +147,7 @@ class OneLineRoomCard extends HTMLElement {
     this._lastStates = new Map();
     this._lastRenderMetaSig = "";
     this._cachedEntityIds = null;
-    this._templateDependencyEntityIds = null;
+    this._fullStateDependencyEntityIds = null;
     if (!this.content) this.render();
     this.updateContent();
     this._setupAdaptiveMediaQueries();
@@ -595,7 +595,7 @@ class OneLineRoomCard extends HTMLElement {
     });
   }
 
-  _getTemplateDependencyEntityIds() {
+  _getFullStateDependencyEntityIds() {
     const ids = new Set();
     const add = (entityId) => {
       if (typeof entityId === "string" && entityId.trim()) ids.add(entityId.trim());
@@ -604,6 +604,11 @@ class OneLineRoomCard extends HTMLElement {
       if (ctrl?.type !== "template") continue;
       getTemplateEntityDependencies(ctrl).forEach(add);
       (Array.isArray(ctrl.sub_chips) ? ctrl.sub_chips : []).forEach((chip) => add(chip?.entity));
+    }
+    // Numeric attribute groups need updates even if only an arbitrary attribute changes.
+    for (const group of (Array.isArray(this.config?.status_groups) ? this.config.status_groups : [])) {
+      if (!(group?.aggregate === "sum" || group?.display === "value") || !trimStr(group.attribute)) continue;
+      (Array.isArray(group.entities) ? group.entities : []).forEach(entry => add(typeof entry === "string" ? entry : entry?.entity));
     }
     return ids;
   }
@@ -872,13 +877,13 @@ class OneLineRoomCard extends HTMLElement {
   _buildStateSnapshot(hass) {
     const states = hass?.states || {};
     if (!this._cachedEntityIds) this._cachedEntityIds = this._getRelevantEntityIds();
-    if (!this._templateDependencyEntityIds) {
-      this._templateDependencyEntityIds = this._getTemplateDependencyEntityIds();
+    if (!this._fullStateDependencyEntityIds) {
+      this._fullStateDependencyEntityIds = this._getFullStateDependencyEntityIds();
     }
     const next = new Map();
     this._cachedEntityIds.forEach((id) => next.set(
       id,
-      this._getStateSignature(id, states[id], hass, this._templateDependencyEntityIds.has(id))
+      this._getStateSignature(id, states[id], hass, this._fullStateDependencyEntityIds.has(id))
     ));
     return next;
   }

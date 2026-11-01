@@ -1,6 +1,6 @@
 import { replaceTemplateExpressions, trimStr } from "../lib/values.js";
 import { isEntityOffline } from "../lib/states.js";
-import { getEntityDisplayName } from "../lib/formatting.js";
+import { getEntityDisplayName, formatEntityStateForDisplay, formatEntityAttributeForDisplay } from "../lib/formatting.js";
 import { evaluateAdaptiveImageConditions as evaluateAdaptiveConditions } from "../lib/conditions.js";
 import { getTranslation } from "../i18n/translations.js";
 import { VERSION } from "../version.js";
@@ -109,6 +109,7 @@ const getStatusGroupResult = (group, hass) => {
     .map((item) => typeof item === "string" ? { entity: item } : item)
     .filter((item) => item && typeof item.entity === "string" && item.entity.trim());
   const numericMode = group.aggregate === "sum" || group.display === "value";
+  const attribute = numericMode ? trimStr(group.attribute) : "";
   const contributors = [];
   entries.forEach((entry) => {
     const entityId = entry.entity.trim();
@@ -123,15 +124,20 @@ const getStatusGroupResult = (group, hass) => {
       : (Array.isArray(group.active_states) ? group.active_states : (numericMode ? [] : ["on"]));
     const activeStates = configuredStates.map((state) => String(state).toLowerCase().trim()).filter(Boolean);
     if (!numericMode && activeStates.length > 0 && !activeStates.includes(String(stateObj.state).toLowerCase().trim())) return;
-    const number = Number(stateObj.state);
+    const rawValue = attribute ? stateObj.attributes?.[attribute] : stateObj.state;
+    const hasNumber = typeof rawValue === "number" || (typeof rawValue === "string" && rawValue.trim() !== "");
+    const number = hasNumber ? Number(rawValue) : NaN;
     if (numericMode && !Number.isFinite(number)) return;
     contributors.push({
       entity_id: entityId,
       friendly_name: getEntityDisplayName(hass, entityId),
       icon: stateObj.attributes?.icon || "mdi:information-outline",
-      state: hass?.formatEntityState ? hass.formatEntityState(stateObj) : String(stateObj.state ?? ""),
+      state: attribute
+        ? formatEntityAttributeForDisplay(hass, stateObj, attribute, rawValue, trimStr(group.unit) ? ` ${trimStr(group.unit)}` : "")
+        : formatEntityStateForDisplay(hass, stateObj),
       number,
-      unit: trimStr(stateObj.attributes?.unit_of_measurement)
+      // Attribute units are independent of the entity state's measurement unit.
+      unit: attribute ? "" : trimStr(stateObj.attributes?.unit_of_measurement)
     });
   });
 
@@ -144,6 +150,11 @@ const getStatusGroupResult = (group, hass) => {
       contributors,
       error: ""
     };
+  }
+
+  if (entries.length === 0) return empty;
+  if (contributors.length === 0) {
+    return { visible: true, value: "—", numericValue: NaN, contributors, error: "status_group_no_numeric_values" };
   }
 
   const requestedUnit = trimStr(group.unit);

@@ -815,6 +815,8 @@ var TRANSLATIONS = {
     status_group_up: "Move status group up",
     status_group_down: "Move status group down",
     status_group_incompatible_units: "Incompatible units",
+    status_group_attribute_help: "Leave blank to sum entity states. For cover positions, use current_position: 0% closed, 100% open. The output unit labels attribute values.",
+    status_group_no_numeric_values: "No numeric values. Select a numeric entity or attribute.",
     a11y_close: "Close",
     a11y_previous_track: "Previous track",
     a11y_play_pause: "Play or pause",
@@ -1145,6 +1147,8 @@ var TRANSLATIONS = {
     status_group_up: "Statusgruppe nach oben",
     status_group_down: "Statusgruppe nach unten",
     status_group_incompatible_units: "Nicht kompatible Einheiten",
+    status_group_attribute_help: "Leer lassen, um Entitätszustände zu summieren. Für Jalousiepositionen current_position wählen: 0% geschlossen, 100% offen. Die Ausgabeeinheit beschriftet Attributwerte.",
+    status_group_no_numeric_values: "Keine numerischen Werte. Numerische Entität oder Attribut wählen.",
     a11y_close: "Schließen",
     a11y_previous_track: "Vorheriger Titel",
     a11y_play_pause: "Wiedergabe oder Pause",
@@ -1475,6 +1479,8 @@ var TRANSLATIONS = {
     status_group_up: "Monter le groupe d’état",
     status_group_down: "Descendre le groupe d’état",
     status_group_incompatible_units: "Unités incompatibles",
+    status_group_attribute_help: "Laisser vide pour additionner les états. Pour la position des volets, utiliser current_position : 0% fermé, 100% ouvert. L’unité de sortie sert de libellé aux valeurs d’attribut.",
+    status_group_no_numeric_values: "Aucune valeur numérique. Choisir une entité ou un attribut numérique.",
     a11y_close: "Fermer",
     a11y_previous_track: "Piste précédente",
     a11y_play_pause: "Lecture ou pause",
@@ -1699,7 +1705,7 @@ var supportsMediaFeature = (stateObj, feature) => {
 
 // src/version.js
 var VERSION = "1.5.0";
-var EDITOR_DOM_REVISION = "8";
+var EDITOR_DOM_REVISION = "9";
 
 // src/shared/dialog-coordinator.js
 var KEY = /* @__PURE__ */ Symbol.for("room-card.dialog-coordinator");
@@ -2218,6 +2224,7 @@ var getStatusGroupResult = (group, hass) => {
   }
   const entries = (Array.isArray(group.entities) ? group.entities : []).map((item) => typeof item === "string" ? { entity: item } : item).filter((item) => item && typeof item.entity === "string" && item.entity.trim());
   const numericMode = group.aggregate === "sum" || group.display === "value";
+  const attribute = numericMode ? trimStr(group.attribute) : "";
   const contributors = [];
   entries.forEach((entry) => {
     const entityId = entry.entity.trim();
@@ -2230,15 +2237,18 @@ var getStatusGroupResult = (group, hass) => {
     const configuredStates = Array.isArray(entry.active_states) ? entry.active_states : Array.isArray(group.active_states) ? group.active_states : numericMode ? [] : ["on"];
     const activeStates = configuredStates.map((state) => String(state).toLowerCase().trim()).filter(Boolean);
     if (!numericMode && activeStates.length > 0 && !activeStates.includes(String(stateObj.state).toLowerCase().trim())) return;
-    const number = Number(stateObj.state);
+    const rawValue = attribute ? stateObj.attributes?.[attribute] : stateObj.state;
+    const hasNumber = typeof rawValue === "number" || typeof rawValue === "string" && rawValue.trim() !== "";
+    const number = hasNumber ? Number(rawValue) : NaN;
     if (numericMode && !Number.isFinite(number)) return;
     contributors.push({
       entity_id: entityId,
       friendly_name: getEntityDisplayName(hass, entityId),
       icon: stateObj.attributes?.icon || "mdi:information-outline",
-      state: hass?.formatEntityState ? hass.formatEntityState(stateObj) : String(stateObj.state ?? ""),
+      state: attribute ? formatEntityAttributeForDisplay(hass, stateObj, attribute, rawValue, trimStr(group.unit) ? ` ${trimStr(group.unit)}` : "") : formatEntityStateForDisplay(hass, stateObj),
       number,
-      unit: trimStr(stateObj.attributes?.unit_of_measurement)
+      // Attribute units are independent of the entity state's measurement unit.
+      unit: attribute ? "" : trimStr(stateObj.attributes?.unit_of_measurement)
     });
   });
   if (!numericMode) {
@@ -2250,6 +2260,10 @@ var getStatusGroupResult = (group, hass) => {
       contributors,
       error: ""
     };
+  }
+  if (entries.length === 0) return empty;
+  if (contributors.length === 0) {
+    return { visible: true, value: "—", numericValue: NaN, contributors, error: "status_group_no_numeric_values" };
   }
   const requestedUnit = trimStr(group.unit);
   const units = contributors.map((item) => item.unit).filter(Boolean);
@@ -2423,7 +2437,7 @@ var OneLineRoomCard = class extends HTMLElement {
     this._lastStates = /* @__PURE__ */ new Map();
     this._lastRenderMetaSig = "";
     this._cachedEntityIds = null;
-    this._templateDependencyEntityIds = null;
+    this._fullStateDependencyEntityIds = null;
     this._activeTimers = /* @__PURE__ */ new Set();
     this._lastChangedInterval = null;
     this._sparklineCache = /* @__PURE__ */ new Map();
@@ -2532,7 +2546,7 @@ var OneLineRoomCard = class extends HTMLElement {
     this._lastStates = /* @__PURE__ */ new Map();
     this._lastRenderMetaSig = "";
     this._cachedEntityIds = null;
-    this._templateDependencyEntityIds = null;
+    this._fullStateDependencyEntityIds = null;
     if (!this.content) this.render();
     this.updateContent();
     this._setupAdaptiveMediaQueries();
@@ -2952,7 +2966,7 @@ var OneLineRoomCard = class extends HTMLElement {
       return (Array.isArray(group?.entities) ? group.entities : []).some((entry) => entry && typeof entry === "object" && Array.isArray(entry.conditions) && entry.conditions.some(visit));
     });
   }
-  _getTemplateDependencyEntityIds() {
+  _getFullStateDependencyEntityIds() {
     const ids = /* @__PURE__ */ new Set();
     const add = (entityId) => {
       if (typeof entityId === "string" && entityId.trim()) ids.add(entityId.trim());
@@ -2961,6 +2975,10 @@ var OneLineRoomCard = class extends HTMLElement {
       if (ctrl?.type !== "template") continue;
       getTemplateEntityDependencies(ctrl).forEach(add);
       (Array.isArray(ctrl.sub_chips) ? ctrl.sub_chips : []).forEach((chip) => add(chip?.entity));
+    }
+    for (const group of Array.isArray(this.config?.status_groups) ? this.config.status_groups : []) {
+      if (!(group?.aggregate === "sum" || group?.display === "value") || !trimStr(group.attribute)) continue;
+      (Array.isArray(group.entities) ? group.entities : []).forEach((entry) => add(typeof entry === "string" ? entry : entry?.entity));
     }
     return ids;
   }
@@ -3213,13 +3231,13 @@ var OneLineRoomCard = class extends HTMLElement {
   _buildStateSnapshot(hass) {
     const states = hass?.states || {};
     if (!this._cachedEntityIds) this._cachedEntityIds = this._getRelevantEntityIds();
-    if (!this._templateDependencyEntityIds) {
-      this._templateDependencyEntityIds = this._getTemplateDependencyEntityIds();
+    if (!this._fullStateDependencyEntityIds) {
+      this._fullStateDependencyEntityIds = this._getFullStateDependencyEntityIds();
     }
     const next = /* @__PURE__ */ new Map();
     this._cachedEntityIds.forEach((id) => next.set(
       id,
-      this._getStateSignature(id, states[id], hass, this._templateDependencyEntityIds.has(id))
+      this._getStateSignature(id, states[id], hass, this._fullStateDependencyEntityIds.has(id))
     ));
     return next;
   }
@@ -7969,6 +7987,25 @@ var OneLineRoomCardEditor = class extends HTMLElement {
           else delete nextGroup.active_states;
         });
       });
+      const numericFields = document.createElement("div");
+      numericFields.style.display = display.value === "value" ? "" : "none";
+      const attribute = document.createElement("oneline-room-card-textfield");
+      attribute.className = "status-group-attribute";
+      attribute.label = getTranslation(this._hass, "chip_attribute");
+      attribute.placeholder = "current_position";
+      attribute.value = group.attribute || "";
+      attribute.style.width = "100%";
+      attribute.addEventListener("change", (event) => {
+        event.stopPropagation();
+        updateGroup(index, (nextGroup) => {
+          const value = trimStr(event.target.value);
+          if (value) nextGroup.attribute = value;
+          else delete nextGroup.attribute;
+        });
+      });
+      const attributeHelp = document.createElement("p");
+      attributeHelp.className = "image-preset-help";
+      attributeHelp.textContent = getTranslation(this._hass, "status_group_attribute_help");
       const numericRow = document.createElement("div");
       numericRow.className = "row";
       numericRow.style.display = display.value === "value" ? "" : "none";
@@ -7996,6 +8033,7 @@ var OneLineRoomCardEditor = class extends HTMLElement {
         });
       });
       numericRow.append(unit, precision);
+      numericFields.append(attribute, attributeHelp, numericRow);
       const color = document.createElement("oneline-room-card-textfield");
       color.label = getTranslation(this._hass, "color");
       color.value = group.color || "";
@@ -8037,7 +8075,7 @@ var OneLineRoomCardEditor = class extends HTMLElement {
           else delete nextGroup.conditions;
         });
       });
-      box.append(header, textRow, entities, displayLabel, display, activeStates, numericRow, color, toggles, conditionTitle, conditions);
+      box.append(header, textRow, entities, displayLabel, display, activeStates, numericFields, color, toggles, conditionTitle, conditions);
       list.appendChild(box);
     });
   }

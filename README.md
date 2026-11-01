@@ -351,6 +351,18 @@ match exactly. When every contributing sensor is unitless, `unit` is used only a
 measured sensors is incompatible—an incompatible combination displays a clear unavailable result
 instead of an incorrect total.
 
+Numeric mode can also sum an explicitly selected `attribute`, such as
+`current_position` on cover entities. Leave it unset to sum entity states.
+Attribute values use `unit` as a display label; the entity state's measurement
+unit is not applied or converted. Cover positions follow Home Assistant:
+`0` means closed and `100` means open. A position of `94 %` therefore corresponds
+to `6 %` closed on a shutter control.
+
+If no configured entity supplies a valid number, the chip shows `—` with an
+explanation instead of reporting a false zero. Empty strings, missing attributes,
+booleans and unavailable values do not contribute. A real numeric zero still
+honors `hide_when_zero`.
+
 Set `details: true` to make the chip keyboard-accessible and open a list of the
 contributing entities. Selecting a row opens Home Assistant more-info. The visual
 editor provides presets for lights, windows, media, and power under
@@ -376,6 +388,15 @@ status_groups:
     display: value
     unit: W
     precision: 0
+    details: true
+  - name: Shutter position
+    icon: mdi:window-shutter
+    entities:
+      - cover.living_room
+    aggregate: sum
+    display: value
+    attribute: current_position
+    unit: "%"
     details: true
 ```
 

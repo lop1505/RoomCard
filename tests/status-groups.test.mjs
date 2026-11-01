@@ -112,6 +112,82 @@ test("switching from a count preset to numeric sum ignores the hidden active-sta
   editor.remove();
 });
 
+test("numeric groups distinguish missing numbers from a real zero", () => {
+  const group = { entities: ["cover.shutter"], aggregate: "sum", display: "value", unit: "%", hide_when_zero: true };
+  for (const state of ["open", "closed", "unknown", "unavailable", "", " ", null, false, [], {}]) {
+    const result = getStatusGroupResult(group, createHass({ states: { "cover.shutter": { state, attributes: { current_position: 94 } } } }));
+    assert.equal(result.value, "—", `invalid numeric state ${JSON.stringify(state)}`);
+    assert.equal(result.visible, true);
+    assert.equal(result.error, "status_group_no_numeric_values");
+    assert.ok(Number.isNaN(result.numericValue));
+  }
+  assert.equal(getStatusGroupResult(group, createHass()).value, "—");
+  const zeroHass = createHass({ states: { "cover.shutter": { state: "0", attributes: {} } } });
+  assert.equal(getStatusGroupResult({ ...group, hide_when_zero: false }, zeroHass).value, "0 %");
+  assert.equal(getStatusGroupResult(group, zeroHass).visible, false);
+});
+
+test("numeric groups can explicitly sum cover attributes without borrowing the entity-state unit", () => {
+  const group = { entities: ["cover.shutter", "cover.other"], aggregate: "sum", display: "value", attribute: "current_position", unit: "%", active_states: ["on"] };
+  const hass = createHass({ states: {
+    "cover.shutter": { state: "open", attributes: { current_position: 94 } },
+    "cover.other": { state: "closed", attributes: { current_position: 0, unit_of_measurement: "W" } }
+  } });
+  const result = getStatusGroupResult(group, hass);
+  assert.equal(result.value, "94 %");
+  assert.equal(result.contributors.length, 2);
+  assert.equal(result.contributors[0].number, 94);
+  assert.equal(result.contributors[0].state, "94");
+  assert.equal(getStatusGroupResult({ ...group, attribute: "missing" }, hass).value, "—");
+  assert.equal(getStatusGroupResult({ ...group, attribute: undefined }, hass).value, "—");
+  for (const value of [null, false, "", " ", [], {}, Infinity]) {
+    const invalid = createHass({ states: { "cover.shutter": { state: "open", attributes: { current_position: value } } } });
+    assert.equal(getStatusGroupResult(group, invalid).value, "—");
+  }
+});
+
+test("attribute-based status chips update when only the selected attribute changes", () => {
+  for (const attribute of ["current_position", "custom_reading"]) {
+    const group = { entities: ["cover.shutter"], display: "value", attribute, unit: "%", details: true };
+    const hass = createHass({ states: { "cover.shutter": { state: "open", attributes: { [attribute]: 94 } } } });
+    const card = renderCard({ controls: [], status_groups: [group] }, hass);
+    assert.equal(card.shadowRoot.querySelector(".status-group-chip").textContent.trim(), "94 %");
+    card.hass = createHass({ states: { "cover.shutter": { state: "open", attributes: { [attribute]: 42 } } } });
+    assert.equal(card.shadowRoot.querySelector(".status-group-chip").textContent.trim(), "42 %");
+    card.setConfig({ controls: [], status_groups: [{ ...group, attribute: undefined }] });
+    const chip = card.shadowRoot.querySelector(".status-group-chip");
+    assert.equal(chip.textContent.trim(), "—");
+    assert.equal(chip.title, "No numeric values. Select a numeric entity or attribute.");
+    card.remove();
+  }
+});
+
+test("status editor round-trips the numeric attribute through mode changes and removal", () => {
+  const editor = document.createElement("oneline-room-card-editor");
+  document.body.appendChild(editor);
+  editor.hass = createHass();
+  editor.setConfig({ controls: [], status_groups: [{ entities: ["cover.shutter"], display: "value", attribute: "current_position", unit: "%" }] });
+  const field = () => editor.shadowRoot.querySelector(".status-group-attribute");
+  assert.equal(field().value, "current_position");
+  const selectMode = mode => {
+    const select = editor.shadowRoot.querySelector(".status-group-editor select");
+    select.value = mode;
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+  };
+  selectMode("count");
+  assert.equal(editor._config.status_groups[0].attribute, "current_position");
+  assert.equal(field().parentElement.style.display, "none");
+  selectMode("value");
+  assert.equal(field().value, "current_position");
+  field().value = " custom_reading ";
+  field().dispatchEvent(new Event("change", { bubbles: true }));
+  assert.equal(editor._config.status_groups[0].attribute, "custom_reading");
+  field().value = "";
+  field().dispatchEvent(new Event("change", { bubbles: true }));
+  assert.equal("attribute" in editor._config.status_groups[0], false);
+  editor.remove();
+});
+
 test("status groups support conditions and expose all explicit dependencies", () => {
   const conditions = [{ condition: "state", entity: "input_boolean.dashboard", state: "on" }];
   const group = {
