@@ -1270,7 +1270,12 @@ class OneLineRoomCard extends HTMLElement {
       const chipTextColor = windowSolidBackground
         ? (readableTextForHex(chipColor) || "var(--primary-text-color)")
         : chipColor;
-      const icon = isOpen ? "mdi:window-open-variant" : "mdi:window-shutter";
+      const deviceClass = st.attributes?.device_class;
+      const icon = st.attributes?.icon || (
+        deviceClass === "door" ? (isOpen ? "mdi:door-open" : "mdi:door-closed")
+          : deviceClass === "garage_door" ? (isOpen ? "mdi:garage-open" : "mdi:garage")
+            : (isOpen ? "mdi:window-open-variant" : "mdi:window-closed-variant")
+      );
       const label = trimStr(windowLabels[s]) || st.attributes.friendly_name || getTranslation(h, "window");
       const chip = document.createElement("div");
       chip.className = "chip";

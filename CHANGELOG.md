@@ -4,6 +4,7 @@ All notable changes to OneLine Room Card are documented here.
 
 ## [Unreleased]
 
+* Bugfix: Honor custom entity icons and use device-class-aware open/closed window, door and garage icons for window-sensor chips. Fixes #154.
 * Bugfix: Sum unitless template-sensor states with a configured display unit in room-status groups. Numeric mode ignores the count-only active-state filter, including filters retained when switching an editor preset to Numeric sum. Keep incompatible mixed units rejected. Fixes #159.
 
 ## [1.5.0]

@@ -329,6 +329,9 @@ window_labels:
 window_solid_background: true
 ```
 
+Window chips honor the entity's custom icon first. Otherwise, they use open/closed
+icons for its `device_class` (`door`, `garage_door`, or window icons as the fallback).
+
 #### Aggregate room status
 
 `status_groups` create neutral informational chips; they do not affect alerts,
