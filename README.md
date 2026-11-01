@@ -120,10 +120,17 @@ See the [illustrated v1.4.0 release notes](docs/releases/v1.4.0.md) for screensh
 
 ## 📥 Installation
 
-### Via HACS (Recommended)
+### Via Marketplace / HACS (Recommended)
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=lop1505&repository=RoomCard&category=plugin)
 
-Or manually: HACS → Frontend → ⋮ → Custom repositories → paste URL → Category: Lovelace.
+On Home Assistant 2026.11, open **Settings → Marketplace** and search for Room Card.
+On earlier versions, open **HACS → Dashboard**. If needed, add
+[lop1505/RoomCard](https://github.com/lop1505/RoomCard) as a custom repository of type Dashboard.
+The existing HACS button above also opens the repository in Marketplace.
+
+See the [Home Assistant Marketplace documentation](https://contributors.home-assistant.io/marketplace/how-it-works/)
+for HACS migration behavior. The remaining RoomCard installation/update checks are tracked in
+[#157](https://github.com/lop1505/RoomCard/issues/157) and the [validation report](docs/ha-2026.11-validation.md).
 
 ### Manual
 1. Download the [latest release](https://github.com/lop1505/RoomCard/releases) and open its `dist` directory.
