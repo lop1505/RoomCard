@@ -333,10 +333,12 @@ window_solid_background: true
 
 `status_groups` create neutral informational chips; they do not affect alerts,
 warning borders, or badge priority. Groups only watch their explicitly configured
-entities. Count mode matches `active_states`; numeric mode ignores unavailable,
+entities. Count mode matches `active_states`; numeric mode ignores that filter and skips unavailable,
 unknown, and non-numeric values. Power sensors using `mW`, `W`, `kW`, or `MW`
 are converted into the configured output unit before summing. Other units must
-match exactly—an incompatible combination displays a clear unavailable result
+match exactly. When every contributing sensor is unitless, `unit` is used only as a display label
+(for example, `%` for a template sensor containing a cover position). Mixing unitless and
+measured sensors is incompatible—an incompatible combination displays a clear unavailable result
 instead of an incorrect total.
 
 Set `details: true` to make the chip keyboard-accessible and open a list of the

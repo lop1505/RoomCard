@@ -121,7 +121,7 @@ const getStatusGroupResult = (group, hass) => {
       ? entry.active_states
       : (Array.isArray(group.active_states) ? group.active_states : (numericMode ? [] : ["on"]));
     const activeStates = configuredStates.map((state) => String(state).toLowerCase().trim()).filter(Boolean);
-    if (activeStates.length > 0 && !activeStates.includes(String(stateObj.state).toLowerCase().trim())) return;
+    if (!numericMode && activeStates.length > 0 && !activeStates.includes(String(stateObj.state).toLowerCase().trim())) return;
     const number = Number(stateObj.state);
     if (numericMode && !Number.isFinite(number)) return;
     contributors.push({
@@ -150,7 +150,9 @@ const getStatusGroupResult = (group, hass) => {
   const targetUnit = requestedUnit || units[0] || "";
   const allPower = units.length > 0 && units.every((unit) => POWER_UNIT_FACTORS[unit] !== undefined);
   const hasMissingUnit = units.length !== contributors.length;
-  const compatible = (!targetUnit && units.length === 0)
+  // Entirely unitless inputs may use the configured unit as a display label.
+  // Never infer a conversion for mixed unitless and measured inputs.
+  const compatible = units.length === 0
     || (!hasMissingUnit && (units.every((unit) => unit === targetUnit) || (allPower && POWER_UNIT_FACTORS[targetUnit] !== undefined)));
   if (!compatible) {
     return { visible: true, value: "—", numericValue: NaN, contributors, error: "status_group_incompatible_units" };

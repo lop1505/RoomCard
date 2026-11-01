@@ -2,6 +2,10 @@
 
 All notable changes to OneLine Room Card are documented here.
 
+## [Unreleased]
+
+* Bugfix: Sum unitless template-sensor states with a configured display unit in room-status groups. Numeric mode ignores the count-only active-state filter, including filters retained when switching an editor preset to Numeric sum. Keep incompatible mixed units rejected. Fixes #159.
+
 ## [1.5.0]
 
 * Build & architecture: Bundle with pinned esbuild 0.28.2 and separate helpers, translations, runtime, input compatibility and editor into test-gated modules. Keep the unminified single-file HACS artifact, registration order and relative room-image assets; check dependency direction, reproducibility and the shipped bundle. Ref #100.

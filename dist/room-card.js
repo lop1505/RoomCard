@@ -2217,7 +2217,7 @@ var getStatusGroupResult = (group, hass) => {
     }
     const configuredStates = Array.isArray(entry.active_states) ? entry.active_states : Array.isArray(group.active_states) ? group.active_states : numericMode ? [] : ["on"];
     const activeStates = configuredStates.map((state) => String(state).toLowerCase().trim()).filter(Boolean);
-    if (activeStates.length > 0 && !activeStates.includes(String(stateObj.state).toLowerCase().trim())) return;
+    if (!numericMode && activeStates.length > 0 && !activeStates.includes(String(stateObj.state).toLowerCase().trim())) return;
     const number = Number(stateObj.state);
     if (numericMode && !Number.isFinite(number)) return;
     contributors.push({
@@ -2244,7 +2244,7 @@ var getStatusGroupResult = (group, hass) => {
   const targetUnit = requestedUnit || units[0] || "";
   const allPower = units.length > 0 && units.every((unit) => POWER_UNIT_FACTORS[unit] !== void 0);
   const hasMissingUnit = units.length !== contributors.length;
-  const compatible = !targetUnit && units.length === 0 || !hasMissingUnit && (units.every((unit) => unit === targetUnit) || allPower && POWER_UNIT_FACTORS[targetUnit] !== void 0);
+  const compatible = units.length === 0 || !hasMissingUnit && (units.every((unit) => unit === targetUnit) || allPower && POWER_UNIT_FACTORS[targetUnit] !== void 0);
   if (!compatible) {
     return { visible: true, value: "—", numericValue: NaN, contributors, error: "status_group_incompatible_units" };
   }

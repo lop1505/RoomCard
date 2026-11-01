@@ -68,6 +68,50 @@ test("numeric groups normalize power units and reject incompatible measurements"
   }, hass).error, "status_group_incompatible_units");
 });
 
+test("numeric groups sum unitless template states and use a configured display unit", () => {
+  const hass = createHass({ states: {
+    "sensor.position": { state: "65", attributes: {} },
+    "sensor.other": { state: "15", attributes: {} },
+    "sensor.invalid": { state: "not a number", attributes: {} },
+    "sensor.offline": { state: "unavailable", attributes: {} }
+  } });
+  const group = {
+    entities: ["sensor.position", "sensor.invalid", "sensor.offline", "sensor.missing"],
+    display: "value", aggregate: "sum", unit: "%", precision: 1,
+    hide_when_zero: false
+  };
+  const result = getStatusGroupResult(group, hass);
+  assert.equal(result.value, "65 %");
+  assert.equal(result.numericValue, 65);
+  assert.equal(result.error, "");
+  assert.deepEqual(result.contributors.map(item => item.entity_id), ["sensor.position"]);
+  assert.equal(getStatusGroupResult({ ...group, entities: ["sensor.position", "sensor.other"] }, hass).value, "80 %");
+  assert.equal(getStatusGroupResult({ ...group, unit: "" }, hass).value, "65");
+  assert.equal(getStatusGroupResult({ ...group, entities: [], hide_when_zero: true }, hass).visible, false);
+
+  const card = renderCard({ controls: [], status_groups: [group] }, hass);
+  assert.equal(card.shadowRoot.querySelector(".status-group-chip").textContent.trim(), "65 %");
+  card.hass = createHass({ states: { ...hass.states, "sensor.position": { state: "70", attributes: {} } } });
+  assert.equal(card.shadowRoot.querySelector(".status-group-chip").textContent.trim(), "70 %");
+  card.remove();
+});
+
+test("switching from a count preset to numeric sum ignores the hidden active-state filter", () => {
+  const hass = createHass({ states: { "sensor.position": { state: "65", attributes: {} } } });
+  const editor = document.createElement("oneline-room-card-editor");
+  document.body.appendChild(editor);
+  editor.hass = hass;
+  editor.setConfig({ controls: [], status_groups: [{ entities: ["sensor.position"], display: "count", active_states: ["on"] }] });
+  const display = editor.shadowRoot.querySelector(".status-group-editor select");
+  display.value = "value";
+  display.dispatchEvent(new Event("change", { bubbles: true }));
+  const group = editor._config.status_groups[0];
+  assert.equal(getStatusGroupResult(group, hass).numericValue, 65);
+  assert.deepEqual(group.active_states, ["on"], "count filter stays available when switching back");
+  assert.equal(getStatusGroupResult({ ...group, display: "count", aggregate: undefined }, hass).value, "0");
+  editor.remove();
+});
+
 test("status groups support conditions and expose all explicit dependencies", () => {
   const conditions = [{ condition: "state", entity: "input_boolean.dashboard", state: "on" }];
   const group = {
