@@ -1687,7 +1687,7 @@ var supportsMediaFeature = (stateObj, feature) => {
 
 // src/version.js
 var VERSION = "1.5.0";
-var EDITOR_DOM_REVISION = "7";
+var EDITOR_DOM_REVISION = "8";
 
 // src/shared/dialog-coordinator.js
 var KEY = /* @__PURE__ */ Symbol.for("room-card.dialog-coordinator");
@@ -5026,6 +5026,7 @@ var OneLineRoomCardEditor = class extends HTMLElement {
     if (upd) {
       this._controlTemplatesCache = null;
       this._navOptionsLoaded = false;
+      this.shadowRoot.replaceChildren();
       this.render();
       return;
     }
@@ -5788,12 +5789,10 @@ var OneLineRoomCardEditor = class extends HTMLElement {
         </div>
         <div id="card-beh-content">
         <div class="editor-stack">
-          <ha-formfield label="${getTranslation(h, "live_preview")}">
-            <ha-switch id="live-preview-toggle" checked></ha-switch>
-          </ha-formfield>
+          <ha-switch id="live-preview-toggle" checked>${getTranslation(h, "live_preview")}</ha-switch>
           <div class="field-with-inline-control">
             <oneline-room-card-textfield label="${getTranslation(h, "name")}" cfg="name" class="i" style="width: 100%;"></oneline-room-card-textfield>
-            <ha-switch id="show-name-toggle" checked title="${getTranslation(h, "show_name")}"
+            <ha-switch id="show-name-toggle" checked title="${getTranslation(h, "show_name")}" aria-label="${getTranslation(h, "show_name")}"
                        class="field-inline-switch" style="--mdc-switch-size: 20px;"></ha-switch>
           </div>
           <div style="width:100%;">
@@ -5833,7 +5832,7 @@ var OneLineRoomCardEditor = class extends HTMLElement {
       </div>
       <div class="sec">
         <h3>${getTranslation(h, "room_details")}</h3>
-        <ha-formfield label="${getTranslation(h, "drawer_enable")}"><ha-switch id="drawer-enabled"></ha-switch></ha-formfield>
+        <ha-switch id="drawer-enabled">${getTranslation(h, "drawer_enable")}</ha-switch>
         <oneline-room-card-textfield id="drawer-title" label="${getTranslation(h, "drawer_title")}" style="display:block;margin-top:12px"></oneline-room-card-textfield>
         <p>${getTranslation(h, "drawer_help")}</p>
         <button type="button" id="drawer-preview">${getTranslation(h, "drawer_preview")}</button>
@@ -5902,9 +5901,7 @@ var OneLineRoomCardEditor = class extends HTMLElement {
             <div class="image-title" style="margin-bottom:8px">${getTranslation(h, "main_climate")}</div>
             <ha-entity-picker label="${getTranslation(h, "entity")}" cfg="entity" class="i" include-domains='["climate"]' style="width:100%"></ha-entity-picker>
             <div class="row" style="margin-top:8px; align-items:center;">
-              <ha-formfield label="${getTranslation(h, "badge_auto_climate_btn")}">
-                <ha-switch id="auto-climate-btn-toggle"></ha-switch>
-              </ha-formfield>
+              <ha-switch id="auto-climate-btn-toggle">${getTranslation(h, "badge_auto_climate_btn")}</ha-switch>
             </div>
             
             <div style="margin-bottom:8px; width:100%;">
@@ -5927,9 +5924,7 @@ var OneLineRoomCardEditor = class extends HTMLElement {
 
             <div class="image-title" style="margin:12px 0 8px">${getTranslation(h, "last_activity_title")}</div>
             <div class="row" style="margin-bottom: 8px; align-items:center;">
-              <ha-formfield label="${getTranslation(h, "last_activity_show")}">
-                <ha-switch id="hla-show"></ha-switch>
-              </ha-formfield>
+              <ha-switch id="hla-show">${getTranslation(h, "last_activity_show")}</ha-switch>
             </div>
 
 
@@ -5958,9 +5953,7 @@ var OneLineRoomCardEditor = class extends HTMLElement {
               <input id="focal-y" type="range" min="0" max="100" step="1"><span id="focal-y-value">50%</span>
               <mwc-button id="focal-center" label="${getTranslation(h, "image_center")}"></mwc-button>
             </div>
-            <ha-formfield label="${getTranslation(h, "show_image")}" style="display:flex;align-items:center;margin-bottom:8px">
-              <ha-switch id="show-image-toggle"></ha-switch>
-            </ha-formfield>
+            <div style="display:flex;align-items:center;margin-bottom:8px"><ha-switch id="show-image-toggle">${getTranslation(h, "show_image")}</ha-switch></div>
             <div class="image-preset-heading">${getTranslation(h, "image_preset_title")}</div>
             <div class="image-preset-help">${getTranslation(h, "image_preset_help")}</div>
             <div id="image-presets" class="image-presets"></div>
@@ -6040,9 +6033,7 @@ var OneLineRoomCardEditor = class extends HTMLElement {
                 </div>
               </div>
             </div>
-            <ha-formfield label="${getTranslation(h, "show_header_text_shadow")}" style="display:flex;align-items:center;margin-top:10px">
-              <ha-switch id="header-text-shadow-toggle"></ha-switch>
-            </ha-formfield>
+            <div style="display:flex;align-items:center;margin-top:10px"><ha-switch id="header-text-shadow-toggle">${getTranslation(h, "show_header_text_shadow")}</ha-switch></div>
           </div>
         </div>
         <div id="layout-sec" class="manual-sec" style="margin-top:12px">
@@ -6052,9 +6043,7 @@ var OneLineRoomCardEditor = class extends HTMLElement {
           </div>
           <div id="layout-content" class="manual-content" hidden>
             <div class="row" style="margin-top:4px; align-items:center; margin-bottom: 4px;">
-              <ha-formfield label="${getTranslation(h, "header_sync_offsets")}">
-                <ha-switch id="sync-offsets-toggle"></ha-switch>
-              </ha-formfield>
+              <ha-switch id="sync-offsets-toggle">${getTranslation(h, "header_sync_offsets")}</ha-switch>
             </div>
             <div style="margin-top:10px">
               <div class="image-title" style="margin-bottom:4px">${getTranslation(h, "header_name_offset")}</div>
@@ -6088,18 +6077,12 @@ var OneLineRoomCardEditor = class extends HTMLElement {
           </div>
           <div id="sensors-content" class="manual-content" hidden>
             <div class="image-title" style="font-size:11px;font-weight:600;opacity:0.6;margin-bottom:6px">${getTranslation(h, "sensors_manual")}</div>
-            <ha-formfield label="${getTranslation(h, "show_chip_shadow")}" style="display:flex;align-items:center;margin:4px 0 8px">
-              <ha-switch id="chip-shadow-toggle"></ha-switch>
-            </ha-formfield>
-            <ha-formfield label="${getTranslation(h, "show_status_border")}" style="display:flex;align-items:center;margin:4px 0 2px">
-              <ha-switch id="status-border-toggle"></ha-switch>
-            </ha-formfield>
+            <div style="display:flex;align-items:center;margin:4px 0 8px"><ha-switch id="chip-shadow-toggle">${getTranslation(h, "show_chip_shadow")}</ha-switch></div>
+            <div style="display:flex;align-items:center;margin:4px 0 2px"><ha-switch id="status-border-toggle">${getTranslation(h, "show_status_border")}</ha-switch></div>
             <div style="font-size:11px;opacity:0.65;margin:0 0 8px 42px">${getTranslation(h, "show_status_border_help")}</div>
             <ha-entity-picker label="${getTranslation(h, "presence_sensor")}" cfg="presence_sensor" class="i" allow-custom-entity include-domains='["person", "binary_sensor", "device_tracker"]'></ha-entity-picker>
             <div class="sensor-label-wrap"><label class="window-label-field-label">${getTranslation(h, "window_custom_label")}</label><input class="window-label-input sensor-label-input" data-cfg="presence_sensor_label" type="text" placeholder="${getTranslation(h, "presence_sensor")}"></div>
-            <ha-formfield label="${getTranslation(h, "presence_solid_background")}" style="display:flex;align-items:center;margin:8px 0 4px">
-              <ha-switch id="presence-solid-bg"></ha-switch>
-            </ha-formfield>
+            <div style="display:flex;align-items:center;margin:8px 0 4px"><ha-switch id="presence-solid-bg">${getTranslation(h, "presence_solid_background")}</ha-switch></div>
             <div id="presence-chip-color-row" style="position:relative;display:flex;align-items:flex-end;margin-bottom:8px">
               <oneline-room-card-textfield id="presence-chip-color" label="${getTranslation(h, "presence_chip_color")}" placeholder="#4CAF50" style="width:100%"></oneline-room-card-textfield>
               <div class="color-container" style="position:absolute;right:8px;bottom:8px;z-index:1">
@@ -6118,12 +6101,8 @@ var OneLineRoomCardEditor = class extends HTMLElement {
             <div class="sensor-label-wrap"><label class="window-label-field-label">${getTranslation(h, "window_custom_label")}</label><input class="window-label-input sensor-label-input" data-cfg="humid_sensor_label" type="text" placeholder="${getTranslation(h, "humid_label")}"></div>
             <oneline-room-card-textfield label="${getTranslation(h, "humid_warn_threshold")}" cfg="humidity_warning_threshold" class="i" type="number"></oneline-room-card-textfield>
             <ha-selector cfg="window_sensors" class="i" label="${getTranslation(h, "window_label")}"></ha-selector>
-            <ha-formfield id="window-always-show-field" label="${getTranslation(h, "window_always_show")}" style="display:flex;align-items:center;margin:4px 0">
-              <ha-switch id="window-always-show"></ha-switch>
-            </ha-formfield>
-            <ha-formfield id="window-solid-bg-field" label="${getTranslation(h, "window_solid_background")}" style="display:flex;align-items:center;margin:4px 0">
-              <ha-switch id="window-solid-bg"></ha-switch>
-            </ha-formfield>
+            <div id="window-always-show-field" style="display:flex;align-items:center;margin:4px 0"><ha-switch id="window-always-show">${getTranslation(h, "window_always_show")}</ha-switch></div>
+            <div id="window-solid-bg-field" style="display:flex;align-items:center;margin:4px 0"><ha-switch id="window-solid-bg">${getTranslation(h, "window_solid_background")}</ha-switch></div>
             <div id="window-open-color-row" style="position: relative; display: flex; align-items: flex-end; margin-top: 8px;">
               <oneline-room-card-textfield label="${getTranslation(h, "window_open_color")}" id="window-open-color" cfg="window_open_color" style="width: 100%"></oneline-room-card-textfield>
               <div class="color-container" style="position: absolute; right: 8px; bottom: 8px; z-index: 1;">
@@ -6169,8 +6148,7 @@ var OneLineRoomCardEditor = class extends HTMLElement {
                 <ha-icon icon="mdi:plus" slot="icon"></ha-icon>
               </mwc-button>
               <div style="margin-top:12px;padding:8px;background:rgba(0,0,0,0.1);border-radius:6px;display:flex;align-items:center;justify-content:space-between">
-                <div style="font-size:12px;font-weight:500">${getTranslation(h, "alert_chip_collapsed")}</div>
-                <ha-switch id="alert-chip-mode-toggle"></ha-switch>
+                <ha-switch id="alert-chip-mode-toggle" style="width:100%;font-size:12px;font-weight:500">${getTranslation(h, "alert_chip_collapsed")}</ha-switch>
               </div>
               <div style="margin-top:8px">
                 <oneline-room-card-textfield label="${getTranslation(h, "alert_border_color")}" id="alert-border-color" cfg="alert_border_color" class="i" placeholder="#d32f2d" style="width:100%"></oneline-room-card-textfield>
@@ -8002,9 +7980,8 @@ var OneLineRoomCardEditor = class extends HTMLElement {
       const toggles = document.createElement("div");
       toggles.className = "editor-stack";
       const makeToggle = (labelKey, key) => {
-        const formfield = document.createElement("ha-formfield");
-        formfield.label = getTranslation(this._hass, labelKey);
         const toggle = document.createElement("ha-switch");
+        toggle.textContent = getTranslation(this._hass, labelKey);
         toggle.checked = group[key] === true;
         toggle.addEventListener("change", (event) => {
           event.stopPropagation();
@@ -8012,8 +7989,7 @@ var OneLineRoomCardEditor = class extends HTMLElement {
             nextGroup[key] = event.target.checked === true;
           });
         });
-        formfield.appendChild(toggle);
-        return formfield;
+        return toggle;
       };
       toggles.append(makeToggle("status_group_hide_zero", "hide_when_zero"), makeToggle("status_group_details", "details"));
       const conditionTitle = document.createElement("div");
@@ -8620,26 +8596,22 @@ var OneLineRoomCardEditor = class extends HTMLElement {
       labelRow.appendChild(lf);
       const toggleRow = document.createElement("div");
       toggleRow.style.cssText = "display: flex; gap: 16px; align-items: center; padding-left: 4px;";
-      const nameFormfield = document.createElement("ha-formfield");
-      nameFormfield.label = getTranslation(h, "show_name");
       const nameSwitch = document.createElement("ha-switch");
+      nameSwitch.textContent = getTranslation(h, "show_name");
       nameSwitch.checked = badge.show_name !== false;
       nameSwitch.addEventListener("change", (ev) => {
         ev.stopPropagation();
         updBadge(idx, "show_name", ev.target.checked !== false);
       });
-      nameFormfield.appendChild(nameSwitch);
-      toggleRow.appendChild(nameFormfield);
-      const lcFormfield = document.createElement("ha-formfield");
-      lcFormfield.label = getTranslation(h, "show_last_changed");
+      toggleRow.appendChild(nameSwitch);
       const lcSwitch = document.createElement("ha-switch");
+      lcSwitch.textContent = getTranslation(h, "show_last_changed");
       lcSwitch.checked = badge.show_last_changed === true;
       lcSwitch.addEventListener("change", (ev) => {
         ev.stopPropagation();
         updBadge(idx, "show_last_changed", ev.target.checked === true);
       });
-      lcFormfield.appendChild(lcSwitch);
-      toggleRow.appendChild(lcFormfield);
+      toggleRow.appendChild(lcSwitch);
       labelRow.appendChild(toggleRow);
       box.appendChild(labelRow);
       const bgRow = document.createElement("div");
@@ -8876,7 +8848,7 @@ var OneLineRoomCardEditor = class extends HTMLElement {
           <oneline-room-card-textfield class="ts" label="${getTranslation(h, "tmpl_state")}"></oneline-room-card-textfield>
           <div class="tmpl-preview"><span>${getTranslation(h, "tmpl_preview")}:</span> <ha-icon class="tp-ic"></ha-icon> <span class="tp-tx"></span></div>
         </details>
-        <div class="row" style="margin-top:8px; align-items:center"><ha-selector class="al" label="${getTranslation(h, "align")}"></ha-selector><ha-selector class="lp" label="${getTranslation(h, "label_position")}"></ha-selector><ha-selector class="tl" label="${getTranslation(h, "text_layout")}"></ha-selector><ha-formfield label="${getTranslation(h, "show_state")}"><ha-switch class="ss" checked></ha-switch></ha-formfield><ha-formfield label="${getTranslation(h, "show_label")}"><ha-switch class="sl" checked></ha-switch></ha-formfield><ha-formfield label="${getTranslation(h, "show_icon")}"><ha-switch class="si" checked></ha-switch></ha-formfield><ha-formfield label="${getTranslation(h, "show_last_changed")}"><ha-switch class="slc"></ha-switch></ha-formfield><ha-formfield label="${getTranslation(h, "show_sparkline")}"><ha-switch class="sps"></ha-switch></ha-formfield><oneline-room-card-textfield class="sh" label="${getTranslation(h, "sparkline_hours")}" type="number" placeholder="24" style="max-width:120px"></oneline-room-card-textfield><ha-formfield class="spd-wrap" label="${getTranslation(h, "sparkline_detail")}" style="display:${r_dom === "sensor" && ctrl.show_sparkline === true ? "inline-flex" : "none"}"><ha-switch class="spd"></ha-switch></ha-formfield><ha-formfield label="${getTranslation(h, "visible")}"><ha-switch class="hd" checked></ha-switch></ha-formfield></div>
+        <div class="row" style="margin-top:8px; align-items:center"><ha-selector class="al" label="${getTranslation(h, "align")}"></ha-selector><ha-selector class="lp" label="${getTranslation(h, "label_position")}"></ha-selector><ha-selector class="tl" label="${getTranslation(h, "text_layout")}"></ha-selector><ha-switch class="ss" checked>${getTranslation(h, "show_state")}</ha-switch><ha-switch class="sl" checked>${getTranslation(h, "show_label")}</ha-switch><ha-switch class="si" checked>${getTranslation(h, "show_icon")}</ha-switch><ha-switch class="slc">${getTranslation(h, "show_last_changed")}</ha-switch><ha-switch class="sps">${getTranslation(h, "show_sparkline")}</ha-switch><oneline-room-card-textfield class="sh" label="${getTranslation(h, "sparkline_hours")}" type="number" placeholder="24" style="max-width:120px"></oneline-room-card-textfield><div class="spd-wrap" style="display:${r_dom === "sensor" && ctrl.show_sparkline === true ? "inline-flex" : "none"}"><ha-switch class="spd">${getTranslation(h, "sparkline_detail")}</ha-switch></div><ha-switch class="hd" checked>${getTranslation(h, "visible")}</ha-switch></div>
         <div class="entity-only ${hideEntity}" style="margin-top:12px; border-top:1px solid var(--divider-color); padding-top:12px">
            <oneline-room-card-textfield class="isz" label="${getTranslation(h, "icon_size")}" type="number" style="max-width:120px" placeholder="20"></oneline-room-card-textfield>
            <ha-selector class="cm" label="${getTranslation(h, "control_mode")}"></ha-selector>
@@ -8893,28 +8865,28 @@ var OneLineRoomCardEditor = class extends HTMLElement {
         </div>
         <div class="entity-only cover-only ${hideEntity}" style="margin-top:8px; border-top:1px solid var(--divider-color); padding-top:8px">
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-            <ha-formfield label="${getTranslation(h, "show_cover_presets")}"><ha-switch class="scp"></ha-switch></ha-formfield>
+            <ha-switch class="scp">${getTranslation(h, "show_cover_presets")}</ha-switch>
             <oneline-room-card-textfield class="cpv" label="${getTranslation(h, "cover_presets_label")}" placeholder="0, 25, 50, 75, 100" style="flex:1;min-width:160px"></oneline-room-card-textfield>
           </div>
         </div>
         <div class="entity-only climate-only ${hideEntity}" style="margin-top:8px; border-top:1px solid var(--divider-color); padding-top:8px">
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-            <ha-formfield label="${getTranslation(h, "show_climate_presets")}"><ha-switch class="sctp"></ha-switch></ha-formfield>
+            <ha-switch class="sctp">${getTranslation(h, "show_climate_presets")}</ha-switch>
             <oneline-room-card-textfield class="ctpv" label="${getTranslation(h, "climate_presets_label")}" placeholder="0, 18, 20, auto, max" style="flex:1;min-width:160px"></oneline-room-card-textfield>
           </div>
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px">
-            <ha-formfield label="${getTranslation(h, "show_hvac_modes")}"><ha-switch class="shvac"></ha-switch></ha-formfield>
-            <ha-formfield label="${getTranslation(h, "show_fan_modes")}"><ha-switch class="sfan"></ha-switch></ha-formfield>
+            <ha-switch class="shvac">${getTranslation(h, "show_hvac_modes")}</ha-switch>
+            <ha-switch class="sfan">${getTranslation(h, "show_fan_modes")}</ha-switch>
           </div>
         </div>
         <div class="entity-only light-only ${hideEntity}" style="margin-top:8px; border-top:1px solid var(--divider-color); padding-top:8px">
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
-            <ha-formfield label="${getTranslation(h, "show_brightness_value")}"><ha-switch class="sbv"></ha-switch></ha-formfield>
-            <ha-formfield label="${getTranslation(h, "show_brightness_presets")}"><ha-switch class="sbp"></ha-switch></ha-formfield>
+            <ha-switch class="sbv">${getTranslation(h, "show_brightness_value")}</ha-switch>
+            <ha-switch class="sbp">${getTranslation(h, "show_brightness_presets")}</ha-switch>
             <oneline-room-card-textfield class="bpv" label="${getTranslation(h, "brightness_presets_label")}" placeholder="25, 50, 75, 100" style="flex:1;min-width:160px"></oneline-room-card-textfield>
           </div>
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-            <ha-formfield label="${getTranslation(h, "show_color_favorites")}"><ha-switch class="scf"></ha-switch></ha-formfield>
+            <ha-switch class="scf">${getTranslation(h, "show_color_favorites")}</ha-switch>
             <div class="cfv-swatches" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-height:28px"></div>
           </div>
         </div>
