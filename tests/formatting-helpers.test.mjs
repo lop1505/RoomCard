@@ -1,6 +1,25 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { formatEntityStateForDisplay, formatEntityAttributeForDisplay } from "../src/lib/formatting.js";
+import { getEntityDisplayName, formatEntityStateForDisplay, formatEntityAttributeForDisplay } from "../src/lib/formatting.js";
+
+test("entity names prefer explicit text, then the bound HA formatter, with safe legacy fallbacks", () => {
+  const id = "sensor.temperature";
+  const state = { entity_id: id, state: "21", attributes: { friendly_name: "Legacy name" } };
+  const hass = { states: { [id]: state }, entities: { [id]: { name: "HA name" } }, formatEntityName(value) {
+    assert.equal(value, state);
+    return this.entities[value.entity_id].name;
+  } };
+  assert.equal(getEntityDisplayName(hass, id), "HA name");
+  assert.equal(getEntityDisplayName(hass, id, "My name"), "My name");
+  assert.equal(getEntityDisplayName(hass, id, ""), "");
+  for (const formatter of [undefined, () => { throw Error("registry unavailable"); }, () => "", () => undefined]) {
+    assert.equal(getEntityDisplayName({ ...hass, formatEntityName: formatter }, id), "Legacy name");
+  }
+  assert.equal(getEntityDisplayName({ states: { [id]: { state: "unavailable" } } }, id), id);
+  assert.equal(getEntityDisplayName(hass, "sensor.missing"), "sensor.missing");
+  assert.equal(getEntityDisplayName(undefined, id), id);
+  assert.equal(getEntityDisplayName(undefined, undefined), "");
+});
 
 test("state formatting prefers HA and preserves existing unit fallback concatenation", () => {
   const sensor = { state: "21", attributes: {} };

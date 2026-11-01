@@ -1,5 +1,18 @@
 import { trimStr } from "./values.js";
 
+const getEntityDisplayName = (hass, entityId, explicitName) => {
+  // An explicit empty control name is intentional, too.
+  if (typeof explicitName === "string") return explicitName;
+  const stateObj = hass?.states?.[entityId];
+  try {
+    if (stateObj && typeof hass?.formatEntityName === "function") {
+      const name = hass.formatEntityName(stateObj);
+      if (typeof name === "string" && name.trim()) return name;
+    }
+  } catch (_error) { }
+  return stateObj?.attributes?.friendly_name || entityId || "";
+};
+
 const formatEntityStateForDisplay = (hass, stateObj, fallbackUnit = "") => {
   if (!stateObj) return "";
   try {
@@ -24,4 +37,4 @@ const formatEntityAttributeForDisplay = (hass, stateObj, attribute, value, fallb
   return `${value}${fallbackUnit || ""}`;
 };
 
-export { formatEntityStateForDisplay, formatEntityAttributeForDisplay };
+export { getEntityDisplayName, formatEntityStateForDisplay, formatEntityAttributeForDisplay };

@@ -1,5 +1,5 @@
 import { clampNum, replaceTemplateExpressions, trimStr } from "../lib/values.js";
-import { formatEntityStateForDisplay, formatEntityAttributeForDisplay } from "../lib/formatting.js";
+import { getEntityDisplayName, formatEntityStateForDisplay, formatEntityAttributeForDisplay } from "../lib/formatting.js";
 import { normalizeTemperatureUnit, convertTemperatureValue, temperatureNumberLocale, formatConvertedTemperature, formatTemperatureStateForDisplay, formatTemperatureAttributeForDisplay } from "../lib/temperature.js";
 import { hexToRgba, readableTextForHex, parseColorToPickerHex } from "../lib/colors.js";
 import { STATE_DEFINITIONS, DOMAIN_STATE_ICON_MAPS, getEntityDomain, getEntityStateValue, isOfflineStateValue, isEntityOffline, isEntityOn, isEntityOff, isEntityActive } from "../lib/states.js";
@@ -109,10 +109,23 @@ connectedCallback() {
     const upd = this._hass?.language !== hass?.language;
     this._hass = hass;
     if (upd) { this._controlTemplatesCache = null; this._navOptionsLoaded = false; this.shadowRoot.replaceChildren(); this.render(); return; }
+    const nameSignature = this._getEntityNameSignature(hass);
+    const namesChanged = this._lastEntityNameSignature !== nameSignature;
+    this._lastEntityNameSignature = nameSignature;
     if (this.shadowRoot) {
       this.shadowRoot.querySelectorAll("ha-selector,ha-entity-picker,ha-icon-picker,oneline-room-card-textfield,ha-switch,ha-card-conditions-editor").forEach(e => {
         if (e.hass !== hass) e.hass = hass;
       });
+      if (namesChanged) {
+        this.renBtn();
+        this._updateBadgesUI();
+        this._updateWindowLabelsUI();
+        this._updateRoomModesUI();
+        this.shadowRoot.querySelectorAll("#alert-sensors-list .badge-entity-label").forEach((label, index) => {
+          const config = normalizeAlertSensorConfig(this._config?.alert_sensors?.[index]);
+          label.textContent = config?.entity ? getEntityDisplayName(hass, config.entity) : getTranslation(hass, "alert_sensor_entity");
+        });
+      }
       this.updPreview();
       if (this._config && (!this.shadowRoot.getElementById("show-name-toggle") || !this.shadowRoot.getElementById("typo-sec"))) {
         this.shadowRoot.replaceChildren();
@@ -120,6 +133,15 @@ connectedCallback() {
         return;
       }
     }
+  }
+
+  _getEntityNameSignature(hass) {
+    const config = this._config || {};
+    const list = key => Array.isArray(config[key]) ? config[key] : [];
+    const ids = [config.entity, ...list("window_sensors"),
+      ...["controls", "header_badges", "room_modes", "alert_sensors"].flatMap(key =>
+        list(key).map(item => typeof item === "string" ? item : item?.entity))];
+    return JSON.stringify([...new Set(ids.filter(Boolean))].map(id => [id, getEntityDisplayName(hass, id)]));
   }
 
   _fire(config) {
@@ -472,7 +494,6 @@ connectedCallback() {
 
   _buildControlFromTemplate(template, entityId) {
     const st = this._hass?.states?.[entityId];
-    const name = st?.attributes?.friendly_name || "";
     const domain = entityId?.split(".")[0] || "";
     const defaults = template?.defaults || {};
     const iconField = DOMAIN_STATE_ICON_MAPS[domain]
@@ -480,7 +501,6 @@ connectedCallback() {
       : { icon: st?.attributes?.icon || template?.defaults?.icon || this._iconForEntity(entityId) };
     return {
       entity: entityId || "",
-      name,
       ...iconField,
       width: defaults.width ?? 15,
       height: defaults.height ?? 60,
@@ -1917,7 +1937,7 @@ connectedCallback() {
         const entityLabel = document.createElement("span");
         entityLabel.className = "badge-entity-label";
         entityLabel.textContent = cfg.entity
-          ? (h.states[cfg.entity]?.attributes?.friendly_name || cfg.entity)
+          ? getEntityDisplayName(h, cfg.entity)
           : getTranslation(h, "alert_sensor_entity");
         const deleteBtn = document.createElement("button");
         deleteBtn.type = "button";
@@ -2703,15 +2723,12 @@ if (tmplSelect) {
     this.shadowRoot.getElementById("add").addEventListener("click", () => {
       const c = [...(this._config.controls || [])];
       let w = 15; if (c.length > 0) w = c[c.length - 1].width || 15;
-      let ent = "", n = "";
+      let ent = "";
       if (c.length === 0 && this._config.entity) {
         ent = this._config.entity;
-        if (this._hass?.states[ent]) {
-          n = this._hass.states[ent].attributes.friendly_name || "";
-        }
       }
       const addDomain = ent.split(".")[0];
-      const newCtrl = { entity: ent, name: n, width: w, height: 60 };
+      const newCtrl = { entity: ent, width: w, height: 60 };
       if (!DOMAIN_STATE_ICON_MAPS[addDomain]) {
         newCtrl.icon = this._hass?.states[ent]?.attributes?.icon || this._iconForEntity(ent) || "mdi:lightbulb";
       }
@@ -2814,7 +2831,7 @@ if (tmplSelect) {
       header.className = "badge-head-row";
       const label = document.createElement("span");
       label.className = "badge-entity-label";
-      label.textContent = `${index + 1}. ${mode.name || this._hass?.states?.[mode.entity]?.attributes?.friendly_name || mode.entity || getTranslation(this._hass, "room_modes")}`;
+      label.textContent = `${index + 1}. ${getEntityDisplayName(this._hass, mode.entity, mode.name || undefined) || getTranslation(this._hass, "room_modes")}`;
       const actions = document.createElement("div");
       actions.className = "room-mode-editor-actions";
       const makeAction = (iconName, ariaLabel, disabled, action) => {
@@ -3578,7 +3595,7 @@ if (tmplSelect) {
       const labelField = document.createElement("input");
       labelField.type = "text";
       labelField.className = "window-label-input";
-      labelField.placeholder = h?.states?.[entity]?.attributes?.friendly_name || getTranslation(h, "window");
+      labelField.placeholder = getEntityDisplayName(h, entity);
       labelField.value = label || "";
       labelField.addEventListener("change", (ev) => {
         ev.stopPropagation();
@@ -3731,7 +3748,7 @@ if (tmplSelect) {
 
       const lf = document.createElement("oneline-room-card-textfield");
       lf.label = getTranslation(h, "badge_label");
-      lf.placeholder = h?.states[badge.entity]?.attributes?.friendly_name || "";
+      lf.placeholder = getEntityDisplayName(h, badge.entity);
       lf.value = badge.label || "";
       lf.style.width = "100%";
       lf.addEventListener("change", (ev) => {
@@ -3911,6 +3928,7 @@ if (tmplSelect) {
     const div = this.shadowRoot.getElementById("b"); if (!div) return;
     const h = this._hass;
     if (!h) return;
+    this._lastEntityNameSignature = this._getEntityNameSignature(h);
     this._syncControlIds();
     const actOpts = [
       { value: "room-details", label: getTranslation(h, "room_details") },
@@ -3942,7 +3960,7 @@ if (tmplSelect) {
       const showMode = (ctrl.control_mode === "slider" && r_dom === "light" && r_hasColorTemp) ? "block" : "none";
       box.open = this._collapsedState[key] !== true;
       box.addEventListener("toggle", () => { this._collapsedState[key] = !box.open; this._updateBulkToggleButton(); });
-      const summaryText = ctrl.name || ctrl.entity || (isTemplate ? (ctrl.content || "Template") : "Button");
+      const summaryText = isTemplate ? (ctrl.name || ctrl.content || "Template") : (getEntityDisplayName(h, ctrl.entity, ctrl.name) || "Button");
       // Static per-control editor scaffold. summaryText is assigned with textContent below.
       box.innerHTML = `
         <summary class="head">
@@ -4203,7 +4221,6 @@ if (tmplSelect) {
           const val = e.detail.value; const st = h.states[val]; const c = [...this._config.controls];
           const epDomain = val?.split(".")[0] || "";
           let next = { ...c[i], entity: val };
-          if (st?.attributes?.friendly_name) next.name = st.attributes.friendly_name;
           if (DOMAIN_STATE_ICON_MAPS[epDomain]) {
             delete next.icon;
           } else {
@@ -4230,15 +4247,17 @@ if (tmplSelect) {
             if (ent) {
               next.entity = ent;
               next.icon = this._iconForEntity(ent);
-              const st = h.states[ent];
-              if (st?.attributes?.friendly_name) next.name = st.attributes.friendly_name;
             }
           }
           keepOpen(); c[i] = next; this._fire({ ...this._config, controls: c }); this.renBtn();
         });
         dvWrap.appendChild(dv);
       }
-      const nm = box.querySelector(".nm"); if (nm) { nm.value = ctrl.name || ""; nm.addEventListener("change", e => upd("name", e.target.value)); }
+      const nm = box.querySelector(".nm"); if (nm) {
+        nm.value = ctrl.name || "";
+        nm.placeholder = getEntityDisplayName(h, ctrl.entity);
+        nm.addEventListener("change", e => upd("name", e.target.value));
+      }
 
       const clPop = box.querySelector(".cl-pop");
       const clp = box.querySelector(".cl-p");

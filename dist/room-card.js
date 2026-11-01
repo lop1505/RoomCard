@@ -90,6 +90,18 @@ var replaceTemplateExpressions = (str, evalExpr) => {
 var trimStr = (v) => typeof v === "string" ? v.trim() : v;
 
 // src/lib/formatting.js
+var getEntityDisplayName = (hass, entityId, explicitName) => {
+  if (typeof explicitName === "string") return explicitName;
+  const stateObj = hass?.states?.[entityId];
+  try {
+    if (stateObj && typeof hass?.formatEntityName === "function") {
+      const name = hass.formatEntityName(stateObj);
+      if (typeof name === "string" && name.trim()) return name;
+    }
+  } catch (_error) {
+  }
+  return stateObj?.attributes?.friendly_name || entityId || "";
+};
 var formatEntityStateForDisplay = (hass, stateObj, fallbackUnit = "") => {
   if (!stateObj) return "";
   try {
@@ -2222,7 +2234,7 @@ var getStatusGroupResult = (group, hass) => {
     if (numericMode && !Number.isFinite(number)) return;
     contributors.push({
       entity_id: entityId,
-      friendly_name: stateObj.attributes?.friendly_name || entityId,
+      friendly_name: getEntityDisplayName(hass, entityId),
       icon: stateObj.attributes?.icon || "mdi:information-outline",
       state: hass?.formatEntityState ? hass.formatEntityState(stateObj) : String(stateObj.state ?? ""),
       number,
@@ -2713,7 +2725,7 @@ var OneLineRoomCard = class extends HTMLElement {
         wrapper.addEventListener("click", (event) => {
           event.preventDefault();
           event.stopPropagation();
-          this._showSparklineDialog(wrapper.dataset.sparklineEntity, Number(wrapper.dataset.sparklineHours), wrapper);
+          this._showSparklineDialog(wrapper.dataset.sparklineEntity, Number(wrapper.dataset.sparklineHours), wrapper, ctrl.name);
         });
         wrapper.addEventListener("keydown", (event) => event.stopPropagation());
       }
@@ -2728,8 +2740,7 @@ var OneLineRoomCard = class extends HTMLElement {
     wrapper.dataset.sparklineEntity = entityId || "";
     wrapper.dataset.sparklineHours = String(hours);
     if (interactive) {
-      const stateObj = this._hass?.states?.[entityId];
-      const name = ctrl.name || stateObj?.attributes?.friendly_name || entityId;
+      const name = getEntityDisplayName(this._hass, entityId, ctrl.name);
       wrapper.setAttribute("aria-label", `${getTranslation(this._hass, "sparkline_detail")}: ${name}`);
     }
     const data = this._sparklineCache.has(key) ? this._sparklineCache.get(key) : void 0;
@@ -2750,10 +2761,10 @@ var OneLineRoomCard = class extends HTMLElement {
     if (!stateObj) return numericState;
     return formatEntityStateForDisplay(this._hass, { ...stateObj, state: numericState });
   }
-  _showSparklineDialog(entityId, initialHours = 24, trigger) {
+  _showSparklineDialog(entityId, initialHours = 24, trigger, explicitName) {
     if (!entityId || !this._hass) return;
     const stateObj = this._hass.states?.[entityId];
-    const name = stateObj?.attributes?.friendly_name || entityId;
+    const name = getEntityDisplayName(this._hass, entityId, explicitName);
     const previouslyFocused = trigger || this.shadowRoot.activeElement || document.activeElement;
     const container = document.createElement("div");
     container.className = "sparkline-dialog-container";
@@ -3005,6 +3016,7 @@ var OneLineRoomCard = class extends HTMLElement {
     if (!stateObj) return "__missing__";
     const attrs = stateObj.attributes || {};
     const registryEntry = hass?.entities?.[entityId] || {};
+    const displayName = getEntityDisplayName(hass, entityId);
     if (trackFullState) {
       let serializedState = "";
       try {
@@ -3021,6 +3033,7 @@ var OneLineRoomCard = class extends HTMLElement {
       }
       return [
         serializedState,
+        displayName,
         registryEntry.display_precision ?? "",
         registryEntry.unit_of_measurement ?? "",
         registryEntry.device_class ?? ""
@@ -3037,7 +3050,7 @@ var OneLineRoomCard = class extends HTMLElement {
       attrs.current_temperature ?? "",
       attrs.temperature ?? "",
       attrs.current_humidity ?? "",
-      attrs.friendly_name ?? "",
+      displayName,
       attrs.hvac_action ?? "",
       attrs.fan_mode ?? "",
       attrs.icon ?? "",
@@ -3397,7 +3410,7 @@ var OneLineRoomCard = class extends HTMLElement {
       const val = st.state;
       if (val === "unavailable" || val === "unknown") return;
       const showBadgeName = badge.show_name !== false;
-      const displayLabel = badge.label || st.attributes.friendly_name || badge.entity;
+      const displayLabel = getEntityDisplayName(h, badge.entity, badge.label || void 0);
       const isLastChanged = badge.show_last_changed === true && st.last_changed;
       const displayVal = isLastChanged ? formatLastChanged(st.last_changed, h) : formatEntityStateForDisplay(h, st);
       infoParts.push({
@@ -3482,7 +3495,7 @@ var OneLineRoomCard = class extends HTMLElement {
       const pState = h.states[c.presence_sensor];
       const isActive = ["on", "home", "active", "detected"].includes(String(pState.state).toLowerCase().trim());
       if (isActive) {
-        const pLabel = trimStr(c.presence_sensor_label) || pState.attributes?.friendly_name || getTranslation(h, "presence_detected");
+        const pLabel = getEntityDisplayName(h, c.presence_sensor, trimStr(c.presence_sensor_label) || void 0);
         const isPerson = String(pState.entity_id).startsWith("person.");
         const pIcon = pState.attributes?.icon || (isPerson ? "mdi:account" : "mdi:motion-sensor");
         const presenceColor = trimStr(c.presence_chip_color) || "#4CAF50";
@@ -3513,7 +3526,7 @@ var OneLineRoomCard = class extends HTMLElement {
         alertSensorWarn = true;
         activeAlerts.push({
           entity_id: cfg.entity,
-          friendly_name: st.attributes?.friendly_name || cfg.entity,
+          friendly_name: getEntityDisplayName(h, cfg.entity),
           icon: st.attributes?.icon || "mdi:alert-circle-outline",
           state: st.state
         });
@@ -3552,7 +3565,7 @@ var OneLineRoomCard = class extends HTMLElement {
       const chipTextColor = windowSolidBackground ? readableTextForHex(chipColor) || "var(--primary-text-color)" : chipColor;
       const deviceClass = st.attributes?.device_class;
       const icon = st.attributes?.icon || (deviceClass === "door" ? isOpen ? "mdi:door-open" : "mdi:door-closed" : deviceClass === "garage_door" ? isOpen ? "mdi:garage-open" : "mdi:garage" : isOpen ? "mdi:window-open-variant" : "mdi:window-closed-variant");
-      const label = trimStr(windowLabels[s]) || st.attributes.friendly_name || getTranslation(h, "window");
+      const label = getEntityDisplayName(h, s, trimStr(windowLabels[s]) || void 0);
       const chip = document.createElement("div");
       chip.className = "chip";
       chip.style.background = chipBg;
@@ -3606,8 +3619,7 @@ var OneLineRoomCard = class extends HTMLElement {
     if (surface.kind === "card" && c.auto_climate_button && c.entity && getEntityDomain(c.entity) === "climate") {
       const alreadyPresent = visibleCtrls.some((ctrl) => ctrl.entity === c.entity);
       if (!alreadyPresent) {
-        const climateState2 = h.states[c.entity];
-        visibleCtrls = [{ entity: c.entity, name: climateState2?.attributes?.friendly_name || "", width: 60, height: 60 }, ...visibleCtrls];
+        visibleCtrls = [{ entity: c.entity, width: 60, height: 60 }, ...visibleCtrls];
       }
     }
     const controlsSig = JSON.stringify(visibleCtrls);
@@ -3744,7 +3756,7 @@ var OneLineRoomCard = class extends HTMLElement {
         const icon = document.createElement("ha-icon");
         icon.setAttribute("icon", mode.icon || (domain === "scene" ? "mdi:palette-outline" : "mdi:play-circle-outline"));
         const label = document.createElement("span");
-        label.textContent = mode.name || hass.states?.[mode.entity]?.attributes?.friendly_name || mode.entity;
+        label.textContent = getEntityDisplayName(hass, mode.entity, mode.name || void 0);
         button.append(icon, label);
         return button;
       });
@@ -3758,7 +3770,7 @@ var OneLineRoomCard = class extends HTMLElement {
       const stateObj = hass.states?.[mode.entity];
       const disabled = !stateObj || isEntityOffline(stateObj);
       button.disabled = disabled;
-      const label = mode.name || stateObj?.attributes?.friendly_name || mode.entity;
+      const label = getEntityDisplayName(hass, mode.entity, mode.name || void 0);
       const labelNode = button.querySelector("span");
       if (labelNode) labelNode.textContent = label;
       button.setAttribute("aria-label", getTranslation(hass, "a11y_activate").replace("{name}", label));
@@ -3841,7 +3853,7 @@ var OneLineRoomCard = class extends HTMLElement {
     }
     const manualBg = ctrl.button_background || this.config?.global_button_background || "";
     if (manualBg) bg = manualBg;
-    const nameTxt = isTemplate ? tpl?.content || ctrl.name || "" : ctrl.name !== void 0 ? ctrl.name : "Dev";
+    const nameTxt = isTemplate ? tpl?.content || ctrl.name || "" : getEntityDisplayName(h, ctrl.entity, ctrl.name);
     const unavailableText = getTranslation(h, "device_unavailable");
     const climateHasSlider = typ === "climate" && (ctrl.control_mode === "slider" || ctrl.control_mode === "full");
     const mediaTitleText = (() => {
@@ -5030,10 +5042,23 @@ var OneLineRoomCardEditor = class extends HTMLElement {
       this.render();
       return;
     }
+    const nameSignature = this._getEntityNameSignature(hass);
+    const namesChanged = this._lastEntityNameSignature !== nameSignature;
+    this._lastEntityNameSignature = nameSignature;
     if (this.shadowRoot) {
       this.shadowRoot.querySelectorAll("ha-selector,ha-entity-picker,ha-icon-picker,oneline-room-card-textfield,ha-switch,ha-card-conditions-editor").forEach((e) => {
         if (e.hass !== hass) e.hass = hass;
       });
+      if (namesChanged) {
+        this.renBtn();
+        this._updateBadgesUI();
+        this._updateWindowLabelsUI();
+        this._updateRoomModesUI();
+        this.shadowRoot.querySelectorAll("#alert-sensors-list .badge-entity-label").forEach((label, index) => {
+          const config = normalizeAlertSensorConfig(this._config?.alert_sensors?.[index]);
+          label.textContent = config?.entity ? getEntityDisplayName(hass, config.entity) : getTranslation(hass, "alert_sensor_entity");
+        });
+      }
       this.updPreview();
       if (this._config && (!this.shadowRoot.getElementById("show-name-toggle") || !this.shadowRoot.getElementById("typo-sec"))) {
         this.shadowRoot.replaceChildren();
@@ -5041,6 +5066,16 @@ var OneLineRoomCardEditor = class extends HTMLElement {
         return;
       }
     }
+  }
+  _getEntityNameSignature(hass) {
+    const config = this._config || {};
+    const list = (key) => Array.isArray(config[key]) ? config[key] : [];
+    const ids = [
+      config.entity,
+      ...list("window_sensors"),
+      ...["controls", "header_badges", "room_modes", "alert_sensors"].flatMap((key) => list(key).map((item) => typeof item === "string" ? item : item?.entity))
+    ];
+    return JSON.stringify([...new Set(ids.filter(Boolean))].map((id) => [id, getEntityDisplayName(hass, id)]));
   }
   _fire(config) {
     this._ensureEditorState();
@@ -5375,13 +5410,11 @@ var OneLineRoomCardEditor = class extends HTMLElement {
   }
   _buildControlFromTemplate(template, entityId) {
     const st = this._hass?.states?.[entityId];
-    const name = st?.attributes?.friendly_name || "";
     const domain = entityId?.split(".")[0] || "";
     const defaults = template?.defaults || {};
     const iconField = DOMAIN_STATE_ICON_MAPS[domain] ? {} : { icon: st?.attributes?.icon || template?.defaults?.icon || this._iconForEntity(entityId) };
     return {
       entity: entityId || "",
-      name,
       ...iconField,
       width: defaults.width ?? 15,
       height: defaults.height ?? 60,
@@ -6817,7 +6850,7 @@ var OneLineRoomCardEditor = class extends HTMLElement {
         headerRow.className = "badge-head-row";
         const entityLabel = document.createElement("span");
         entityLabel.className = "badge-entity-label";
-        entityLabel.textContent = cfg.entity ? h.states[cfg.entity]?.attributes?.friendly_name || cfg.entity : getTranslation(h, "alert_sensor_entity");
+        entityLabel.textContent = cfg.entity ? getEntityDisplayName(h, cfg.entity) : getTranslation(h, "alert_sensor_entity");
         const deleteBtn = document.createElement("button");
         deleteBtn.type = "button";
         deleteBtn.className = "badge-del-btn";
@@ -7595,15 +7628,12 @@ var OneLineRoomCardEditor = class extends HTMLElement {
       const c = [...this._config.controls || []];
       let w = 15;
       if (c.length > 0) w = c[c.length - 1].width || 15;
-      let ent = "", n = "";
+      let ent = "";
       if (c.length === 0 && this._config.entity) {
         ent = this._config.entity;
-        if (this._hass?.states[ent]) {
-          n = this._hass.states[ent].attributes.friendly_name || "";
-        }
       }
       const addDomain = ent.split(".")[0];
-      const newCtrl = { entity: ent, name: n, width: w, height: 60 };
+      const newCtrl = { entity: ent, width: w, height: 60 };
       if (!DOMAIN_STATE_ICON_MAPS[addDomain]) {
         newCtrl.icon = this._hass?.states[ent]?.attributes?.icon || this._iconForEntity(ent) || "mdi:lightbulb";
       }
@@ -7704,7 +7734,7 @@ var OneLineRoomCardEditor = class extends HTMLElement {
       header.className = "badge-head-row";
       const label = document.createElement("span");
       label.className = "badge-entity-label";
-      label.textContent = `${index + 1}. ${mode.name || this._hass?.states?.[mode.entity]?.attributes?.friendly_name || mode.entity || getTranslation(this._hass, "room_modes")}`;
+      label.textContent = `${index + 1}. ${getEntityDisplayName(this._hass, mode.entity, mode.name || void 0) || getTranslation(this._hass, "room_modes")}`;
       const actions = document.createElement("div");
       actions.className = "room-mode-editor-actions";
       const makeAction = (iconName, ariaLabel, disabled, action) => {
@@ -8449,7 +8479,7 @@ var OneLineRoomCardEditor = class extends HTMLElement {
       const labelField = document.createElement("input");
       labelField.type = "text";
       labelField.className = "window-label-input";
-      labelField.placeholder = h?.states?.[entity]?.attributes?.friendly_name || getTranslation(h, "window");
+      labelField.placeholder = getEntityDisplayName(h, entity);
       labelField.value = label || "";
       labelField.addEventListener("change", (ev) => {
         ev.stopPropagation();
@@ -8586,7 +8616,7 @@ var OneLineRoomCardEditor = class extends HTMLElement {
       labelRow.style.cssText = "display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px;";
       const lf = document.createElement("oneline-room-card-textfield");
       lf.label = getTranslation(h, "badge_label");
-      lf.placeholder = h?.states[badge.entity]?.attributes?.friendly_name || "";
+      lf.placeholder = getEntityDisplayName(h, badge.entity);
       lf.value = badge.label || "";
       lf.style.width = "100%";
       lf.addEventListener("change", (ev) => {
@@ -8751,6 +8781,7 @@ var OneLineRoomCardEditor = class extends HTMLElement {
     if (!div) return;
     const h = this._hass;
     if (!h) return;
+    this._lastEntityNameSignature = this._getEntityNameSignature(h);
     this._syncControlIds();
     const actOpts = [
       { value: "room-details", label: getTranslation(h, "room_details") },
@@ -8790,7 +8821,7 @@ var OneLineRoomCardEditor = class extends HTMLElement {
         this._collapsedState[key] = !box.open;
         this._updateBulkToggleButton();
       });
-      const summaryText = ctrl.name || ctrl.entity || (isTemplate ? ctrl.content || "Template" : "Button");
+      const summaryText = isTemplate ? ctrl.name || ctrl.content || "Template" : getEntityDisplayName(h, ctrl.entity, ctrl.name) || "Button";
       box.innerHTML = `
         <summary class="head">
           <span class="head-left"><ha-icon class="chev" icon="mdi:chevron-right"></ha-icon><span class="summary-text"></span></span>
@@ -9077,7 +9108,6 @@ var OneLineRoomCardEditor = class extends HTMLElement {
           const c = [...this._config.controls];
           const epDomain = val?.split(".")[0] || "";
           let next = { ...c[i], entity: val };
-          if (st?.attributes?.friendly_name) next.name = st.attributes.friendly_name;
           if (DOMAIN_STATE_ICON_MAPS[epDomain]) {
             delete next.icon;
           } else {
@@ -9107,8 +9137,6 @@ var OneLineRoomCardEditor = class extends HTMLElement {
             if (ent) {
               next.entity = ent;
               next.icon = this._iconForEntity(ent);
-              const st = h.states[ent];
-              if (st?.attributes?.friendly_name) next.name = st.attributes.friendly_name;
             }
           }
           keepOpen();
@@ -9121,6 +9149,7 @@ var OneLineRoomCardEditor = class extends HTMLElement {
       const nm = box.querySelector(".nm");
       if (nm) {
         nm.value = ctrl.name || "";
+        nm.placeholder = getEntityDisplayName(h, ctrl.entity);
         nm.addEventListener("change", (e) => upd("name", e.target.value));
       }
       const clPop = box.querySelector(".cl-pop");

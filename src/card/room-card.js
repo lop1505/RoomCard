@@ -1,5 +1,5 @@
 import { clampNum, replaceTemplateExpressions, trimStr } from "../lib/values.js";
-import { formatEntityStateForDisplay, formatEntityAttributeForDisplay } from "../lib/formatting.js";
+import { getEntityDisplayName, formatEntityStateForDisplay, formatEntityAttributeForDisplay } from "../lib/formatting.js";
 import { normalizeTemperatureUnit, convertTemperatureValue, temperatureNumberLocale, formatConvertedTemperature, formatTemperatureStateForDisplay, formatTemperatureAttributeForDisplay } from "../lib/temperature.js";
 import { hexToRgba, readableTextForHex, parseColorToPickerHex } from "../lib/colors.js";
 import { STATE_DEFINITIONS, DOMAIN_STATE_ICON_MAPS, getEntityDomain, getEntityStateValue, isOfflineStateValue, isEntityOffline, isEntityOn, isEntityOff, isEntityActive } from "../lib/states.js";
@@ -353,7 +353,7 @@ class OneLineRoomCard extends HTMLElement {
         wrapper.addEventListener("click", (event) => {
           event.preventDefault();
           event.stopPropagation();
-          this._showSparklineDialog(wrapper.dataset.sparklineEntity, Number(wrapper.dataset.sparklineHours), wrapper);
+          this._showSparklineDialog(wrapper.dataset.sparklineEntity, Number(wrapper.dataset.sparklineHours), wrapper, ctrl.name);
         });
         wrapper.addEventListener("keydown", (event) => event.stopPropagation());
       }
@@ -368,8 +368,7 @@ class OneLineRoomCard extends HTMLElement {
     wrapper.dataset.sparklineEntity = entityId || "";
     wrapper.dataset.sparklineHours = String(hours);
     if (interactive) {
-      const stateObj = this._hass?.states?.[entityId];
-      const name = ctrl.name || stateObj?.attributes?.friendly_name || entityId;
+      const name = getEntityDisplayName(this._hass, entityId, ctrl.name);
       wrapper.setAttribute("aria-label", `${getTranslation(this._hass, "sparkline_detail")}: ${name}`);
     }
     const data = this._sparklineCache.has(key) ? this._sparklineCache.get(key) : undefined;
@@ -392,10 +391,10 @@ class OneLineRoomCard extends HTMLElement {
     return formatEntityStateForDisplay(this._hass, { ...stateObj, state: numericState });
   }
 
-  _showSparklineDialog(entityId, initialHours = 24, trigger) {
+  _showSparklineDialog(entityId, initialHours = 24, trigger, explicitName) {
     if (!entityId || !this._hass) return;
     const stateObj = this._hass.states?.[entityId];
-    const name = stateObj?.attributes?.friendly_name || entityId;
+    const name = getEntityDisplayName(this._hass, entityId, explicitName);
     const previouslyFocused = trigger || this.shadowRoot.activeElement || document.activeElement;
     const container = document.createElement("div");
     container.className = "sparkline-dialog-container";
@@ -662,6 +661,7 @@ class OneLineRoomCard extends HTMLElement {
     if (!stateObj) return "__missing__";
     const attrs = stateObj.attributes || {};
     const registryEntry = hass?.entities?.[entityId] || {};
+    const displayName = getEntityDisplayName(hass, entityId);
     if (trackFullState) {
       let serializedState = "";
       try {
@@ -678,6 +678,7 @@ class OneLineRoomCard extends HTMLElement {
       }
       return [
         serializedState,
+        displayName,
         registryEntry.display_precision ?? "",
         registryEntry.unit_of_measurement ?? "",
         registryEntry.device_class ?? ""
@@ -694,7 +695,7 @@ class OneLineRoomCard extends HTMLElement {
       attrs.current_temperature ?? "",
       attrs.temperature ?? "",
       attrs.current_humidity ?? "",
-      attrs.friendly_name ?? "",
+      displayName,
       attrs.hvac_action ?? "",
       attrs.fan_mode ?? "",
       attrs.icon ?? "",
@@ -1092,7 +1093,7 @@ class OneLineRoomCard extends HTMLElement {
       const val = st.state;
       if (val === "unavailable" || val === "unknown") return;
       const showBadgeName = badge.show_name !== false;
-      const displayLabel = badge.label || st.attributes.friendly_name || badge.entity;
+      const displayLabel = getEntityDisplayName(h, badge.entity, badge.label || undefined);
       const isLastChanged = badge.show_last_changed === true && st.last_changed;
       const displayVal = isLastChanged ? formatLastChanged(st.last_changed, h) : formatEntityStateForDisplay(h, st);
       infoParts.push({
@@ -1186,7 +1187,7 @@ class OneLineRoomCard extends HTMLElement {
       const pState = h.states[c.presence_sensor];
       const isActive = ["on", "home", "active", "detected"].includes(String(pState.state).toLowerCase().trim());
       if (isActive) {
-        const pLabel = trimStr(c.presence_sensor_label) || pState.attributes?.friendly_name || getTranslation(h, "presence_detected");
+        const pLabel = getEntityDisplayName(h, c.presence_sensor, trimStr(c.presence_sensor_label) || undefined);
         const isPerson = String(pState.entity_id).startsWith("person.");
         const pIcon = pState.attributes?.icon || (isPerson ? "mdi:account" : "mdi:motion-sensor");
         const presenceColor = trimStr(c.presence_chip_color) || "#4CAF50";
@@ -1223,7 +1224,7 @@ class OneLineRoomCard extends HTMLElement {
         alertSensorWarn = true;
         activeAlerts.push({
           entity_id: cfg.entity,
-          friendly_name: st.attributes?.friendly_name || cfg.entity,
+          friendly_name: getEntityDisplayName(h, cfg.entity),
           icon: st.attributes?.icon || "mdi:alert-circle-outline",
           state: st.state
         });
@@ -1276,7 +1277,7 @@ class OneLineRoomCard extends HTMLElement {
           : deviceClass === "garage_door" ? (isOpen ? "mdi:garage-open" : "mdi:garage")
             : (isOpen ? "mdi:window-open-variant" : "mdi:window-closed-variant")
       );
-      const label = trimStr(windowLabels[s]) || st.attributes.friendly_name || getTranslation(h, "window");
+      const label = getEntityDisplayName(h, s, trimStr(windowLabels[s]) || undefined);
       const chip = document.createElement("div");
       chip.className = "chip";
       chip.style.background = chipBg;
@@ -1336,8 +1337,7 @@ class OneLineRoomCard extends HTMLElement {
     if (surface.kind === "card" && c.auto_climate_button && c.entity && getEntityDomain(c.entity) === "climate") {
       const alreadyPresent = visibleCtrls.some(ctrl => ctrl.entity === c.entity);
       if (!alreadyPresent) {
-        const climateState = h.states[c.entity];
-        visibleCtrls = [{ entity: c.entity, name: climateState?.attributes?.friendly_name || "", width: 60, height: 60 }, ...visibleCtrls];
+        visibleCtrls = [{ entity: c.entity, width: 60, height: 60 }, ...visibleCtrls];
       }
     }
 
@@ -1480,7 +1480,7 @@ class OneLineRoomCard extends HTMLElement {
         const icon = document.createElement("ha-icon");
         icon.setAttribute("icon", mode.icon || (domain === "scene" ? "mdi:palette-outline" : "mdi:play-circle-outline"));
         const label = document.createElement("span");
-        label.textContent = mode.name || hass.states?.[mode.entity]?.attributes?.friendly_name || mode.entity;
+        label.textContent = getEntityDisplayName(hass, mode.entity, mode.name || undefined);
         button.append(icon, label);
         return button;
       });
@@ -1494,7 +1494,7 @@ class OneLineRoomCard extends HTMLElement {
       const stateObj = hass.states?.[mode.entity];
       const disabled = !stateObj || isEntityOffline(stateObj);
       button.disabled = disabled;
-      const label = mode.name || stateObj?.attributes?.friendly_name || mode.entity;
+      const label = getEntityDisplayName(hass, mode.entity, mode.name || undefined);
       const labelNode = button.querySelector("span");
       if (labelNode) labelNode.textContent = label;
       button.setAttribute("aria-label", getTranslation(hass, "a11y_activate").replace("{name}", label));
@@ -1593,7 +1593,7 @@ class OneLineRoomCard extends HTMLElement {
 
     const nameTxt = isTemplate
       ? (tpl?.content || ctrl.name || "")
-      : (ctrl.name !== undefined ? ctrl.name : "Dev");
+      : getEntityDisplayName(h, ctrl.entity, ctrl.name);
     const unavailableText = getTranslation(h, "device_unavailable");
 
     // --- NEW: USE DYNAMIC UNIT IN TEMPLATE ---

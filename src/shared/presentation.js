@@ -1,5 +1,6 @@
 import { replaceTemplateExpressions, trimStr } from "../lib/values.js";
 import { isEntityOffline } from "../lib/states.js";
+import { getEntityDisplayName } from "../lib/formatting.js";
 import { evaluateAdaptiveImageConditions as evaluateAdaptiveConditions } from "../lib/conditions.js";
 import { getTranslation } from "../i18n/translations.js";
 import { VERSION } from "../version.js";
@@ -126,7 +127,7 @@ const getStatusGroupResult = (group, hass) => {
     if (numericMode && !Number.isFinite(number)) return;
     contributors.push({
       entity_id: entityId,
-      friendly_name: stateObj.attributes?.friendly_name || entityId,
+      friendly_name: getEntityDisplayName(hass, entityId),
       icon: stateObj.attributes?.icon || "mdi:information-outline",
       state: hass?.formatEntityState ? hass.formatEntityState(stateObj) : String(stateObj.state ?? ""),
       number,

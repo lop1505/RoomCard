@@ -376,7 +376,7 @@ status_groups:
 | Option | Default | Description |
 |---|---|---|
 | `entity` | — | Entity ID |
-| `name` | — | Display label |
+| `name` | — | Display label override; otherwise use Home Assistant's entity name |
 | `width` | `15` | Relative width (1–60) |
 | `height` | `60` | Height in px |
 | `control_mode` | — | `slider` · `buttons` · `full` (media player `full` combines volume slider and transport controls) |

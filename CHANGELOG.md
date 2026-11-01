@@ -4,6 +4,7 @@ All notable changes to OneLine Room Card are documented here.
 
 ## [Unreleased]
 
+* Runtime & editor: Resolve default entity labels through `hass.formatEntityName()` with a safe legacy fallback. Preserve explicit labels (including intentionally empty control names), update when relevant entity/device/area/floor names change, and keep newly added controls dynamic instead of copying a name into saved YAML. Fixes #156.
 * Editor: Move translated switch labels into the controls' default slots for Home Assistant 2026.11, including dynamically created badge and status-group toggles. Retain layout hooks, config events and live/deferred preview behavior; refresh already-open editor markup. Fixes #155.
 * Bugfix: Honor custom entity icons and use device-class-aware open/closed window, door and garage icons for window-sensor chips. Fixes #154.
 * Bugfix: Sum unitless template-sensor states with a configured display unit in room-status groups. Numeric mode ignores the count-only active-state filter, including filters retained when switching an editor preset to Numeric sum. Keep incompatible mixed units rejected. Fixes #159.
