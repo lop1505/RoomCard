@@ -25,16 +25,25 @@ Developed with a focus on stability, simple design, and maximum flexibility.
 
 ---
 
-## 🆕 What's new in 1.5.1
+## 🆕 What's new in 1.6.0
 
-* 📊 Show correct numeric room-status sums, including unitless template sensors with a configured display unit.
-* 🎛️ Choose **State**, **Position (%)**, or another numeric attribute from the new **Value source** dropdown. Cover positions need no extra template sensor or typed attribute name.
-* 🪟 Use matching open/closed contact icons and respect custom entity icons.
-* 🏷️ Follow Home Assistant entity naming while retaining your custom labels.
-* 🖱️ Keep translated editor switch labels working with the HA 2026.11 component changes.
-* 🧪 Validate the release with 138 automated tests, reproducible build checks and maintainer-confirmed testing on HA 2026.10.4.
+* 🏠 Add **RoomCard** from **Create section → Automatic section → Community sections** on Home Assistant 2026.11.
+* 🔄 Select one area and keep its controls in sync when devices are added, removed or moved.
+* 🎛️ Filter control types, exclude entities, customize individual controls, and choose climate/header sensors automatically.
+* 🚪 Retain manual overrides, room details and remembered collapse state as automatic membership changes.
+* 🖼️ Install all 16 built-in room images beside the card, including fresh Marketplace/HACS installations.
+* 🧪 Validate the release with 160 automated tests, reproducible builds and a maintainer-approved smoke test on HA 2026.11.1.
 
-Existing YAML remains supported. See the [v1.5.1 release notes](docs/releases/v1.5.1.md).
+Existing manual cards and YAML remain supported. See the [illustrated v1.6.0 release notes](docs/releases/v1.6.0.md).
+
+![English automatic-section editor with fictional demo data](docs/images/releases/v1.6.0/automatic-section-editor.jpg)
+
+### Previously in 1.5.1
+
+* Correct numeric room-status summaries and choose cover position or another numeric value source visually.
+* Use matching contact icons, native entity names and compatible HA 2026.11 editor switch labels.
+
+See the [v1.5.1 release notes](docs/releases/v1.5.1.md).
 
 ### Previously in 1.5.0
 
@@ -75,7 +84,7 @@ See the [illustrated v1.4.0 release notes](docs/releases/v1.4.0.md) for screensh
 * 🏠 Built-in room-image presets — choose from 16 bundled room backgrounds without hosting your own image
 * 🧭 Quick Add — add buttons from existing entity types in one click, including `select` / `input_select`
 * 🏠 Area-Based Auto-Setup — pick a Home Assistant area and one click auto-populates climate, controls (light/switch/cover/fan/media_player/lock), temperature/humidity/window/battery sensors
-* 🏠 Automatic room sections (HA 2026.11, unreleased test candidate) — opt in to a room whose controls follow devices added, removed or moved; customize individual controls and exclude entities
+* 🏠 Automatic room sections (HA 2026.11+) — opt in to a room whose controls follow devices added, removed or moved; customize individual controls and exclude entities
 * 🖱️ Drag & drop reordering, bulk expand/collapse, collapsible button entries
 
 **Header**
@@ -234,8 +243,7 @@ See the [architecture and test gates](docs/room-detail-drawer.md).
 
 #### Automatic room sections (HA 2026.11)
 
-This feature is currently an **unreleased test candidate**. See the
-[test checklist](docs/testing/2026-11-13.md) before installing the local candidate.
+Available since **v1.6.0**. Automatic sections require Home Assistant 2026.11 or newer.
 
 In a **Sections** dashboard, choose **Create section → Automatic section →
 Community sections → RoomCard**. Select one area, the control types to include,

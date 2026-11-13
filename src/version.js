@@ -1,4 +1,4 @@
-const VERSION = "1.5.1";
+const VERSION = "1.6.0";
 const EDITOR_DOM_REVISION = "10";
 
 export { VERSION, EDITOR_DOM_REVISION };

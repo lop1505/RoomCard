@@ -1,9 +1,11 @@
 # Automatic RoomCard sections — issue #158
 
-Date: 2026-11-13. Status: implemented on the unreleased
-`codex/test-automatic-room-sections-20261113` test branch.
-Automated and local browser checks cover the feature. The live HA 2026.11 picker,
-save/reopen and registry-update checks remain pending. No release was created.
+Date: 2026-11-13. Included in v1.6.0. The candidate at
+`be7a35d6a35deb44ae468a15837442785c4c0380` was installed on HA 2026.11.1 in Safari.
+The native Community section picker, visual editor, real area discovery, preview
+and existing manual cards were verified. The maintainer approved the smoke test
+and release. The detailed save/reopen, registry-move, focus and theme matrix was
+not individually logged; automated coverage remains separate from live evidence.
 
 ## Decision
 
@@ -166,8 +168,9 @@ Automated checks in `tests/room-discovery.test.mjs` and
   entity names. A local browser fixture verifies room changes, discovery,
   customization, exclusion/restoration and actual preset-image loading.
 
-Live HA 2026.11 checks remain required before a release: choose the Community
-section without YAML, save and reopen it, then add/move/remove devices. Check
-collapse, open drawers, keyboard focus, history, images and existing manual cards.
-See [today's test checklist](testing/2026-11-13.md). No issue was closed and no
-GitHub release was created by this local implementation.
+The native Community-section picker and visual editor were verified on HA
+2026.11.1. The maintainer approved the smoke test and release. Detailed
+save/reopen, registry-move, drawer/focus and theme checks were not individually
+logged; keep them separate from automated coverage in the
+[test record](testing/2026-11-13.md). Broader Marketplace installation and
+migration checks remain tracked in #157.

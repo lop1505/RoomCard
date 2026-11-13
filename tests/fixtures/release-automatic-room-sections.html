@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RoomCard — automatic room sections</title>
+<style>
+  :root{color-scheme:dark;--primary-color:#65b8f7;--primary-text-color:#e8eaed;--secondary-text-color:#a5adb9;--divider-color:#363d48;--card-background-color:#20252d;--secondary-background-color:#292f39;--primary-background-color:#13171d;--ha-card-background:#20252d;font:15px/1.5 system-ui,sans-serif;color:var(--primary-text-color);background:var(--primary-background-color)}
+  *{box-sizing:border-box}body{margin:0;padding:40px}main{max-width:1400px;margin:auto}header{display:flex;justify-content:space-between;align-items:center;gap:24px;margin-bottom:26px}h1{font-size:28px;line-height:1.2;letter-spacing:-.5px;margin:7px 0 10px}header p{margin:0;color:var(--secondary-text-color)}.brand{color:var(--primary-color);font-size:13px;font-weight:700;letter-spacing:2px;text-transform:uppercase}.demo{font-size:12px;color:var(--secondary-text-color);border:1px solid var(--divider-color);padding:7px 12px;border-radius:20px;white-space:nowrap}
+  hui-dialog-edit-section{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:24px;align-items:start}.panel{border:1px solid var(--divider-color);background:var(--card-background-color);border-radius:16px;overflow:hidden}.panel-title{font-size:17px;font-weight:600;padding:20px 24px;border-bottom:1px solid var(--divider-color);margin:0}.editor-scroll{padding:0 24px 16px;overflow:auto;scrollbar-width:thin}footer{padding:16px 24px;border-top:1px solid var(--divider-color);display:flex;justify-content:space-between;align-items:center}.preview{padding:24px;background:#191e25;min-height:430px}.preview-note{margin:18px 0 0;color:var(--secondary-text-color);font-size:13px}.label{color:var(--secondary-text-color);font-size:13px}.save,button{font:inherit;border:1px solid var(--divider-color);background:var(--secondary-background-color);color:inherit;border-radius:8px;padding:9px 15px;cursor:pointer}.save{background:#65b8f7;color:#101b27;border:none;font-weight:600}ha-card{display:block;background:var(--ha-card-background);border-radius:14px}ha-icon{display:inline-flex;width:var(--mdc-icon-size,24px);height:var(--mdc-icon-size,24px);align-items:center;justify-content:center;vertical-align:middle;color:var(--icon-color,currentColor);flex-shrink:0}ha-icon svg{width:100%;height:100%;fill:currentColor}.rooms{display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:start}.room-panel{padding:24px;border:1px solid var(--divider-color);border-radius:16px;background:#191e25}.room-panel h2{font-size:15px;font-weight:500;color:var(--secondary-text-color);margin:0 0 16px}.toolbar{display:flex;gap:14px;align-items:center;margin-bottom:24px}.status{color:#96d7b5;font-size:14px}.overview-only{display:none}body.overview .overview-only{display:block}body.overview .editor-only{display:none}body.overview .toolbar{display:flex}body.overview .rooms{display:grid}body.overview main{max-width:1280px}
+  @media(max-width:850px){body{padding:20px}header{align-items:start;flex-direction:column}hui-dialog-edit-section,.rooms{grid-template-columns:1fr}.editor-scroll{max-height:none}}
+</style>
+<main>
+  <header><div><div class="brand">RoomCard · 1.6.0</div><h1>Automatic room sections</h1><p>Choose an area. Keep your room controls in sync.</p></div><span class="demo">English demo · Fictional data</span></header>
+  <hui-dialog-edit-section class="editor-only">
+    <section class="panel"><h2 class="panel-title">Configure your room</h2><div class="editor-scroll" id="editor"></div><footer><span class="label">Changes appear in the live preview</span><button class="save" slot="primaryAction">Save</button></footer></section>
+    <section class="panel"><h2 class="panel-title">Preview</h2><div class="preview"><div id="preview"></div><p class="preview-note">Room name, climate and header sensors follow the selected area.</p></div></section>
+  </hui-dialog-edit-section>
+  <div class="toolbar overview-only"><button id="add">Add a demo light to Living room</button><span id="status" class="status" role="status">Controls are derived from the area’s current devices.</span></div>
+  <section class="rooms overview-only"><div class="room-panel"><h2>Living room · Automatic section</h2><div id="living"></div></div><div class="room-panel"><h2>Bedroom · Automatic section</h2><div id="bedroom"></div></div></section>
+</main>
+<script type="module">
+  import "../../dist/room-card.js";
+  import { demoIconPaths } from "../support/demo-icons.mjs";
+  class DemoIcon extends HTMLElement {
+    constructor(){super();this.attachShadow({mode:"open"});}
+    static get observedAttributes(){return ["icon"];}
+    attributeChangedCallback(){this.icon=this.getAttribute("icon");}
+    set icon(value){this._icon=value;const svg=document.createElementNS("http://www.w3.org/2000/svg","svg");svg.setAttribute("viewBox","0 0 24 24");svg.setAttribute("aria-hidden","true");const path=document.createElementNS(svg.namespaceURI,"path");path.setAttribute("d",demoIconPaths[String(value).replace(/^mdi:/,"")]||demoIconPaths.home);svg.append(path);const style=document.createElement("style");style.textContent=":host{display:inline-flex;width:var(--mdc-icon-size,24px);height:var(--mdc-icon-size,24px);align-items:center;justify-content:center;color:var(--icon-color,currentColor)}svg{width:100%;height:100%;fill:currentColor}";this.shadowRoot.replaceChildren(style,svg);}
+    get icon(){return this._icon;}
+  }
+  customElements.define("ha-icon",DemoIcon);
+  class DemoSwitch extends HTMLElement {
+    constructor(){super();this.attachShadow({mode:"open"});this.shadowRoot.innerHTML='<label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox"><slot></slot></label>';this._input=this.shadowRoot.querySelector("input");this._input.onchange=e=>{e.stopPropagation();this.dispatchEvent(new Event("change",{bubbles:true,composed:true}));};}
+    set checked(value){this._input.checked=!!value;}get checked(){return this._input.checked;}
+  }
+  customElements.define("ha-switch",DemoSwitch);
+  const states={},entities={};
+  function add(id,area,name,state,attributes={}){entities[id]={entity_id:id,area_id:area,labels:[]};states[id]={entity_id:id,state,attributes:{friendly_name:name,...attributes}};}
+  add("light.living_ceiling","living","Ceiling","on",{brightness:191});
+  add("light.living_floor","living","Floor","off",{brightness:0});
+  add("cover.living_blinds","living","Blinds","open",{current_position:70,supported_features:15});
+  add("switch.living_socket","living","Socket","off");
+  add("climate.living_heating","living","Heating","heat",{current_temperature:21.5,temperature:22,min_temp:16,max_temp:28,hvac_modes:["off","heat"],supported_features:1});
+  add("sensor.living_humidity","living","Humidity","46",{device_class:"humidity",unit_of_measurement:"%"});
+  add("light.bedroom_ceiling","bedroom","Ceiling","off");
+  add("light.bedroom_bedside","bedroom","Bedside","on",{brightness:89});
+  add("cover.bedroom_blinds","bedroom","Blinds","closed",{current_position:0,supported_features:15});
+  add("climate.bedroom_heating","bedroom","Heating","heat",{current_temperature:20.5,temperature:21,min_temp:16,max_temp:28,hvac_modes:["off","heat"],supported_features:1});
+  add("sensor.bedroom_humidity","bedroom","Humidity","43",{device_class:"humidity",unit_of_measurement:"%"});
+  let home={language:"en",locale:{language:"en-US",number_format:"comma_decimal"},states,entities,devices:{},areas:{living:{area_id:"living",name:"Living room",icon:"mdi:sofa"},bedroom:{area_id:"bedroom",name:"Bedroom",icon:"mdi:bed"}},config:{state:"RUNNING",unit_system:{temperature:"°C"}},user:{id:"fictional-demo-user"},panels:{},callWS:async()=>({views:[]}),connection:{sendMessagePromise:async()=>({views:[]})},callService(){},formatEntityName:state=>state.attributes.friendly_name,formatEntityState:state=>state.attributes.unit_of_measurement?`${state.state} ${state.attributes.unit_of_measurement}`:state.state,formatEntityAttributeValue:(state,key)=>["current_temperature","temperature"].includes(key)?`${state.attributes[key]} °C`:String(state.attributes[key]??"")};
+  const Strategy=customElements.get("ll-strategy-section-oneline-room");
+  const makeConfig=(area,preset)=>({type:"custom:oneline-room",area,domains:["light","switch","cover","fan","media_player","lock"],card:{image_preset:preset,header_height:190,header_name_size:22,header_info_size:15,collapsible:true,detail_drawer:{enabled:true}}});
+  function makeCard(config,target){const card=document.createElement("oneline-room-auto-card");card.setConfig({strategy:config});card.hass=home;document.getElementById(target).append(card);return card;}
+  let config=makeConfig("living","living-room");
+  const preview=makeCard(config,"preview");
+  const editor=Strategy.getConfigElement();editor.hass=home;editor.setConfig(config);document.getElementById("editor").append(editor);
+  editor.addEventListener("config-changed",event=>{config=event.detail.config;preview.setConfig({strategy:config});editor.setConfig(config);});
+  const living=makeCard(makeConfig("living","living-room"),"living");
+  const bedroom=makeCard(makeConfig("bedroom","bedroom"),"bedroom");
+  if(new URLSearchParams(location.search).get("view")==="overview")document.body.classList.add("overview");
+  document.getElementById("add").onclick=()=>{home={...home,entities:{...home.entities,"light.living_desk":{entity_id:"light.living_desk",area_id:"living"}},states:{...home.states,"light.living_desk":{entity_id:"light.living_desk",state:"on",attributes:{friendly_name:"Desk",brightness:128}}}};living.hass=home;document.getElementById("status").textContent="Desk lamp added to Living room — controls updated automatically.";document.getElementById("add").disabled=true;};
+</script>
+</html>
