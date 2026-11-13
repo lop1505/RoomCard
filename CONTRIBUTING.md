@@ -2,9 +2,9 @@
 
 ## Repository layout
 
-- `src/room-card.js` is the entry point. It owns custom-element registration and
+- `src/index.js` is the entry point. It owns custom-element registration and
   internal test seams; the card and editor classes live in their own modules.
-- `src/card/room-card.js` owns the `OneLineRoomCard` runtime class, including
+- `src/card/room-card-element.js` owns the `OneLineRoomCard` runtime class, including
   rendering, state subscriptions, actions and lifecycle cleanup.
 - `src/editor/room-card-editor.js` owns the `OneLineRoomCardEditor` class and
   its live-preview/save behavior.

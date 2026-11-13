@@ -37,8 +37,8 @@ before source extraction begins.
 
 ## Current baseline and artifact contract
 
-- `src/room-card.js` is the canonical entry source. Runtime and editor
-  implementations live in `src/card/room-card.js` and
+- `src/index.js` is the canonical entry source. Runtime and editor
+  implementations live in `src/card/room-card-element.js` and
   `src/editor/room-card-editor.js`; the entry remains the only registration
   module.
 - `dist/room-card.js` is the readable generated HACS artifact.

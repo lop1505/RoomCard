@@ -21,7 +21,7 @@ import { SHARED_SPARKLINE_CACHE, SHARED_SPARKLINE_PENDING, SHARED_SPARKLINE_CACH
 import { MEDIA_PLAYER_FEATURES, getSliderCapabilities, getInlineButtons, supportsMediaFeature } from "./lib/capabilities.js";
 
 import { VERSION, EDITOR_DOM_REVISION } from "./version.js";
-import { OneLineRoomCard } from "./card/room-card.js";
+import { OneLineRoomCard } from "./card/room-card-element.js";
 import { OneLineRoomCardEditor } from "./editor/room-card-editor.js";
 import { OneLineRoomCardTextField } from "./editor/text-field-compat.js";
 import { RoomSectionEditor } from "./editor/room-section-editor.js";

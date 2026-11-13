@@ -12,6 +12,15 @@ import { getReleaseAssets } from "../scripts/release-assets.mjs";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
+test("Marketplace's filename fallback can only select the bundled resource", async () => {
+  const hacs = JSON.parse(await readFile(resolve(repositoryRoot, "hacs.json"), "utf8"));
+  const sourceFiles = await readdir(resolve(repositoryRoot, "src"), { recursive: true });
+  // HA 2026.11 falls back from missing branch release assets by matching
+  // basenames across the tree. Source files must never overwrite the bundle.
+  assert.deepEqual(sourceFiles.filter(path => basename(path) === hacs.filename), []);
+  assert.ok((await readdir(resolve(repositoryRoot, "dist"))).includes(hacs.filename));
+});
+
 test("a stale artifact is rejected without overwriting it", async () => {
   const directory = await mkdtemp(join(tmpdir(), "roomcard-stale-test-"));
   try {

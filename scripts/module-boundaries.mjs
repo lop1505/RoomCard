@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 
 export const assertModuleBoundaries = (inputs) => {
-  const entry = "src/room-card.js";
+  const entry = "src/index.js";
   const graph = new Map(Object.entries(inputs).map(([path, input]) => [path, input.imports.map(item => item.path).filter(path => path in inputs)]));
   for (const [path, dependencies] of graph) {
     for (const dependency of dependencies) {

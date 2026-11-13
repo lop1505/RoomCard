@@ -2506,7 +2506,7 @@ function formatLastChanged(lastChanged, hass) {
   return `${elapsedDays}d`;
 }
 
-// src/card/room-card.js
+// src/card/room-card-element.js
 var OneLineRoomCard = class extends HTMLElement {
   constructor() {
     super();
@@ -11125,7 +11125,7 @@ var RoomSectionStrategy = class extends HTMLElement {
   }
 };
 
-// src/room-card.js
+// src/index.js
 var LOG_FLAG = `customCards_RoomCard_Logged_${VERSION}`;
 if (!window[LOG_FLAG]) {
   console.info(
