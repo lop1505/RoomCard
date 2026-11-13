@@ -55,9 +55,10 @@ before source extraction begins.
   its cold-load order is preserved.
 - Tests assert the order input wrapper → editor → card and a single custom-card
   registration after loading the artifact twice.
-- Build metadata rejects additional output files and runtime imports. Tests
-  resolve all 16 presets against the real bundle URL and check that every JPEG
-  exists under the adjacent `dist/rooms/` HACS directory.
+- Build metadata rejects additional JavaScript output files and runtime imports.
+  Tests resolve all 16 presets against the real bundle URL and check that every
+  JPEG exists directly beside `dist/room-card.js`. The #161 packaging fix moves
+  them out of `dist/rooms/` so Marketplace/HACS also installs them individually.
 - A separate module probe evaluates the unchanged artifact with HACS, pinned
   CDN and `/local/` URLs. It verifies that images resolve beside the module,
   never relative to the dashboard page; it does not replace the real HA test.

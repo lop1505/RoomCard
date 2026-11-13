@@ -127,6 +127,7 @@ class OneLineRoomCard extends HTMLElement {
   }
 
   _getCollapseUniqueId(config) {
+    if (typeof config.collapse_key === "string" && config.collapse_key.trim()) return config.collapse_key;
     if (config.entity) return config.entity;
     if (config.name) return config.name;
     const sig = (config.controls || []).map(c => c.entity || "").join("");
@@ -1349,6 +1350,12 @@ class OneLineRoomCard extends HTMLElement {
     const controlsSig = JSON.stringify(visibleCtrls);
 
     if (this._configChanged || surface.signature !== controlsSig) {
+      const active = deepActiveElement();
+      const oldButtons = Array.from(surface.controls.children);
+      const focusedButton = oldButtons.find(button => button === active || button.contains(active));
+      const focusedEntity = focusedButton?.dataset.entity;
+      const occurrence = oldButtons.filter(button => button.dataset.entity === focusedEntity).indexOf(focusedButton);
+      const focusedKey = active?.dataset?.rcFocusKey;
       surface.signature = controlsSig;
       for (const node of surface.controls.children) node._disposeActions?.();
       surface.controls.replaceChildren();
@@ -1357,6 +1364,16 @@ class OneLineRoomCard extends HTMLElement {
         surface.controls.appendChild(btn);
         this._updateBtnState(btn, ctrl, h);
       });
+      if (focusedButton && !surface.controls.hasAttribute("inert")) {
+        const buttons = Array.from(surface.controls.children);
+        const replacement = buttons.filter(button => button.dataset.entity === focusedEntity)[occurrence];
+        const target = focusedKey && replacement
+          ? Array.from(replacement.querySelectorAll("[data-rc-focus-key]")).find(node => node.dataset.rcFocusKey === focusedKey)
+          : replacement;
+        const fallback = buttons[Math.min(oldButtons.indexOf(focusedButton), buttons.length - 1)]
+          || (surface.kind === "drawer" ? this._detailDrawer?.root.querySelector(".close") : surface.root.querySelector(".img-box"));
+        (target || replacement || fallback)?.focus({ preventScroll: true });
+      }
     } else {
       visibleCtrls.forEach((ctrl, i) => {
         const btn = surface.controls.children[i];

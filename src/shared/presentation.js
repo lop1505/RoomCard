@@ -56,9 +56,9 @@ const getRoomImagePresetUrl = (presetId) => {
   if (!preset) return "";
   let url;
   try {
-    url = new URL(`./rooms/${preset.file}`, import.meta.url);
+    url = new URL(`./${preset.file}`, import.meta.url);
   } catch (_error) {
-    url = new URL(`./rooms/${preset.file}`, globalThis.location?.href || "http://localhost/");
+    url = new URL(`./${preset.file}`, globalThis.location?.href || "http://localhost/");
   }
   url.searchParams.set("v", VERSION);
   return url.href;

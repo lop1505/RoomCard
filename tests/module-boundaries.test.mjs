@@ -20,4 +20,5 @@ test("module boundaries reject cycles and back-imports", () => {
   assert.throws(() => assertModuleBoundaries({ "src/lib/a.js": input("src/shared/presentation.js"), "src/shared/presentation.js": input() }), /Invalid library dependency/);
   assert.throws(() => assertModuleBoundaries({ "src/shared/presentation.js": input("src/card/room-card.js"), "src/card/room-card.js": input() }), /Invalid shared dependency/);
   assert.throws(() => assertModuleBoundaries({ "src/editor/editor.js": input("src/card/room-card.js"), "src/card/room-card.js": input() }), /Editor must not depend on card/);
+  assert.throws(() => assertModuleBoundaries({ "src/strategy/room.js": input("src/card/room-card.js"), "src/card/room-card.js": input() }), /Strategy must not depend on card\/editor/);
 });

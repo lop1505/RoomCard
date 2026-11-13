@@ -2,7 +2,7 @@
 const KEY = Symbol.for("room-card.drawer-preview");
 const scopeOf = (node) => {
   for (let current = node; current; current = current.parentNode || current.host) {
-    if (current.localName === "hui-dialog-edit-card") return current;
+    if (current.localName === "hui-dialog-edit-card" || current.localName === "hui-dialog-edit-section") return current;
   }
   return null;
 };

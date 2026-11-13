@@ -10,6 +10,7 @@ export const assertModuleBoundaries = (inputs) => {
       if (path.startsWith("src/shared/")) assert.ok(!/^src\/(card|editor)\//.test(dependency), `Invalid shared dependency: ${path} → ${dependency}`);
       if (path.startsWith("src/editor/")) assert.ok(!dependency.startsWith("src/card/"), `Editor must not depend on card: ${dependency}`);
       if (path.startsWith("src/card/")) assert.ok(!dependency.startsWith("src/editor/"), `Card must not depend on editor: ${dependency}`);
+      if (path.startsWith("src/strategy/")) assert.ok(!/^src\/(card|editor)\//.test(dependency), `Strategy must not depend on card/editor implementations: ${dependency}`);
     }
   }
   const visiting = new Set();

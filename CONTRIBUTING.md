@@ -8,6 +8,11 @@
   rendering, state subscriptions, actions and lifecycle cleanup.
 - `src/editor/room-card-editor.js` owns the `OneLineRoomCardEditor` class and
   its live-preview/save behavior.
+- `src/editor/room-section-editor.js` owns area/domain/exclusion selection and
+  embeds the existing card editor for manual settings and the shared Save flow.
+- `src/strategy/` contains the optional HA section strategy and its stable card
+  adapter. They use the ordinary card's element interface and do not import card
+  or editor implementations. `src/lib/room-discovery.js` owns pure discovery.
 - `src/lib/values.js` owns browser-independent number/string helpers.
 - `src/lib/formatting.js` owns HA state/attribute formatting and existing fallbacks.
 - `src/lib/temperature.js` owns temperature conversion and locale/precision handling.
@@ -23,7 +28,7 @@
 - `src/version.js` owns the release version and editor DOM revision.
 - `src/editor/text-field-compat.js` owns the intact native/HA input compatibility wrapper; its custom-element registration remains in the entry point.
 - `dist/room-card.js` is the generated HACS artifact and must not be edited directly.
-- `dist/rooms/` contains the additional assets installed by HACS.
+- `dist/*.jpg` contains the 16 preset images installed beside the bundle by Marketplace/HACS.
 - `tests/` contains automated regression tests.
 - `scripts/` contains build and release-consistency tooling.
 - `docs/` contains screenshots and supporting documentation.
@@ -50,8 +55,11 @@ After changing anything under `src/`, always run `npm run build` and commit the 
 `scripts/build-config.mjs` owns the shared build options. `npm run check:dist`
 builds into an isolated temporary directory, compares that artifact byte for
 byte with the committed distribution, and removes only its temporary output.
-It does not repair or overwrite a stale committed artifact. `dist/rooms/` stays
-alongside the bundle and is not transformed by esbuild.
+It does not repair or overwrite a stale committed artifact. The JPEGs stay
+directly alongside the bundle and are not transformed by esbuild.
+`scripts/release-assets.mjs` lists the exact individual files to attach to a
+release and rejects nested directories. Tests copy only that asset list into an
+empty installation and resolve every preset against browser-style resource URLs.
 
 Build metadata enforces acyclic dependencies: entry → runtime/editor → shared
 presentation/lib/i18n. Libraries never import presentation or classes; shared
@@ -77,8 +85,13 @@ For a release, keep these values identical:
 
 ## Manual release checklist
 
-Release publication remains manual. CI validates a release but does not create a
-GitHub release or publish artifacts.
+Release publication remains manual. The **Attach release assets** workflow
+validates a tagged build and uploads its JavaScript file and all 16 JPEGs to an
+existing draft release. It refuses published releases and never publishes a draft.
+Marketplace/HACS prefers release assets over the repository's `dist/` directory
+when a matching JavaScript asset exists. A supplementary ZIP is downloaded as a
+file, not unpacked for dashboard plugins, so it cannot replace individual JPEG
+assets. See the [Marketplace packaging guide](https://contributors.home-assistant.io/marketplace/guides/dashboard/).
 
 1. Update `VERSION`, `package.json`, the README “What's new” heading, and the
    newest changelog version to the same `X.Y.Z` value.
@@ -86,8 +99,13 @@ GitHub release or publish artifacts.
 3. Run `npm ci`, `npm run build`, and `npm run check` from a clean checkout.
 4. Run the Home Assistant checks in `docs/manual-smoke-test.md` when runtime,
    editor, build, or packaging behavior changed.
-5. Commit the generated `dist/room-card.js` and any changed `dist/rooms/` assets.
+5. Commit the generated `dist/room-card.js` and all `dist/*.jpg` assets.
 6. Merge only after the Validate workflow and HACS validation pass.
 7. Create and push the annotated tag `vX.Y.Z`; tag CI will reject a mismatch.
-8. Manually create the GitHub release and attach/package the tested `dist/`
-   contents according to the existing HACS release process.
+8. Create a **draft** GitHub release for that tag. Run **Actions → Attach release
+   assets → Run workflow**, entering the tag. The workflow runs `npm run check`
+   with tag validation, then attaches every file listed by
+   `node scripts/release-assets.mjs`. A manual upload must attach that same list.
+9. Verify that the draft contains `room-card.js` and all 16 individual `.jpg`
+   assets before publishing. An optional manual-install ZIP must keep those same
+   files together and is supplementary. Publish only after all uploads succeed.

@@ -75,6 +75,7 @@ See the [illustrated v1.4.0 release notes](docs/releases/v1.4.0.md) for screensh
 * 🏠 Built-in room-image presets — choose from 16 bundled room backgrounds without hosting your own image
 * 🧭 Quick Add — add buttons from existing entity types in one click, including `select` / `input_select`
 * 🏠 Area-Based Auto-Setup — pick a Home Assistant area and one click auto-populates climate, controls (light/switch/cover/fan/media_player/lock), temperature/humidity/window/battery sensors
+* 🏠 Automatic room sections (HA 2026.11, unreleased test candidate) — opt in to a room whose controls follow devices added, removed or moved; customize individual controls and exclude entities
 * 🖱️ Drag & drop reordering, bulk expand/collapse, collapsible button entries
 
 **Header**
@@ -144,11 +145,15 @@ for HACS migration behavior. The remaining RoomCard installation/update checks a
 [#157](https://github.com/lop1505/RoomCard/issues/157) and the [validation report](docs/ha-2026.11-validation.md).
 
 ### Manual
-1. Download the [latest release](https://github.com/lop1505/RoomCard/releases) and open its `dist` directory.
-2. Copy `dist/room-card.js` **and** `dist/rooms/` to `/config/www/room-card/`.
+1. Download the source archive of the [latest release](https://github.com/lop1505/RoomCard/releases) and open its `dist` directory.
+2. Copy **all files** from `dist/` (`room-card.js` and the 16 JPEGs) to `/config/www/room-card/`, keeping them together in that directory.
 3. Add resource: URL `/local/room-card/room-card.js` · Type: JavaScript Module.
 
-HACS installs the card and bundled room images together automatically. Existing manual installations that keep `room-card.js` directly in `/config/www/` can retain `/local/room-card.js`; copy `dist/rooms/` to `/config/www/rooms/` so the relative preset URLs remain available.
+Marketplace/HACS installs the card and its individual image assets automatically.
+Existing manual installations that keep `room-card.js` directly in `/config/www/`
+can retain `/local/room-card.js`; copy the JPEGs into `/config/www/` beside it.
+When updating from a release that used a `rooms/` subdirectory, copy the new
+JPEGs beside the JavaScript file as well. Saved `image_preset` IDs need no changes.
 
 ---
 
@@ -226,6 +231,27 @@ With live preview off, changes apply through the existing Save workflow.
 
 Available since v1.5.0; disabled by default.
 See the [architecture and test gates](docs/room-detail-drawer.md).
+
+#### Automatic room sections (HA 2026.11)
+
+This feature is currently an **unreleased test candidate**. See the
+[test checklist](docs/testing/2026-11-13.md) before installing the local candidate.
+
+In a **Sections** dashboard, choose **Create section → Automatic section →
+Community sections → RoomCard**. Select one area, the control types to include,
+and whether to discover climate/header sensors automatically. **Customize** pins
+an entity's settings under **Appearance and custom controls → Buttons**;
+**Exclude** removes it from automatic discovery, and **Include again** restores it.
+Custom controls appear first and retain their actions, names and drawer placement.
+
+Devices added to or moved out of the area update the section while its existing
+RoomCard and drawer remain in place. Unavailable devices stay visible as
+unavailable. Disabled, hidden and diagnostic/configuration entities are excluded
+from discovery; explicit manual entries retain the normal card behavior.
+Saved settings contain the area, filters and your overrides, rather than a copy
+of every discovered control. Existing standalone cards stay manually configured.
+
+See the [configuration and design](docs/automatic-room-sections.md).
 
 #### Room Modes
 
