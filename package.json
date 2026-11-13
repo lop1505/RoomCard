@@ -1,13 +1,13 @@
 {
   "name": "oneline-room-card",
-  "version": "1.5.1",
+  "version": "1.6.0",
   "private": true,
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",
     "check": "npm run check:syntax && npm run check:dist && npm test",
     "check:dist": "node scripts/check-release.mjs",
-    "check:syntax": "node --check src/room-card.js && node --check dist/room-card.js",
+    "check:syntax": "node --check src/index.js && node --check dist/room-card.js",
     "test": "node --test tests/*.test.mjs"
   },
   "engines": {

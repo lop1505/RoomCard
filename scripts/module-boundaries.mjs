@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 
 export const assertModuleBoundaries = (inputs) => {
-  const entry = "src/room-card.js";
+  const entry = "src/index.js";
   const graph = new Map(Object.entries(inputs).map(([path, input]) => [path, input.imports.map(item => item.path).filter(path => path in inputs)]));
   for (const [path, dependencies] of graph) {
     for (const dependency of dependencies) {
@@ -10,6 +10,7 @@ export const assertModuleBoundaries = (inputs) => {
       if (path.startsWith("src/shared/")) assert.ok(!/^src\/(card|editor)\//.test(dependency), `Invalid shared dependency: ${path} → ${dependency}`);
       if (path.startsWith("src/editor/")) assert.ok(!dependency.startsWith("src/card/"), `Editor must not depend on card: ${dependency}`);
       if (path.startsWith("src/card/")) assert.ok(!dependency.startsWith("src/editor/"), `Card must not depend on editor: ${dependency}`);
+      if (path.startsWith("src/strategy/")) assert.ok(!/^src\/(card|editor)\//.test(dependency), `Strategy must not depend on card/editor implementations: ${dependency}`);
     }
   }
   const visiting = new Set();

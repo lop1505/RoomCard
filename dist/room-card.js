@@ -498,6 +498,25 @@ var isAlertSensorActive = (alertCfg, stateObj, normalize = normalizeAlertSensorC
 // src/i18n/translations.js
 var TRANSLATIONS = {
   en: {
+    room_section_help: "Choose one room. Its controls update automatically when devices are added, removed or moved. Customized controls keep their settings and appear first.",
+    room_section_domains: "Automatic controls",
+    room_section_auto_sensors: "Automatically select climate and header sensors",
+    room_section_choose_area: "Choose a Home Assistant area.",
+    room_section_missing_area: "This area no longer exists. Choose another area in the section settings.",
+    room_section_loading: "Waiting for Home Assistant room information…",
+    room_section_discovered: "Entities in this room",
+    room_section_customize: "Customize",
+    room_section_customized: "Customized",
+    room_section_exclude: "Exclude",
+    room_section_restore: "Include again",
+    room_section_card_settings: "Appearance and custom controls",
+    room_section_card_help: "Use Buttons to edit customized or additional controls. These settings take precedence over automatic discovery. Turn off automatic header sensors above to configure all header entities manually. Live preview also applies to the room settings above.",
+    room_section_domain_light: "Lights",
+    room_section_domain_switch: "Switches",
+    room_section_domain_cover: "Covers",
+    room_section_domain_fan: "Fans",
+    room_section_domain_media_player: "Media players",
+    room_section_domain_lock: "Locks",
     control_duplicate: "Duplicate control",
     room_details: "Room details",
     drawer_enable: "Enable room details",
@@ -837,6 +856,25 @@ var TRANSLATIONS = {
     a11y_select_option: "Select {name}"
   },
   de: {
+    room_section_help: "Wähle einen Raum. Seine Bedienelemente passen sich automatisch an, wenn Geräte hinzukommen, entfernt oder verschoben werden. Angepasste Bedienelemente behalten ihre Einstellungen und stehen zuerst.",
+    room_section_domains: "Automatische Bedienelemente",
+    room_section_auto_sensors: "Klima und Kopfsensoren automatisch auswählen",
+    room_section_choose_area: "Wähle einen Home-Assistant-Bereich.",
+    room_section_missing_area: "Dieser Bereich existiert nicht mehr. Wähle in den Abschnittseinstellungen einen anderen Bereich.",
+    room_section_loading: "Rauminformationen von Home Assistant werden geladen…",
+    room_section_discovered: "Entitäten in diesem Raum",
+    room_section_customize: "Anpassen",
+    room_section_customized: "Angepasst",
+    room_section_exclude: "Ausschließen",
+    room_section_restore: "Wieder einbeziehen",
+    room_section_card_settings: "Darstellung und eigene Bedienelemente",
+    room_section_card_help: "Unter Buttons bearbeitest du angepasste oder zusätzliche Bedienelemente. Diese Einstellungen haben Vorrang vor der automatischen Auswahl. Deaktiviere oben die automatischen Kopfsensoren, um alle Kopfentitäten manuell festzulegen. Die Live-Vorschau gilt auch für die Raumeinstellungen oben.",
+    room_section_domain_light: "Lichter",
+    room_section_domain_switch: "Schalter",
+    room_section_domain_cover: "Abdeckungen",
+    room_section_domain_fan: "Ventilatoren",
+    room_section_domain_media_player: "Mediaplayer",
+    room_section_domain_lock: "Schlösser",
     control_duplicate: "Control duplizieren",
     room_details: "Raumdetails",
     drawer_enable: "Raumdetails aktivieren",
@@ -1176,6 +1214,25 @@ var TRANSLATIONS = {
     a11y_select_option: "{name} auswählen"
   },
   fr: {
+    room_section_help: "Choisissez une pièce. Ses commandes suivent automatiquement les appareils ajoutés, supprimés ou déplacés. Les commandes personnalisées conservent leurs réglages et apparaissent en premier.",
+    room_section_domains: "Commandes automatiques",
+    room_section_auto_sensors: "Sélectionner automatiquement le climat et les capteurs d’en-tête",
+    room_section_choose_area: "Choisissez une zone Home Assistant.",
+    room_section_missing_area: "Cette zone n’existe plus. Choisissez une autre zone dans les réglages de la section.",
+    room_section_loading: "Chargement des informations des pièces depuis Home Assistant…",
+    room_section_discovered: "Entités de cette pièce",
+    room_section_customize: "Personnaliser",
+    room_section_customized: "Personnalisée",
+    room_section_exclude: "Exclure",
+    room_section_restore: "Inclure à nouveau",
+    room_section_card_settings: "Apparence et commandes personnalisées",
+    room_section_card_help: "Utilisez Boutons pour modifier les commandes personnalisées ou supplémentaires. Ces réglages priment sur la sélection automatique. Désactivez les capteurs automatiques ci-dessus pour configurer manuellement l’en-tête. L’aperçu en direct s’applique aussi aux réglages de pièce ci-dessus.",
+    room_section_domain_light: "Lumières",
+    room_section_domain_switch: "Interrupteurs",
+    room_section_domain_cover: "Volets",
+    room_section_domain_fan: "Ventilateurs",
+    room_section_domain_media_player: "Lecteurs multimédias",
+    room_section_domain_lock: "Serrures",
     control_duplicate: "Dupliquer la commande",
     room_details: "Détails de la pièce",
     drawer_enable: "Activer les détails de la pièce",
@@ -1725,7 +1782,7 @@ var supportsMediaFeature = (stateObj, feature) => {
 };
 
 // src/version.js
-var VERSION = "1.5.1";
+var VERSION = "1.6.0";
 var EDITOR_DOM_REVISION = "10";
 
 // src/shared/dialog-coordinator.js
@@ -2135,7 +2192,7 @@ var isControlInContext = (control, config, context) => {
 var KEY2 = /* @__PURE__ */ Symbol.for("room-card.drawer-preview");
 var scopeOf = (node) => {
   for (let current = node; current; current = current.parentNode || current.host) {
-    if (current.localName === "hui-dialog-edit-card") return current;
+    if (current.localName === "hui-dialog-edit-card" || current.localName === "hui-dialog-edit-section") return current;
   }
   return null;
 };
@@ -2200,9 +2257,9 @@ var getRoomImagePresetUrl = (presetId) => {
   if (!preset) return "";
   let url;
   try {
-    url = new URL(`./rooms/${preset.file}`, import.meta.url);
+    url = new URL(`./${preset.file}`, import.meta.url);
   } catch (_error) {
-    url = new URL(`./rooms/${preset.file}`, globalThis.location?.href || "http://localhost/");
+    url = new URL(`./${preset.file}`, globalThis.location?.href || "http://localhost/");
   }
   url.searchParams.set("v", VERSION);
   return url.href;
@@ -2449,7 +2506,7 @@ function formatLastChanged(lastChanged, hass) {
   return `${elapsedDays}d`;
 }
 
-// src/card/room-card.js
+// src/card/room-card-element.js
 var OneLineRoomCard = class extends HTMLElement {
   constructor() {
     super();
@@ -2548,6 +2605,7 @@ var OneLineRoomCard = class extends HTMLElement {
     this._captureStateSnapshot(hass);
   }
   _getCollapseUniqueId(config) {
+    if (typeof config.collapse_key === "string" && config.collapse_key.trim()) return config.collapse_key;
     if (config.entity) return config.entity;
     if (config.name) return config.name;
     const sig = (config.controls || []).map((c) => c.entity || "").join("");
@@ -3663,6 +3721,12 @@ var OneLineRoomCard = class extends HTMLElement {
     }
     const controlsSig = JSON.stringify(visibleCtrls);
     if (this._configChanged || surface.signature !== controlsSig) {
+      const active = deepActiveElement();
+      const oldButtons = Array.from(surface.controls.children);
+      const focusedButton = oldButtons.find((button) => button === active || button.contains(active));
+      const focusedEntity = focusedButton?.dataset.entity;
+      const occurrence = oldButtons.filter((button) => button.dataset.entity === focusedEntity).indexOf(focusedButton);
+      const focusedKey = active?.dataset?.rcFocusKey;
       surface.signature = controlsSig;
       for (const node of surface.controls.children) node._disposeActions?.();
       surface.controls.replaceChildren();
@@ -3671,6 +3735,13 @@ var OneLineRoomCard = class extends HTMLElement {
         surface.controls.appendChild(btn);
         this._updateBtnState(btn, ctrl, h);
       });
+      if (focusedButton && !surface.controls.hasAttribute("inert")) {
+        const buttons = Array.from(surface.controls.children);
+        const replacement = buttons.filter((button) => button.dataset.entity === focusedEntity)[occurrence];
+        const target2 = focusedKey && replacement ? Array.from(replacement.querySelectorAll("[data-rc-focus-key]")).find((node) => node.dataset.rcFocusKey === focusedKey) : replacement;
+        const fallback = buttons[Math.min(oldButtons.indexOf(focusedButton), buttons.length - 1)] || (surface.kind === "drawer" ? this._detailDrawer?.root.querySelector(".close") : surface.root.querySelector(".img-box"));
+        (target2 || replacement || fallback)?.focus({ preventScroll: true });
+      }
     } else {
       visibleCtrls.forEach((ctrl, i) => {
         const btn = surface.controls.children[i];
@@ -10627,7 +10698,434 @@ var OneLineRoomCardTextField = class extends HTMLElement {
   }
 };
 
-// src/room-card.js
+// src/lib/room-discovery.js
+var ROOM_CONTROL_DOMAINS = Object.freeze(["light", "switch", "cover", "fan", "media_player", "lock"]);
+var roomRecord = (value) => value && typeof value === "object" && !Array.isArray(value) ? value : {};
+var cloneRoomConfig = (value) => JSON.parse(JSON.stringify(value));
+var own = (object, key) => Object.prototype.hasOwnProperty.call(object, key);
+var compareIds = (a, b) => a.entity_id < b.entity_id ? -1 : a.entity_id > b.entity_id ? 1 : 0;
+var getRoomEntities = (hass, area) => {
+  if (!area) return [];
+  return Object.entries(roomRecord(hass?.entities)).flatMap(([id, raw]) => {
+    const entry = roomRecord(raw);
+    const entity_id = entry.entity_id || id;
+    if (typeof entity_id !== "string" || !entity_id.includes(".")) return [];
+    const device = hass?.devices?.[entry.device_id];
+    if (entry.disabled_by || entry.hidden || entry.hidden_by || entry.entity_category || device?.disabled_by) return [];
+    if ((entry.area_id || device?.area_id) !== area) return [];
+    return [{ ...entry, entity_id }];
+  }).sort(compareIds);
+};
+var createRoomControl = (entityId) => ({
+  entity: entityId,
+  width: entityId.startsWith("media_player.") ? 30 : entityId.startsWith("cover.") ? 20 : 15,
+  height: 60,
+  align: entityId.startsWith("media_player.") ? "left" : "center",
+  tap_action: { action: /^(light|switch|cover|fan)\./.test(entityId) ? "toggle" : "more-info" },
+  hold_action: { action: "more-info" },
+  double_tap_action: { action: "none" },
+  show_state: true,
+  show_label: true,
+  show_icon: true
+});
+var getRoomDomains = (config) => Array.isArray(config?.domains) ? ROOM_CONTROL_DOMAINS.filter((domain) => config.domains.includes(domain)) : [...ROOM_CONTROL_DOMAINS];
+var resolveAutomaticRoom = (rawConfig, hass) => {
+  const config = roomRecord(rawConfig);
+  const areaId = typeof config.area === "string" ? config.area : "";
+  if (!areaId) return { error: "room_section_choose_area", entities: [] };
+  if (!hass?.areas || !hass?.entities || !hass?.devices) return { error: "room_section_loading", entities: [] };
+  const area = own(hass.areas, areaId) ? hass.areas[areaId] : null;
+  if (!area) return { error: "room_section_missing_area", entities: [] };
+  const entities = getRoomEntities(hass, areaId);
+  const excluded = new Set(Array.isArray(config.exclude_entities) ? config.exclude_entities : []);
+  const included = entities.filter((entry) => !excluded.has(entry.entity_id));
+  const domains = getRoomDomains(config);
+  const card = cloneRoomConfig(roomRecord(config.card));
+  const manual = Array.isArray(card.controls) ? card.controls.filter((control) => control && typeof control === "object" && !Array.isArray(control)) : [];
+  const manualIds = new Set(manual.map((control) => control.entity));
+  const controls = ROOM_CONTROL_DOMAINS.flatMap((domain) => !domains.includes(domain) ? [] : included.filter((entry) => entry.entity_id.startsWith(`${domain}.`) && !manualIds.has(entry.entity_id)).map((entry) => createRoomControl(entry.entity_id)));
+  const automatic = {};
+  if (config.auto_sensors !== false) {
+    const first = (predicate) => included.find(predicate)?.entity_id;
+    const deviceClass = (entry) => hass.states?.[entry.entity_id]?.attributes?.device_class || entry.device_class || entry.original_device_class;
+    const main = first((entry) => entry.entity_id.startsWith("climate."));
+    if (main) automatic.entity = main;
+    for (const [key, wanted] of [["temp_sensor", "temperature"], ["humid_sensor", "humidity"]]) {
+      const sensor = first((entry) => /^(sensor|input_number)\./.test(entry.entity_id) && deviceClass(entry) === wanted);
+      if (sensor) automatic[key] = sensor;
+    }
+    automatic.window_sensors = included.filter((entry) => /^(binary_sensor|sensor)\./.test(entry.entity_id) && ["window", "door", "garage_door"].includes(deviceClass(entry))).map((entry) => entry.entity_id);
+    automatic.battery_sensors = included.filter((entry) => /^(sensor|binary_sensor)\./.test(entry.entity_id) && deviceClass(entry) === "battery").map((entry) => entry.entity_id);
+  }
+  return {
+    error: "",
+    entities,
+    config: {
+      name: area.name || areaId,
+      ...area.icon ? { icon: area.icon } : {},
+      ...automatic,
+      ...card,
+      type: "custom:oneline-room-card",
+      collapse_key: own(card, "collapse_key") ? card.collapse_key : `room-section:${areaId}`,
+      controls: [...manual, ...controls]
+    }
+  };
+};
+
+// src/editor/room-section-editor.js
+var asList = (value) => Array.isArray(value) ? value : [];
+var RoomSectionEditor = class extends HTMLElement {
+  constructor() {
+    super();
+    this.attachShadow({ mode: "open" });
+    this._livePreview = true;
+    this._save = (event) => this._handleSave(event);
+    this._liveToggleChanged = () => {
+      this._livePreview = this._cardEditor._livePreview !== false;
+      if (this._livePreview && this._pending) this._emit();
+    };
+  }
+  connectedCallback() {
+    document.addEventListener("click", this._save, true);
+  }
+  disconnectedCallback() {
+    document.removeEventListener("click", this._save, true);
+  }
+  setConfig(config) {
+    this._config = { ...cloneRoomConfig(roomRecord(config)), type: "custom:oneline-room" };
+    this._render();
+    this._sync();
+  }
+  set hass(hass) {
+    const languageChanged = this._hass?.language !== hass?.language;
+    const registriesChanged = ["entities", "devices", "areas"].some((key) => this._hass?.[key] !== hass?.[key]);
+    this._hass = hass;
+    if (languageChanged && this._config) {
+      if (this._cardEditor?._pendingConfig) this._pending = true;
+      this._config.card = this._collectCard();
+      this._render(true);
+    }
+    if (this._cardEditor) {
+      this._cardEditor.hass = hass;
+      this._connectLiveToggle();
+    }
+    if ((registriesChanged || languageChanged) && this._config) this._sync();
+  }
+  get hass() {
+    return this._hass;
+  }
+  _t(key) {
+    return getTranslation(this._hass, key);
+  }
+  _collectCard() {
+    const card = cloneRoomConfig(roomRecord(this._cardEditor?._config || this._config?.card));
+    delete card.type;
+    return card;
+  }
+  _change(patch) {
+    this._cardEditor?._flushPendingConfig();
+    this._config = { ...this._config, card: this._collectCard(), ...patch, type: "custom:oneline-room" };
+    this._sync();
+    if (this._livePreview) this._emit();
+    else this._pending = true;
+  }
+  _emit() {
+    this._pending = false;
+    const config = cloneRoomConfig(this._config);
+    const signature = JSON.stringify(config);
+    if (signature === this._lastEmitted) return;
+    this._lastEmitted = signature;
+    this.dispatchEvent(new CustomEvent("config-changed", { detail: { config }, bubbles: true, composed: true }));
+  }
+  _handleSave(event) {
+    const path = event.composedPath();
+    let scope = this;
+    while (scope && !scope.localName?.startsWith("hui-dialog-edit-")) {
+      scope = scope.parentNode || scope.host;
+    }
+    if (scope && !path.includes(scope)) return;
+    if (!path.some((node) => node?.getAttribute?.("slot") === "primaryAction" && !node.disabled)) return;
+    this._cardEditor?._flushPendingConfig();
+    if (this._pending) this._emit();
+  }
+  _connectLiveToggle() {
+    const toggle = this._cardEditor?.shadowRoot?.getElementById("live-preview-toggle");
+    if (toggle === this._liveToggle) return;
+    this._liveToggle?.removeEventListener("change", this._liveToggleChanged);
+    this._liveToggle = toggle;
+    toggle?.addEventListener("change", this._liveToggleChanged);
+  }
+  _render(force = false) {
+    if (!this._config || this._cardEditor && !force) return;
+    const style = document.createElement("style");
+    style.textContent = `
+      :host{display:block;color:var(--primary-text-color);font:inherit}
+      *{box-sizing:border-box}h3{margin:16px 0 8px;font-size:16px}p{line-height:1.5}
+      select{display:block;width:100%;min-height:44px;margin:8px 0 16px;padding:8px;border:1px solid var(--divider-color);border-radius:6px;background:var(--card-background-color);color:inherit;font:inherit}
+      fieldset{border:1px solid var(--divider-color);border-radius:8px;padding:12px;margin:12px 0}legend{padding:0 4px}
+      .domains{display:flex;flex-wrap:wrap;gap:12px}label{display:flex;align-items:center;gap:8px;min-height:36px}
+      input{accent-color:var(--primary-color)}button{min-height:36px;padding:6px 10px;border:1px solid var(--divider-color);border-radius:6px;background:var(--card-background-color);color:inherit;font:inherit;cursor:pointer}
+      button:disabled{opacity:.6;cursor:default}button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--primary-color);outline-offset:2px}
+      .entity{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:10px 0;border-bottom:1px solid var(--divider-color)}
+      .entity-name{flex:1;min-width:140px;overflow-wrap:anywhere}.entity-id{display:block;font-size:12px;color:var(--secondary-text-color)}
+      .hint{color:var(--secondary-text-color);font-size:13px}.message{padding:12px;border:1px solid var(--divider-color);border-radius:6px}
+    `;
+    const help = document.createElement("p");
+    help.textContent = this._t("room_section_help");
+    const label = document.createElement("label");
+    label.htmlFor = "room-area";
+    label.textContent = this._t("area_picker");
+    const area = document.createElement("select");
+    area.id = "room-area";
+    area.addEventListener("change", () => this._change({ area: area.value }));
+    const fieldset = document.createElement("fieldset");
+    const legend = document.createElement("legend");
+    legend.textContent = this._t("room_section_domains");
+    const domains = document.createElement("div");
+    domains.className = "domains";
+    for (const domain of ROOM_CONTROL_DOMAINS) {
+      const row = document.createElement("label");
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.dataset.domain = domain;
+      input.addEventListener("change", () => {
+        const selected = this.shadowRoot.querySelectorAll("[data-domain]");
+        this._change({ domains: Array.from(selected).filter((node) => node.checked).map((node) => node.dataset.domain) });
+      });
+      row.append(input, this._t(`room_section_domain_${domain}`));
+      domains.append(row);
+    }
+    fieldset.append(legend, domains);
+    const sensorsLabel = document.createElement("label");
+    const sensors = document.createElement("input");
+    sensors.type = "checkbox";
+    sensors.id = "auto-sensors";
+    sensors.addEventListener("change", () => this._change({ auto_sensors: sensors.checked }));
+    sensorsLabel.append(sensors, this._t("room_section_auto_sensors"));
+    const listTitle = document.createElement("h3");
+    listTitle.textContent = this._t("room_section_discovered");
+    const list = document.createElement("div");
+    list.id = "discovered";
+    const exclusions = document.createElement("div");
+    exclusions.id = "exclusions";
+    const details = document.createElement("details");
+    details.id = "card-settings";
+    const summary = document.createElement("summary");
+    summary.textContent = this._t("room_section_card_settings");
+    const cardHelp = document.createElement("p");
+    cardHelp.className = "hint";
+    cardHelp.textContent = this._t("room_section_card_help");
+    const editor = document.createElement("oneline-room-card-editor");
+    editor.hass = this._hass;
+    editor._livePreview = this._livePreview;
+    editor.addEventListener("config-changed", (event) => {
+      event.stopPropagation();
+      const card = cloneRoomConfig(event.detail.config);
+      delete card.type;
+      this._change({ card });
+    });
+    details.append(summary, cardHelp, editor);
+    const open = this.shadowRoot.getElementById("card-settings")?.open;
+    this.shadowRoot.replaceChildren(style, help, label, area, fieldset, sensorsLabel, listTitle, list, exclusions, details);
+    details.open = open || false;
+    this._cardEditor = editor;
+  }
+  _sync() {
+    if (!this._cardEditor) return;
+    const focused = this.shadowRoot.activeElement;
+    const focusEntity = focused?.dataset.entity;
+    const focusAction = focused?.dataset.action;
+    const area = this.shadowRoot.getElementById("room-area");
+    const options = [["", this._t("room_section_choose_area")], ...Object.entries(this._hass?.areas || {}).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0).map(([id, entry]) => [id, entry.name || id])];
+    if (this._config.area && !options.some(([id]) => id === this._config.area)) options.push([this._config.area, this._config.area]);
+    area.replaceChildren(...options.map(([id, name]) => {
+      const option = document.createElement("option");
+      option.value = id;
+      option.textContent = name;
+      return option;
+    }));
+    area.value = this._config.area || "";
+    const domains = getRoomDomains(this._config);
+    this.shadowRoot.querySelectorAll("[data-domain]").forEach((node) => {
+      node.checked = domains.includes(node.dataset.domain);
+    });
+    this.shadowRoot.getElementById("auto-sensors").checked = this._config.auto_sensors !== false;
+    this._cardEditor.setConfig({ ...cloneRoomConfig(roomRecord(this._config.card)), type: "custom:oneline-room-card" });
+    this._connectLiveToggle();
+    const result = resolveAutomaticRoom(this._config, this._hass);
+    const list = this.shadowRoot.getElementById("discovered");
+    list.replaceChildren();
+    const excluded = new Set(Array.isArray(this._config.exclude_entities) ? this._config.exclude_entities : []);
+    const manual = new Set(asList(this._config.card?.controls).map((control) => control?.entity));
+    const header = /* @__PURE__ */ new Set([
+      result.config?.entity,
+      result.config?.temp_sensor,
+      result.config?.humid_sensor,
+      ...asList(result.config?.window_sensors),
+      ...asList(result.config?.battery_sensors)
+    ]);
+    const entries = result.entities.filter((entry) => !excluded.has(entry.entity_id) && (domains.includes(entry.entity_id.split(".")[0]) || header.has(entry.entity_id)));
+    if (result.error || !entries.length) {
+      const message = document.createElement("p");
+      message.className = "message";
+      message.setAttribute("role", "status");
+      message.textContent = this._t(result.error || "area_no_entities");
+      list.append(message);
+    }
+    for (const entry of entries) {
+      const id = entry.entity_id;
+      const row = this._entityRow(id);
+      if (domains.includes(id.split(".")[0])) {
+        const customize = this._button(manual.has(id) ? "room_section_customized" : "room_section_customize", id, "customize", () => {
+          const card = this._collectCard();
+          card.controls = [...Array.isArray(card.controls) ? card.controls : [], createRoomControl(id)];
+          this._change({ card });
+          this.shadowRoot.getElementById("card-settings").open = true;
+          this._cardEditor._activeTab = "buttons";
+          this._cardEditor._updateTabUI();
+          this.shadowRoot.getElementById("card-settings").querySelector("summary").focus();
+        });
+        customize.disabled = manual.has(id);
+        row.append(customize);
+      }
+      const exclude = this._button("room_section_exclude", id, "exclude", () => this._change({ exclude_entities: [...excluded, id] }));
+      exclude.disabled = manual.has(id) || ["entity", "temp_sensor", "humid_sensor"].some((key) => this._config.card?.[key] === id) || ["window_sensors", "battery_sensors"].some((key) => this._config.card?.[key]?.includes?.(id));
+      row.append(exclude);
+      list.append(row);
+    }
+    const exclusions = this.shadowRoot.getElementById("exclusions");
+    exclusions.replaceChildren();
+    for (const id of excluded) {
+      if (typeof id !== "string") continue;
+      const row = this._entityRow(id);
+      row.append(this._button("room_section_restore", id, "restore", () => this._change({ exclude_entities: [...excluded].filter((item) => item !== id) })));
+      exclusions.append(row);
+    }
+    if (focusEntity) {
+      const buttons = Array.from(this.shadowRoot.querySelectorAll("button"));
+      const same = buttons.find((node) => node.dataset.entity === focusEntity && node.dataset.action === focusAction && !node.disabled);
+      const replacement = buttons.find((node) => node.dataset.entity === focusEntity && !node.disabled);
+      (same || replacement)?.focus();
+    }
+  }
+  _entityRow(id) {
+    const row = document.createElement("div");
+    row.className = "entity";
+    const label = document.createElement("span");
+    label.className = "entity-name";
+    label.textContent = getEntityDisplayName(this._hass, id);
+    const identifier = document.createElement("span");
+    identifier.className = "entity-id";
+    identifier.textContent = id;
+    label.append(identifier);
+    row.append(label);
+    return row;
+  }
+  _button(key, id, action, callback) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = this._t(key);
+    button.dataset.entity = id;
+    button.dataset.action = action;
+    button.setAttribute("aria-label", `${this._t(key)}: ${getEntityDisplayName(this._hass, id)}`);
+    button.addEventListener("click", callback);
+    return button;
+  }
+};
+
+// src/strategy/room-auto-card.js
+var RoomAutoCard = class extends HTMLElement {
+  constructor() {
+    super();
+    this.attachShadow({ mode: "open" });
+    const style = document.createElement("style");
+    style.textContent = ":host{display:block}p{padding:16px;color:var(--primary-text-color);white-space:pre-wrap}";
+    this._content = document.createElement("div");
+    this.shadowRoot.append(style, this._content);
+  }
+  setConfig(config) {
+    this._strategy = cloneRoomConfig(roomRecord(config?.strategy));
+    this._registryRefs = null;
+    this._update();
+  }
+  set hass(hass) {
+    this._hass = hass;
+    this._update();
+  }
+  get hass() {
+    return this._hass;
+  }
+  getCardSize() {
+    return this._card?.getCardSize() || 1;
+  }
+  getGridOptions() {
+    return { columns: "full", rows: "auto" };
+  }
+  _classSignature() {
+    return JSON.stringify((this._roomEntities || []).map((entry) => this._hass?.states?.[entry.entity_id]?.attributes?.device_class || entry.device_class || entry.original_device_class || ""));
+  }
+  _update() {
+    if (!this._strategy || !this._hass) return;
+    const refs = [this._hass.entities, this._hass.devices, this._hass.areas, this._hass.language];
+    const changed = !this._registryRefs || refs.some((value, index) => value !== this._registryRefs[index]) || this._classSignature() !== this._deviceClasses;
+    if (changed) {
+      const result = resolveAutomaticRoom(this._strategy, this._hass);
+      this._registryRefs = refs;
+      this._roomEntities = result.entities;
+      this._deviceClasses = this._classSignature();
+      this._error = result.error;
+      if (result.error) {
+        const message = document.createElement("ha-card");
+        const text = document.createElement("p");
+        text.setAttribute("role", "status");
+        text.textContent = getTranslation(this._hass, result.error);
+        message.append(text);
+        this._content.replaceChildren(message);
+      } else {
+        const signature = JSON.stringify(result.config);
+        this._card ||= document.createElement("oneline-room-card");
+        if (signature !== this._cardSignature) {
+          this._card.setConfig(result.config);
+          this._cardSignature = signature;
+          this.dispatchEvent(new Event("card-size-changed", { bubbles: true, composed: true }));
+        }
+        if (this._card.parentNode !== this._content) this._content.replaceChildren(this._card);
+      }
+    }
+    if (!this._error && this._card) this._card.hass = this._hass;
+  }
+};
+
+// src/strategy/room-section-strategy.js
+var RoomSectionStrategy = class extends HTMLElement {
+  // The stable adapter card updates its existing RoomCard from registry changes.
+  // Regenerating the native section would destroy that card and any open drawer.
+  static registryDependencies = [];
+  static getStubConfig(hass) {
+    const areas = Object.keys(hass?.areas || {}).sort();
+    let area = areas[0];
+    let mostControls = 0;
+    for (const id of areas) {
+      const count = getRoomEntities(hass, id).filter((entry) => ROOM_CONTROL_DOMAINS.some((domain) => entry.entity_id.startsWith(`${domain}.`))).length;
+      if (count > mostControls) {
+        area = id;
+        mostControls = count;
+      }
+    }
+    return { type: "custom:oneline-room", ...area ? { area } : {}, domains: [...ROOM_CONTROL_DOMAINS] };
+  }
+  static getConfigElement() {
+    return document.createElement("oneline-room-section-editor");
+  }
+  static async generate(config) {
+    return {
+      type: "grid",
+      cards: [{ type: "custom:oneline-room-auto-card", strategy: cloneRoomConfig(config), grid_options: { columns: "full", rows: "auto" } }]
+    };
+  }
+};
+
+// src/index.js
 var LOG_FLAG = `customCards_RoomCard_Logged_${VERSION}`;
 if (!window[LOG_FLAG]) {
   console.info(
@@ -10698,6 +11196,32 @@ if (!window.customCards.some((card) => card?.type === "oneline-room-card")) {
     name: "OneLine Room Card",
     preview: true,
     description: "Minimalist Room Card for Home Assistant"
+  });
+}
+for (const [tag, Implementation] of [
+  ["oneline-room-section-editor", RoomSectionEditor],
+  ["oneline-room-auto-card", RoomAutoCard],
+  ["ll-strategy-section-oneline-room", RoomSectionStrategy]
+]) {
+  const existing = customElements.get(tag);
+  if (!existing) customElements.define(tag, Implementation);
+  else if (existing !== Implementation) {
+    for (const key of Object.getOwnPropertyNames(Implementation.prototype)) {
+      if (key !== "constructor") Object.defineProperty(existing.prototype, key, Object.getOwnPropertyDescriptor(Implementation.prototype, key));
+    }
+    for (const key of ["generate", "registryDependencies", "getStubConfig", "getConfigElement"]) {
+      const descriptor = Object.getOwnPropertyDescriptor(Implementation, key);
+      if (descriptor) Object.defineProperty(existing, key, descriptor);
+    }
+  }
+}
+window.customStrategies = window.customStrategies || [];
+if (!window.customStrategies.some((strategy) => strategy?.type === "oneline-room" && strategy.strategyType === "section")) {
+  window.customStrategies.push({
+    type: "oneline-room",
+    strategyType: "section",
+    name: "RoomCard",
+    description: "Room controls that follow the devices in a Home Assistant area."
   });
 }
 export {

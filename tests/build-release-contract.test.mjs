@@ -1,15 +1,25 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { readFile, readdir, mkdtemp, writeFile, rm } from "node:fs/promises";
+import { copyFile, readFile, readdir, mkdtemp, writeFile, rm } from "node:fs/promises";
 import test from "node:test";
-import { dirname, resolve, join } from "node:path";
+import { basename, dirname, resolve, join } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 
 import { installDomEnvironment, importRoomCard } from "./support/dom-env.mjs";
 import { assertFreshDistribution } from "../scripts/check-build.mjs";
+import { getReleaseAssets } from "../scripts/release-assets.mjs";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+
+test("Marketplace's filename fallback can only select the bundled resource", async () => {
+  const hacs = JSON.parse(await readFile(resolve(repositoryRoot, "hacs.json"), "utf8"));
+  const sourceFiles = await readdir(resolve(repositoryRoot, "src"), { recursive: true });
+  // HA 2026.11 falls back from missing branch release assets by matching
+  // basenames across the tree. Source files must never overwrite the bundle.
+  assert.deepEqual(sourceFiles.filter(path => basename(path) === hacs.filename), []);
+  assert.ok((await readdir(resolve(repositoryRoot, "dist"))).includes(hacs.filename));
+});
 
 test("a stale artifact is rejected without overwriting it", async () => {
   const directory = await mkdtemp(join(tmpdir(), "roomcard-stale-test-"));
@@ -47,13 +57,17 @@ test("the committed HACS artifact is deterministic, self-contained, and register
   assert.deepEqual(registrations, [
     "oneline-room-card-textfield",
     "oneline-room-card-editor",
-    "oneline-room-card"
+    "oneline-room-card",
+    "oneline-room-section-editor",
+    "oneline-room-auto-card",
+    "ll-strategy-section-oneline-room"
   ]);
 
   assert.ok(customElements.get("oneline-room-card-textfield"));
   assert.ok(customElements.get("oneline-room-card"));
   assert.ok(customElements.get("oneline-room-card-editor"));
   assert.equal(window.customCards.filter((card) => card.type === "oneline-room-card").length, 1);
+  assert.equal(window.customStrategies.filter(strategy => strategy.type === "oneline-room" && strategy.strategyType === "section").length, 1);
 });
 
 test("all preset images resolve beside the real module URL and exist in the HACS distribution", async () => {
@@ -61,11 +75,10 @@ test("all preset images resolve beside the real module URL and exist in the HACS
   const artifactUrl = new URL("../dist/room-card.js", import.meta.url);
   const hacs = JSON.parse(await readFile(resolve(repositoryRoot, "hacs.json"), "utf8"));
   assert.equal(hacs.filename, "room-card.js");
-  assert.deepEqual((await readdir(resolve(repositoryRoot, "dist"))).sort(), ["room-card.js", "rooms"]);
   const version = JSON.parse(await readFile(resolve(repositoryRoot, "package.json"), "utf8")).version;
-  const expectedFiles = [];
+  const expectedFiles = ["room-card.js"];
   for (const preset of ROOM_IMAGE_PRESETS) {
-    const expected = new URL(`./rooms/${preset.file}`, artifactUrl);
+    const expected = new URL(`./${preset.file}`, artifactUrl);
     expected.searchParams.set("v", version);
     assert.equal(getRoomImagePresetUrl(preset.id), expected.href);
     const bytes = await readFile(expected);
@@ -73,7 +86,8 @@ test("all preset images resolve beside the real module URL and exist in the HACS
     assert.equal(bytes.subarray(0, 3).toString("hex"), "ffd8ff", `${preset.file} must be an actual JPEG`);
     expectedFiles.push(preset.file);
   }
-  assert.deepEqual((await readdir(resolve(repositoryRoot, "dist/rooms"))).sort(), expectedFiles.sort());
+  assert.deepEqual((await readdir(resolve(repositoryRoot, "dist"))).sort(), expectedFiles.sort());
+  assert.deepEqual((await getReleaseAssets()).map((asset) => basename(asset)), expectedFiles);
   assert.equal(getRoomImagePresetUrl("not-a-preset"), "");
 });
 
@@ -102,4 +116,21 @@ test("browser-style HACS, CDN, and local module URLs preserve relative preset re
     encoding: "utf8"
   });
   assert.equal(result.status, 0, result.stderr || result.stdout);
+});
+
+test("a clean release install resolves every preset without cached or pre-existing room images", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "roomcard-install-test-"));
+  try {
+    // Copy only the individual assets uploaded to the release, as Marketplace
+    // and HACS do. No source tree, extracted ZIP, or previous rooms/ folder.
+    for (const asset of await getReleaseAssets()) {
+      await copyFile(asset, join(directory, basename(asset)));
+    }
+    const result = spawnSync(process.execPath, [
+      "--experimental-vm-modules", "tests/support/bundle-url-probe.mjs", directory
+    ], { cwd: repositoryRoot, encoding: "utf8" });
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
 });

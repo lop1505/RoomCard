@@ -25,16 +25,25 @@ Developed with a focus on stability, simple design, and maximum flexibility.
 
 ---
 
-## 🆕 What's new in 1.5.1
+## 🆕 What's new in 1.6.0
 
-* 📊 Show correct numeric room-status sums, including unitless template sensors with a configured display unit.
-* 🎛️ Choose **State**, **Position (%)**, or another numeric attribute from the new **Value source** dropdown. Cover positions need no extra template sensor or typed attribute name.
-* 🪟 Use matching open/closed contact icons and respect custom entity icons.
-* 🏷️ Follow Home Assistant entity naming while retaining your custom labels.
-* 🖱️ Keep translated editor switch labels working with the HA 2026.11 component changes.
-* 🧪 Validate the release with 138 automated tests, reproducible build checks and maintainer-confirmed testing on HA 2026.10.4.
+* 🏠 Add **RoomCard** from **Create section → Automatic section → Community sections** on Home Assistant 2026.11.
+* 🔄 Select one area and keep its controls in sync when devices are added, removed or moved.
+* 🎛️ Filter control types, exclude entities, customize individual controls, and choose climate/header sensors automatically.
+* 🚪 Retain manual overrides, room details and remembered collapse state as automatic membership changes.
+* 🖼️ Install all 16 built-in room images beside the card, including fresh Marketplace/HACS installations.
+* 🧪 Validate the release with 160 automated tests, reproducible builds and a maintainer-approved smoke test on HA 2026.11.1.
 
-Existing YAML remains supported. See the [v1.5.1 release notes](docs/releases/v1.5.1.md).
+Existing manual cards and YAML remain supported. See the [illustrated v1.6.0 release notes](docs/releases/v1.6.0.md).
+
+![English automatic-section editor with fictional demo data](docs/images/releases/v1.6.0/automatic-section-editor.jpg)
+
+### Previously in 1.5.1
+
+* Correct numeric room-status summaries and choose cover position or another numeric value source visually.
+* Use matching contact icons, native entity names and compatible HA 2026.11 editor switch labels.
+
+See the [v1.5.1 release notes](docs/releases/v1.5.1.md).
 
 ### Previously in 1.5.0
 
@@ -75,6 +84,7 @@ See the [illustrated v1.4.0 release notes](docs/releases/v1.4.0.md) for screensh
 * 🏠 Built-in room-image presets — choose from 16 bundled room backgrounds without hosting your own image
 * 🧭 Quick Add — add buttons from existing entity types in one click, including `select` / `input_select`
 * 🏠 Area-Based Auto-Setup — pick a Home Assistant area and one click auto-populates climate, controls (light/switch/cover/fan/media_player/lock), temperature/humidity/window/battery sensors
+* 🏠 Automatic room sections (HA 2026.11+) — opt in to a room whose controls follow devices added, removed or moved; customize individual controls and exclude entities
 * 🖱️ Drag & drop reordering, bulk expand/collapse, collapsible button entries
 
 **Header**
@@ -144,11 +154,15 @@ for HACS migration behavior. The remaining RoomCard installation/update checks a
 [#157](https://github.com/lop1505/RoomCard/issues/157) and the [validation report](docs/ha-2026.11-validation.md).
 
 ### Manual
-1. Download the [latest release](https://github.com/lop1505/RoomCard/releases) and open its `dist` directory.
-2. Copy `dist/room-card.js` **and** `dist/rooms/` to `/config/www/room-card/`.
+1. Download the source archive of the [latest release](https://github.com/lop1505/RoomCard/releases) and open its `dist` directory.
+2. Copy **all files** from `dist/` (`room-card.js` and the 16 JPEGs) to `/config/www/room-card/`, keeping them together in that directory.
 3. Add resource: URL `/local/room-card/room-card.js` · Type: JavaScript Module.
 
-HACS installs the card and bundled room images together automatically. Existing manual installations that keep `room-card.js` directly in `/config/www/` can retain `/local/room-card.js`; copy `dist/rooms/` to `/config/www/rooms/` so the relative preset URLs remain available.
+Marketplace/HACS installs the card and its individual image assets automatically.
+Existing manual installations that keep `room-card.js` directly in `/config/www/`
+can retain `/local/room-card.js`; copy the JPEGs into `/config/www/` beside it.
+When updating from a release that used a `rooms/` subdirectory, copy the new
+JPEGs beside the JavaScript file as well. Saved `image_preset` IDs need no changes.
 
 ---
 
@@ -226,6 +240,26 @@ With live preview off, changes apply through the existing Save workflow.
 
 Available since v1.5.0; disabled by default.
 See the [architecture and test gates](docs/room-detail-drawer.md).
+
+#### Automatic room sections (HA 2026.11)
+
+Available since **v1.6.0**. Automatic sections require Home Assistant 2026.11 or newer.
+
+In a **Sections** dashboard, choose **Create section → Automatic section →
+Community sections → RoomCard**. Select one area, the control types to include,
+and whether to discover climate/header sensors automatically. **Customize** pins
+an entity's settings under **Appearance and custom controls → Buttons**;
+**Exclude** removes it from automatic discovery, and **Include again** restores it.
+Custom controls appear first and retain their actions, names and drawer placement.
+
+Devices added to or moved out of the area update the section while its existing
+RoomCard and drawer remain in place. Unavailable devices stay visible as
+unavailable. Disabled, hidden and diagnostic/configuration entities are excluded
+from discovery; explicit manual entries retain the normal card behavior.
+Saved settings contain the area, filters and your overrides, rather than a copy
+of every discovered control. Existing standalone cards stay manually configured.
+
+See the [configuration and design](docs/automatic-room-sections.md).
 
 #### Room Modes
 
@@ -564,7 +598,7 @@ See [CHANGELOG.md](CHANGELOG.md) for the full release history.
 
 ## 🛠️ Development
 
-The entry source is `src/room-card.js`; runtime and editor implementations live in `src/card/` and `src/editor/`, while `dist/room-card.js` remains the generated HACS artifact. See [CONTRIBUTING.md](CONTRIBUTING.md) for the repository layout and the build, test, and release checks. Structural work follows the [test-gated modularization plan](docs/modularization-plan.md) and [manual Home Assistant smoke-test matrix](docs/manual-smoke-test.md).
+The entry source is `src/index.js`; runtime and editor implementations live in `src/card/` and `src/editor/`, while `dist/room-card.js` remains the generated HACS artifact. See [CONTRIBUTING.md](CONTRIBUTING.md) for the repository layout and the build, test, and release checks. Structural work follows the [test-gated modularization plan](docs/modularization-plan.md) and [manual Home Assistant smoke-test matrix](docs/manual-smoke-test.md).
 
 ---
 

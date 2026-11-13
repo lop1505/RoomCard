@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="de">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RoomCard – automatische Sektion testen</title>
+<style>
+  :root { --primary-color:#0284c7;--primary-text-color:#17212f;--secondary-text-color:#536174;--divider-color:#cbd5e1;--card-background-color:#fff;--secondary-background-color:#f1f5f9;--primary-background-color:#e9eff6;--ha-card-background:#fff; font:15px/1.5 system-ui; color:var(--primary-text-color); background:var(--primary-background-color) }
+  body{margin:0;padding:24px}main{max-width:1280px;margin:auto}h1{font-size:25px;margin:0 0 6px}header p{margin:0 0 20px;color:var(--secondary-text-color)}
+  hui-dialog-edit-section{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(300px,1fr);gap:24px;align-items:start}
+  .panel{background:var(--card-background-color);padding:20px;border-radius:14px;box-shadow:0 2px 10px #17212f12}h2{font-size:18px;margin:0 0 12px}.tools{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0}
+  button{font:inherit;padding:8px 12px;background:var(--card-background-color);color:inherit;border:1px solid var(--divider-color);border-radius:6px;cursor:pointer}ha-card{display:block;border-radius:12px;background:var(--card-background-color)}
+  .status{font-size:13px;overflow-wrap:anywhere;color:var(--secondary-text-color)}
+  @media(max-width:800px){body{padding:12px}hui-dialog-edit-section{grid-template-columns:1fr}.panel{padding:14px}}
+</style>
+<main>
+  <header><h1>Automatische RoomCard-Sektion</h1><p>Lokale Vorschau mit simulierten HA-Daten. Es werden keine echten Geräte geschaltet.</p></header>
+  <hui-dialog-edit-section>
+    <section class="panel"><h2>Abschnitt konfigurieren</h2><div id="editor"></div><button id="save" slot="primaryAction">Speichern simulieren</button></section>
+    <section class="panel"><h2>Raumvorschau</h2><div id="preview"></div><div class="tools"><button id="add">Lampe hinzufügen</button><button id="move">Lampe verschieben</button><button id="remove">Lampe entfernen</button><button id="state">Licht umschalten</button></div><p class="status" id="status" role="status"></p></section>
+  </hui-dialog-edit-section>
+</main>
+<script type="module">
+  import "../../dist/room-card.js";
+  import { roomFixture } from "../support/room-fixture.mjs";
+  class MockIcon extends HTMLElement {
+    set icon(value){ this._icon=value; this.textContent=/sofa/.test(value)?"⌂":/lightbulb/.test(value)?"☀":"◉"; }
+    get icon(){return this._icon;}
+  }
+  customElements.define("ha-icon",MockIcon);
+  class MockSwitch extends HTMLElement {
+    constructor(){super();this.attachShadow({mode:"open"});this._checked=false;this.shadowRoot.innerHTML='<label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox"><slot></slot></label>';this._input=this.shadowRoot.querySelector("input");this._input.addEventListener("change",e=>{e.stopPropagation();this.checked=this._input.checked;this.dispatchEvent(new Event("change",{bubbles:true,composed:true}));});}
+    connectedCallback(){if(this.hasAttribute("checked"))this.checked=true;}
+    set checked(value){this._checked=!!value;if(this._input)this._input.checked=this._checked;}
+    get checked(){return this._checked;}
+  }
+  customElements.define("ha-switch",MockSwitch);
+  let home={...roomFixture(),language:"de",config:{state:"RUNNING",unit_system:{temperature:"°C"}},panels:{},user:{id:"preview"},
+    callWS:async()=>({views:[]}),connection:{sendMessagePromise:async()=>({views:[]})},
+    callService(){document.getElementById("status").textContent="Simulierter Service-Aufruf";},
+    formatEntityState:state=>state.state,formatEntityAttributeValue:(state,key)=>String(state.attributes[key]??"")};
+  home.areas={...home.areas,living:{...home.areas.living,name:"Wohnzimmer"},bedroom:{...home.areas.bedroom,name:"Schlafzimmer"}};
+  home.states["light.a"]={...home.states["light.a"],attributes:{friendly_name:"Leselampe"}};
+  const Strategy=customElements.get("ll-strategy-section-oneline-room");
+  let config={...Strategy.getStubConfig(home),card:{image_preset:"living-room",collapsible:true,detail_drawer:{enabled:true}}};
+  const generated=await Strategy.generate(config,home);
+  const preview=document.createElement("oneline-room-auto-card");preview.setConfig(generated.cards[0]);preview.hass=home;document.getElementById("preview").append(preview);
+  const editor=Strategy.getConfigElement();editor.hass=home;editor.setConfig(config);document.getElementById("editor").append(editor);
+  editor.addEventListener("config-changed",event=>{config=event.detail.config;preview.setConfig({strategy:config});editor.setConfig(config);updateStatus();});
+  function updateStatus(){document.getElementById("status").textContent=`${preview._card?.config.controls.length??0} Bedienelemente · Vorschau aktualisiert`;}
+  function update(){preview.hass=home;editor.hass=home;updateStatus();}
+  document.getElementById("add").onclick=()=>{home={...home,entities:{...home.entities,"light.new":{entity_id:"light.new",area_id:"living"}},states:{...home.states,"light.new":{entity_id:"light.new",state:"off",attributes:{friendly_name:"Neue Stehlampe"}}}};update();};
+  document.getElementById("move").onclick=()=>{if(!home.entities["light.new"])return;home={...home,entities:{...home.entities,"light.new":{...home.entities["light.new"],area_id:"bedroom"}}};update();};
+  document.getElementById("remove").onclick=()=>{const entities={...home.entities};delete entities["light.new"];home={...home,entities};update();};
+  document.getElementById("state").onclick=()=>{home={...home,states:{...home.states,"light.a":{...home.states["light.a"],state:home.states["light.a"].state==="on"?"off":"on"}}};update();};
+  updateStatus();
+</script>
+</html>

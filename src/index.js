@@ -21,9 +21,12 @@ import { SHARED_SPARKLINE_CACHE, SHARED_SPARKLINE_PENDING, SHARED_SPARKLINE_CACH
 import { MEDIA_PLAYER_FEATURES, getSliderCapabilities, getInlineButtons, supportsMediaFeature } from "./lib/capabilities.js";
 
 import { VERSION, EDITOR_DOM_REVISION } from "./version.js";
-import { OneLineRoomCard } from "./card/room-card.js";
+import { OneLineRoomCard } from "./card/room-card-element.js";
 import { OneLineRoomCardEditor } from "./editor/room-card-editor.js";
 import { OneLineRoomCardTextField } from "./editor/text-field-compat.js";
+import { RoomSectionEditor } from "./editor/room-section-editor.js";
+import { RoomAutoCard } from "./strategy/room-auto-card.js";
+import { RoomSectionStrategy } from "./strategy/room-section-strategy.js";
 import { IMAGE_UPLOAD_LIMITS, parseImagePosition, validateImageUpload, ROOM_IMAGE_PRESETS, ROOM_IMAGE_PRESET_MAP, getRoomImagePresetUrl, resolveRoomImageUrl, evaluateAdaptiveImageConditions, resolveAdaptiveRoomImage, POWER_UNIT_FACTORS, getStatusGroupResult, isHeaderManualColorEnabled, resolveLabelPosition, setAlignmentClass, applyLabelPosition, evalTemplateString, resolveTemplateCtrl, resolveSubChipPresentations, TEMPLATE_VALUE_KEYS, getTemplateEntityDependencies, templateNeedsEveryHassUpdate, formatLastChanged } from "./shared/presentation.js";
 const LOG_FLAG = `customCards_RoomCard_Logged_${VERSION}`;
 
@@ -120,6 +123,33 @@ if (!window.customCards.some((card) => card?.type === "oneline-room-card")) {
     name: "OneLine Room Card",
     preview: true,
     description: "Minimalist Room Card for Home Assistant"
+  });
+}
+
+for (const [tag, Implementation] of [
+  ["oneline-room-section-editor", RoomSectionEditor],
+  ["oneline-room-auto-card", RoomAutoCard],
+  ["ll-strategy-section-oneline-room", RoomSectionStrategy]
+]) {
+  const existing = customElements.get(tag);
+  if (!existing) customElements.define(tag, Implementation);
+  else if (existing !== Implementation) {
+    for (const key of Object.getOwnPropertyNames(Implementation.prototype)) {
+      if (key !== "constructor") Object.defineProperty(existing.prototype, key, Object.getOwnPropertyDescriptor(Implementation.prototype, key));
+    }
+    for (const key of ["generate", "registryDependencies", "getStubConfig", "getConfigElement"]) {
+      const descriptor = Object.getOwnPropertyDescriptor(Implementation, key);
+      if (descriptor) Object.defineProperty(existing, key, descriptor);
+    }
+  }
+}
+window.customStrategies = window.customStrategies || [];
+if (!window.customStrategies.some(strategy => strategy?.type === "oneline-room" && strategy.strategyType === "section")) {
+  window.customStrategies.push({
+    type: "oneline-room",
+    strategyType: "section",
+    name: "RoomCard",
+    description: "Room controls that follow the devices in a Home Assistant area."
   });
 }
 

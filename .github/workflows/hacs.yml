@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - main
+      - "codex/test-*"
     tags:
       - "v*"
   pull_request:

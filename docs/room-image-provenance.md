@@ -1,6 +1,6 @@
 # Bundled room-image provenance
 
-The files in `dist/rooms/` were generated specifically for RoomCard and do not reuse room images from forks or other third-party repositories.
+The JPEG files in `dist/` were generated specifically for RoomCard and do not reuse room images from forks or other third-party repositories. They were originally stored under `dist/rooms/`; the packaging fix for #161 moves them beside the JavaScript bundle without changing their bytes.
 
 ## Generation record
 

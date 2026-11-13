@@ -1,5 +1,11 @@
 const TRANSLATIONS = {
   en: {
+    room_section_help: "Choose one room. Its controls update automatically when devices are added, removed or moved. Customized controls keep their settings and appear first.",
+    room_section_domains: "Automatic controls", room_section_auto_sensors: "Automatically select climate and header sensors",
+    room_section_choose_area: "Choose a Home Assistant area.", room_section_missing_area: "This area no longer exists. Choose another area in the section settings.", room_section_loading: "Waiting for Home Assistant room information…",
+    room_section_discovered: "Entities in this room", room_section_customize: "Customize", room_section_customized: "Customized", room_section_exclude: "Exclude", room_section_restore: "Include again",
+    room_section_card_settings: "Appearance and custom controls", room_section_card_help: "Use Buttons to edit customized or additional controls. These settings take precedence over automatic discovery. Turn off automatic header sensors above to configure all header entities manually. Live preview also applies to the room settings above.",
+    room_section_domain_light: "Lights", room_section_domain_switch: "Switches", room_section_domain_cover: "Covers", room_section_domain_fan: "Fans", room_section_domain_media_player: "Media players", room_section_domain_lock: "Locks",
     control_duplicate: "Duplicate control",
     room_details: "Room details", drawer_enable: "Enable room details", drawer_title: "Title (optional)", drawer_preview: "Preview room details", drawer_placement: "Display in", drawer_card: "Card", drawer_both: "Both",
     drawer_help: "Choose Card, Room details or Both for each control. With room details disabled, all controls return to the card. Preview requires live preview; otherwise changes apply on Save.",
@@ -107,6 +113,12 @@ const TRANSLATIONS = {
     a11y_activate: "Activate {name}", a11y_set_value: "Set {name}", a11y_select_option: "Select {name}"
   },
   de: {
+    room_section_help: "Wähle einen Raum. Seine Bedienelemente passen sich automatisch an, wenn Geräte hinzukommen, entfernt oder verschoben werden. Angepasste Bedienelemente behalten ihre Einstellungen und stehen zuerst.",
+    room_section_domains: "Automatische Bedienelemente", room_section_auto_sensors: "Klima und Kopfsensoren automatisch auswählen",
+    room_section_choose_area: "Wähle einen Home-Assistant-Bereich.", room_section_missing_area: "Dieser Bereich existiert nicht mehr. Wähle in den Abschnittseinstellungen einen anderen Bereich.", room_section_loading: "Rauminformationen von Home Assistant werden geladen…",
+    room_section_discovered: "Entitäten in diesem Raum", room_section_customize: "Anpassen", room_section_customized: "Angepasst", room_section_exclude: "Ausschließen", room_section_restore: "Wieder einbeziehen",
+    room_section_card_settings: "Darstellung und eigene Bedienelemente", room_section_card_help: "Unter Buttons bearbeitest du angepasste oder zusätzliche Bedienelemente. Diese Einstellungen haben Vorrang vor der automatischen Auswahl. Deaktiviere oben die automatischen Kopfsensoren, um alle Kopfentitäten manuell festzulegen. Die Live-Vorschau gilt auch für die Raumeinstellungen oben.",
+    room_section_domain_light: "Lichter", room_section_domain_switch: "Schalter", room_section_domain_cover: "Abdeckungen", room_section_domain_fan: "Ventilatoren", room_section_domain_media_player: "Mediaplayer", room_section_domain_lock: "Schlösser",
     control_duplicate: "Control duplizieren",
     room_details: "Raumdetails", drawer_enable: "Raumdetails aktivieren", drawer_title: "Titel (optional)", drawer_preview: "Raumdetails ansehen", drawer_placement: "Anzeigen in", drawer_card: "Karte", drawer_both: "Beide",
     drawer_help: "Pro Control Karte, Raumdetails oder Beide wählen. Bei deaktivierten Raumdetails erscheinen alle Controls wieder auf der Karte. Die Vorschau benötigt Live-Vorschau; sonst gelten Änderungen erst nach dem Speichern.",
@@ -218,6 +230,12 @@ const TRANSLATIONS = {
     a11y_activate: "{name} bedienen", a11y_set_value: "{name} einstellen", a11y_select_option: "{name} auswählen"
   },
   fr: {
+    room_section_help: "Choisissez une pièce. Ses commandes suivent automatiquement les appareils ajoutés, supprimés ou déplacés. Les commandes personnalisées conservent leurs réglages et apparaissent en premier.",
+    room_section_domains: "Commandes automatiques", room_section_auto_sensors: "Sélectionner automatiquement le climat et les capteurs d’en-tête",
+    room_section_choose_area: "Choisissez une zone Home Assistant.", room_section_missing_area: "Cette zone n’existe plus. Choisissez une autre zone dans les réglages de la section.", room_section_loading: "Chargement des informations des pièces depuis Home Assistant…",
+    room_section_discovered: "Entités de cette pièce", room_section_customize: "Personnaliser", room_section_customized: "Personnalisée", room_section_exclude: "Exclure", room_section_restore: "Inclure à nouveau",
+    room_section_card_settings: "Apparence et commandes personnalisées", room_section_card_help: "Utilisez Boutons pour modifier les commandes personnalisées ou supplémentaires. Ces réglages priment sur la sélection automatique. Désactivez les capteurs automatiques ci-dessus pour configurer manuellement l’en-tête. L’aperçu en direct s’applique aussi aux réglages de pièce ci-dessus.",
+    room_section_domain_light: "Lumières", room_section_domain_switch: "Interrupteurs", room_section_domain_cover: "Volets", room_section_domain_fan: "Ventilateurs", room_section_domain_media_player: "Lecteurs multimédias", room_section_domain_lock: "Serrures",
     control_duplicate: "Dupliquer la commande",
     room_details: "Détails de la pièce", drawer_enable: "Activer les détails de la pièce", drawer_title: "Titre (facultatif)", drawer_preview: "Aperçu des détails", drawer_placement: "Afficher dans", drawer_card: "Carte", drawer_both: "Les deux",
     drawer_help: "Pour chaque commande, choisissez Carte, Détails de la pièce ou Les deux. Si les détails sont désactivés, toutes les commandes reviennent sur la carte. L’aperçu nécessite l’aperçu en direct ; sinon les modifications s’appliquent à l’enregistrement.",

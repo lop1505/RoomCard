@@ -10,7 +10,7 @@ export const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "
 export const buildRoomCard = async (outfile) => {
   const result = await build({
     absWorkingDir: repositoryRoot,
-    entryPoints: ["src/room-card.js"],
+    entryPoints: ["src/index.js"],
     outfile,
     bundle: true,
     format: "esm",

@@ -2,6 +2,15 @@
 
 All notable changes to OneLine Room Card are documented here.
 
+## [Unreleased]
+
+## [1.6.0]
+
+* Automatic sections: Add an opt-in RoomCard Community section for HA 2026.11, with one area, control-domain filters, automatic header sensors, exclusions and per-entity customization in EN/DE/FR. A stable adapter derives controls from registry data without saving generated entity lists, polling or recreating the existing RoomCard. Preserve manual overrides, drawers, collapse state and keyboard focus during membership changes. Closes #158. The native Community section picker and editor were verified on HA 2026.11.1; the maintainer approved the smoke test.
+* Image packaging: Ship all 16 preset JPEGs directly beside `room-card.js` and attach them individually to draft releases. Marketplace/HACS installations no longer depend on an extracted supplementary ZIP or an existing `rooms/` folder. Existing preset IDs, custom image URLs and uploads remain supported. Fixes #161.
+* Marketplace branch installs: Give source modules distinct basenames so the installer’s filename fallback cannot overwrite the compiled `room-card.js` with unbundled source.
+* Release validation: Pass 160 automated tests and resolve every preset from an empty installation containing only the release assets, including Marketplace, HACS, manual, CDN and reverse-proxy resource URLs. Record maintainer-reported working HA 2026.11 use while retaining the outstanding clean-install and update checks under #157.
+
 ## [1.5.1]
 
 * Room status: Correct numeric sums for unitless template sensors with a configured display unit, and ignore count-only active-state filters in numeric mode. Show `—` with an explanation when no valid numeric inputs exist instead of a false zero; retain real zero and compatible power-unit conversion. Fixes #159.

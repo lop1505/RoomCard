@@ -1,0 +1,54 @@
+name: Attach release assets
+
+# Prepare an existing draft; the maintainer still reviews and publishes it.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag of the existing draft release (for example v1.5.2)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  attach:
+    name: Validate and attach all dashboard assets
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      ROOMCARD_RELEASE_TAG: ${{ inputs.tag }}
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.tag }}
+          persist-credentials: false
+
+      - name: Install development metadata
+        run: npm ci --ignore-scripts
+
+      - name: Verify distribution, tests and release tag
+        run: npm run check
+        env:
+          GITHUB_REF_TYPE: tag
+          GITHUB_REF_NAME: ${{ inputs.tag }}
+
+      - name: Attach individual assets to the draft
+        shell: bash
+        run: |
+          ROOMCARD_IS_DRAFT=$(gh release view "$ROOMCARD_RELEASE_TAG" --json isDraft --jq '.isDraft')
+          if [[ "$ROOMCARD_IS_DRAFT" != "true" ]]; then
+            echo "Only draft releases may be prepared by this workflow." >&2
+            exit 1
+          fi
+          node scripts/release-assets.mjs > "$RUNNER_TEMP/roomcard-release-assets.txt"
+          ROOMCARD_ASSETS=()
+          while IFS= read -r ROOMCARD_ASSET; do
+            ROOMCARD_ASSETS+=("$ROOMCARD_ASSET")
+          done < "$RUNNER_TEMP/roomcard-release-assets.txt"
+          gh release upload "$ROOMCARD_RELEASE_TAG" "${ROOMCARD_ASSETS[@]}" --clobber
